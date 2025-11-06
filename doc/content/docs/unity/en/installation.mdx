@@ -1,0 +1,142 @@
+---
+title: Installation
+description: How to install the Developerworks Unity SDK
+---
+
+# Installation Guide
+
+Learn how to install and set up the Developerworks Unity SDK in your Unity project.
+
+## Requirements
+
+Before installing the SDK, ensure your development environment meets these requirements:
+
+- **Unity Version**: 2021.3 LTS or higher
+- **Operating System**: Windows, macOS, or Linux
+- **.NET Version**: .NET Standard 2.1 or higher
+- **Package Manager**: Unity Package Manager (UPM)
+
+## Installation Methods
+
+There are several ways to install the Developerworks Unity SDK:
+
+### Method 1: Unity Package Manager (Recommended)
+
+The easiest way to install the SDK is through Unity Package Manager:
+
+1. Open your Unity project
+2. Go to **Window > Package Manager**
+3. Click the **+** button in the top-left corner
+4. Select **Add package from git URL**
+5. Enter the SDK repository URL:
+   ```
+   https://github.com/your-org/developerworks-unity-sdk.git
+   ```
+6. Click **Add**
+
+### Method 2: Manual Installation
+
+You can also install the SDK manually:
+
+1. Download the latest release from the [GitHub Releases page](https://github.com/your-org/developerworks-unity-sdk/releases)
+2. Extract the package to your project's `Packages` folder
+3. Unity will automatically detect and import the package
+
+### Method 3: Asset Package
+
+For offline installation:
+
+1. Download the `.unitypackage` file from our releases
+2. In Unity, go to **Assets > Import Package > Custom Package**
+3. Select the downloaded `.unitypackage` file
+4. Click **Import** to add the SDK to your project
+
+## Verifying Installation
+
+After installation, verify that the SDK is properly set up:
+
+1. Open the Unity Console (**Window > General > Console**)
+2. Look for a message like: "Developerworks SDK v1.0.0 initialized successfully"
+3. Check that the SDK namespace is available:
+
+```csharp
+using Developerworks.SDK;
+
+public class TestScript : MonoBehaviour
+{
+    void Start()
+    {
+        Debug.Log("SDK Version: " + DeveloperworksSDK.Version);
+    }
+}
+```
+
+## Configuration
+
+After installation, you'll need to configure the SDK:
+
+1. Create a configuration file at `Assets/Resources/DeveloperworksConfig.json`
+2. Add your API credentials:
+
+```json
+{
+  "apiKey": "your-api-key",
+  "apiSecret": "your-api-secret",
+  "environment": "production"
+}
+```
+
+<Callout type="warn">
+  Keep your API credentials secure! Never commit them to version control.
+</Callout>
+
+## Next Steps
+
+Now that you've installed the SDK, you're ready to start building:
+
+<Cards>
+  <Card
+    title="Quick Start Guide"
+    description="Learn the basics and create your first integration"
+    href="/docs/quickstart"
+  />
+  <Card
+    title="Authentication"
+    description="Set up secure authentication for your app"
+    href="/docs/authentication"
+  />
+  <Card
+    title="API Reference"
+    description="Explore the complete API documentation"
+    href="/docs/api-reference"
+  />
+</Cards>
+
+## Troubleshooting
+
+### Package not showing in Package Manager
+
+If the package doesn't appear after adding it:
+
+1. Close and reopen Unity
+2. Check Unity's console for any error messages
+3. Verify the git URL is correct
+4. Ensure you have git installed on your system
+
+### Compilation Errors
+
+If you see compilation errors after installation:
+
+1. Make sure your Unity version meets the minimum requirements
+2. Check that all dependencies are installed
+3. Try reimporting the package
+4. Clear the Library folder and let Unity rebuild
+
+### API Key Issues
+
+If you're having trouble with API keys:
+
+1. Verify your credentials are correct
+2. Check that the config file is in the right location
+3. Ensure the JSON format is valid
+4. Contact support if credentials need to be regenerated

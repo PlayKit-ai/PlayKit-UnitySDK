@@ -1,0 +1,523 @@
+---
+title: 身份验证
+description: 学习如何在 Unity 项目中实现安全的身份验证
+---
+
+# 身份验证
+
+Developerworks Unity SDK 提供了全面的身份验证系统，支持多种身份验证方法和安全的用户管理。
+
+## 概述
+
+身份验证是任何应用程序的关键部分。SDK 提供：
+
+- **多种身份验证方法**：邮箱/密码、社交登录、匿名身份验证
+- **安全令牌管理**：自动令牌刷新和安全存储
+- **会话持久化**：跨应用启动维护用户会话
+- **事件驱动**：响应身份验证状态变化
+
+## 登录方法
+
+### 邮箱和密码
+
+最常见的身份验证方法：
+
+```csharp
+using Developerworks.SDK.Auth;
+
+public class EmailAuthExample : MonoBehaviour
+{
+    public async void SignInWithEmail()
+    {
+        var result = await DeveloperworksAuth.SignIn(
+            username: "user@example.com",
+            password: "secure-password"
+        );
+
+        if (result.Success)
+        {
+            Debug.Log($"已登录：{result.User.Email}");
+            // 导航到主应用
+        }
+        else
+        {
+            Debug.LogError($"登录失败：{result.Error.Message}");
+            // 向用户显示错误
+        }
+    }
+}
+```
+
+### 匿名身份验证
+
+允许用户在不创建账户的情况下使用您的应用：
+
+```csharp
+public async void SignInAnonymously()
+{
+    var result = await DeveloperworksAuth.SignInAnonymously();
+
+    if (result.Success)
+    {
+        Debug.Log($"匿名用户 ID：{result.User.Id}");
+    }
+}
+```
+
+<Callout type="info">
+  匿名用户稍后可以将其账户链接到邮箱/密码或社交提供商。
+</Callout>
+
+### 社交身份验证
+
+支持使用流行社交平台登录：
+
+```csharp
+public async void SignInWithGoogle()
+{
+    var result = await DeveloperworksAuth.SignInWithProvider(
+        AuthProvider.Google
+    );
+
+    if (result.Success)
+    {
+        Debug.Log($"使用 Google 登录：{result.User.DisplayName}");
+    }
+}
+```
+
+支持的提供商：
+- Google
+- Facebook
+- Twitter
+- Apple
+- Discord
+
+## 用户注册
+
+创建新用户账户：
+
+```csharp
+public class RegistrationManager : MonoBehaviour
+{
+    public async void RegisterUser(string email, string password, string displayName)
+    {
+        try
+        {
+            var result = await DeveloperworksAuth.CreateUser(new UserRegistration
+            {
+                Email = email,
+                Password = password,
+                DisplayName = displayName,
+                AcceptedTerms = true
+            });
+
+            if (result.Success)
+            {
+                Debug.Log($"已创建账户：{result.User.Email}");
+                // 注册后自动登录
+                OnRegistrationSuccess(result.User);
+            }
+            else
+            {
+                HandleRegistrationError(result.Error);
+            }
+        }
+        catch (ValidationException ex)
+        {
+            Debug.LogError($"验证错误：{ex.Message}");
+        }
+    }
+
+    void HandleRegistrationError(AuthError error)
+    {
+        switch (error.Code)
+        {
+            case AuthErrorCode.EmailAlreadyExists:
+                Debug.LogError("此邮箱已被注册");
+                break;
+            case AuthErrorCode.WeakPassword:
+                Debug.LogError("密码强度太弱");
+                break;
+            case AuthErrorCode.InvalidEmail:
+                Debug.LogError("邮箱格式无效");
+                break;
+            default:
+                Debug.LogError($"注册失败：{error.Message}");
+                break;
+        }
+    }
+
+    void OnRegistrationSuccess(User user)
+    {
+        // 欢迎新用户
+        // 导航到引导页或主应用
+    }
+}
+```
+
+## 密码管理
+
+### 重置密码
+
+允许用户重置忘记的密码：
+
+```csharp
+public async void ResetPassword(string email)
+{
+    try
+    {
+        await DeveloperworksAuth.SendPasswordResetEmail(email);
+        Debug.Log("密码重置邮件已发送");
+        // 向用户显示确认消息
+    }
+    catch (AuthException ex)
+    {
+        Debug.LogError($"发送重置邮件失败：{ex.Message}");
+    }
+}
+```
+
+### 修改密码
+
+允许已验证的用户修改密码：
+
+```csharp
+public async void ChangePassword(string currentPassword, string newPassword)
+{
+    try
+    {
+        await DeveloperworksAuth.ChangePassword(
+            currentPassword: currentPassword,
+            newPassword: newPassword
+        );
+
+        Debug.Log("密码修改成功");
+    }
+    catch (AuthException ex)
+    {
+        if (ex.Code == AuthErrorCode.WrongPassword)
+        {
+            Debug.LogError("当前密码不正确");
+        }
+        else
+        {
+            Debug.LogError($"密码修改失败：{ex.Message}");
+        }
+    }
+}
+```
+
+## 会话管理
+
+### 检查身份验证状态
+
+检查用户当前是否已登录：
+
+```csharp
+void CheckAuthState()
+{
+    if (DeveloperworksAuth.IsAuthenticated)
+    {
+        var currentUser = DeveloperworksAuth.CurrentUser;
+        Debug.Log($"用户已登录：{currentUser.Email}");
+    }
+    else
+    {
+        Debug.Log("没有用户登录");
+    }
+}
+```
+
+### 登出
+
+登出当前用户：
+
+```csharp
+public async void SignOut()
+{
+    try
+    {
+        await DeveloperworksAuth.SignOut();
+        Debug.Log("用户已登出");
+        // 导航到登录界面
+    }
+    catch (Exception ex)
+    {
+        Debug.LogError($"登出错误：{ex.Message}");
+    }
+}
+```
+
+### 会话持久化
+
+启用自动会话持久化：
+
+```csharp
+void Start()
+{
+    // 配置会话持久化
+    DeveloperworksAuth.Configure(new AuthConfig
+    {
+        PersistSession = true,
+        SessionTimeout = TimeSpan.FromDays(30)
+    });
+
+    // 检查现有会话
+    if (DeveloperworksAuth.HasPersistedSession)
+    {
+        RestoreSession();
+    }
+}
+
+async void RestoreSession()
+{
+    try
+    {
+        var result = await DeveloperworksAuth.RestoreSession();
+        if (result.Success)
+        {
+            Debug.Log("会话已恢复");
+            // 导航到主应用
+        }
+    }
+    catch (Exception ex)
+    {
+        Debug.LogError($"会话恢复失败：{ex.Message}");
+        // 导航到登录界面
+    }
+}
+```
+
+## 身份验证事件
+
+监听身份验证状态变化：
+
+```csharp
+public class AuthEventHandler : MonoBehaviour
+{
+    void OnEnable()
+    {
+        DeveloperworksAuth.OnAuthStateChanged += HandleAuthStateChanged;
+        DeveloperworksAuth.OnTokenRefreshed += HandleTokenRefreshed;
+        DeveloperworksAuth.OnSessionExpired += HandleSessionExpired;
+    }
+
+    void OnDisable()
+    {
+        DeveloperworksAuth.OnAuthStateChanged -= HandleAuthStateChanged;
+        DeveloperworksAuth.OnTokenRefreshed -= HandleTokenRefreshed;
+        DeveloperworksAuth.OnSessionExpired -= HandleSessionExpired;
+    }
+
+    void HandleAuthStateChanged(AuthState newState)
+    {
+        switch (newState)
+        {
+            case AuthState.SignedIn:
+                Debug.Log("用户已登录");
+                // 导航到主应用
+                break;
+            case AuthState.SignedOut:
+                Debug.Log("用户已登出");
+                // 导航到登录界面
+                break;
+            case AuthState.SessionExpired:
+                Debug.Log("会话已过期");
+                // 提示用户重新登录
+                break;
+        }
+    }
+
+    void HandleTokenRefreshed(string newToken)
+    {
+        Debug.Log("身份验证令牌已刷新");
+    }
+
+    void HandleSessionExpired()
+    {
+        Debug.LogWarning("会话已过期，请重新登录");
+        // 显示登录对话框
+    }
+}
+```
+
+## 用户资料
+
+访问和更新用户资料信息：
+
+```csharp
+public class UserProfileManager : MonoBehaviour
+{
+    void DisplayUserInfo()
+    {
+        var user = DeveloperworksAuth.CurrentUser;
+
+        Debug.Log($"用户 ID：{user.Id}");
+        Debug.Log($"邮箱：{user.Email}");
+        Debug.Log($"显示名称：{user.DisplayName}");
+        Debug.Log($"创建时间：{user.CreatedAt}");
+        Debug.Log($"邮箱已验证：{user.IsEmailVerified}");
+    }
+
+    public async void UpdateProfile(string newDisplayName, string photoUrl)
+    {
+        try
+        {
+            await DeveloperworksAuth.UpdateProfile(new ProfileUpdate
+            {
+                DisplayName = newDisplayName,
+                PhotoUrl = photoUrl
+            });
+
+            Debug.Log("资料更新成功");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"资料更新失败：{ex.Message}");
+        }
+    }
+
+    public async void SendVerificationEmail()
+    {
+        try
+        {
+            await DeveloperworksAuth.SendEmailVerification();
+            Debug.Log("验证邮件已发送");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"发送验证邮件失败：{ex.Message}");
+        }
+    }
+}
+```
+
+## 安全最佳实践
+
+实现身份验证时，遵循以下安全最佳实践：
+
+### 1. 安全凭证存储
+
+切勿硬编码凭证：
+
+```csharp
+// ❌ 不好
+string password = "my-password";
+
+// ✅ 好
+string password = SecureStorage.GetPassword();
+```
+
+### 2. 验证输入
+
+在身份验证前始终验证用户输入：
+
+```csharp
+bool IsValidEmail(string email)
+{
+    return System.Text.RegularExpressions.Regex.IsMatch(
+        email,
+        @"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+    );
+}
+
+bool IsStrongPassword(string password)
+{
+    return password.Length >= 8 &&
+           password.Any(char.IsUpper) &&
+           password.Any(char.IsLower) &&
+           password.Any(char.IsDigit);
+}
+```
+
+### 3. 优雅处理错误
+
+不要在错误消息中暴露敏感信息：
+
+```csharp
+catch (AuthException ex)
+{
+    // ❌ 不好：暴露敏感信息
+    ShowError($"登录失败：{ex.InnerException.Message}");
+
+    // ✅ 好：通用的用户友好消息
+    ShowError("登录失败。请检查您的凭证后重试。");
+
+    // 记录详细错误用于调试
+    Debug.LogError($"身份验证错误详情：{ex}");
+}
+```
+
+### 4. 实现速率限制
+
+防止暴力破解攻击：
+
+```csharp
+private int loginAttempts = 0;
+private DateTime lastAttempt;
+
+public async void AttemptLogin(string email, string password)
+{
+    if (loginAttempts >= 5 && DateTime.Now - lastAttempt < TimeSpan.FromMinutes(5))
+    {
+        Debug.LogError("登录尝试次数过多。请稍后重试。");
+        return;
+    }
+
+    var result = await DeveloperworksAuth.SignIn(email, password);
+
+    if (!result.Success)
+    {
+        loginAttempts++;
+        lastAttempt = DateTime.Now;
+    }
+    else
+    {
+        loginAttempts = 0;
+    }
+}
+```
+
+## 测试身份验证
+
+在 Unity 编辑器中测试身份验证流程：
+
+```csharp
+#if UNITY_EDITOR
+public class AuthTesting : MonoBehaviour
+{
+    [ContextMenu("测试登录")]
+    async void TestSignIn()
+    {
+        var result = await DeveloperworksAuth.SignIn(
+            "test@example.com",
+            "test-password"
+        );
+        Debug.Log($"测试登录：{result.Success}");
+    }
+
+    [ContextMenu("测试登出")]
+    async void TestSignOut()
+    {
+        await DeveloperworksAuth.SignOut();
+        Debug.Log("测试登出完成");
+    }
+}
+#endif
+```
+
+## 下一步
+
+<Cards>
+  <Card
+    title="API 参考"
+    description="探索完整的身份验证 API"
+    href="/docs/api-reference"
+  />
+  <Card
+    title="快速入门"
+    description="回顾快速入门指南"
+    href="/docs/quickstart"
+  />
+</Cards>

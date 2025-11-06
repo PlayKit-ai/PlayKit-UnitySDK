@@ -1,0 +1,12 @@
+{
+  "title": "Unity SDK",
+  "pages": [
+    "index",
+    "installation",
+    "quickstart",
+    "---",
+    "Core Features",
+    "authentication",
+    "api-reference"
+  ]
+}
