@@ -1,0 +1,387 @@
+# Authentication
+
+Developerworks Unity SDK provides multiple authentication methods to suit different use cases.
+
+## Authentication Methods Overview
+
+The SDK supports the following authentication methods:
+
+1. **Developer Key Authentication** - For development and testing
+2. **OAuth Flow** - For production environments
+3. **Local Token Management** - Automatic token refresh management
+
+## Developer Key Authentication
+
+This is the simplest authentication method, suitable for rapid development and testing.
+
+### Get Developer Key
+
+1. Visit [Developerworks Developer Console](https://developerworks.com/console)
+2. Create or select a project
+3. Generate API key in project settings
+4. Copy the key for use
+
+### Configure Key
+
+#### Method 1: Via Editor
+
+1. In Unity menu, select `Tools > Developerworks > Auth Settings`
+2. Paste your developer key in Inspector
+3. Click save
+
+#### Method 2: Via Code
+
+```csharp
+using Developerworks;
+
+public class AuthSetup : MonoBehaviour
+{
+    void Start()
+    {
+        // Initialize with developer key
+        DW_SDK.Initialize("your-developer-key-here");
+    }
+}
+```
+
+### Security Tips
+
+⚠️ **Warning**: Keep your developer key secret!
+
+- Don't commit keys to version control
+- Don't hardcode keys in client code
+- Use OAuth flow in production environments
+
+## OAuth Authentication Flow
+
+OAuth is the recommended production authentication method, providing higher security.
+
+### Configure OAuth
+
+```csharp
+using Developerworks;
+
+public class OAuthExample : MonoBehaviour
+{
+    private DW_AuthFlowManager authManager;
+
+    async void Start()
+    {
+        authManager = new DW_AuthFlowManager();
+
+        // Configure OAuth parameters
+        var config = new OAuthConfig
+        {
+            ClientId = "your-client-id",
+            RedirectUri = "your-redirect-uri",
+            Scope = "read write"
+        };
+
+        // Start auth flow
+        await authManager.StartAuthFlowAsync(config);
+    }
+}
+```
+
+### OAuth Flow Steps
+
+1. **Initialize auth manager**
+   ```csharp
+   var authManager = new DW_AuthFlowManager();
+   ```
+
+2. **Start auth flow**
+   ```csharp
+   await authManager.StartAuthFlowAsync(config);
+   ```
+
+3. **Handle callbacks**
+   ```csharp
+   authManager.OnAuthSuccess += (token) => {
+       Debug.Log("Authentication successful!");
+       // Save token
+   };
+
+   authManager.OnAuthFailure += (error) => {
+       Debug.LogError($"Authentication failed: {error}");
+   };
+   ```
+
+4. **Use token**
+   ```csharp
+   DW_SDK.SetAuthToken(token);
+   ```
+
+## Local Token Management
+
+The SDK provides automatic token management functionality, handling token storage and refresh.
+
+### Enable Local Token Storage
+
+```csharp
+using Developerworks;
+
+public class TokenManagement : MonoBehaviour
+{
+    void Start()
+    {
+        // Enable automatic token management
+        DW_LocalSharedToken.EnableAutoManagement = true;
+
+        // Try to load token from local storage
+        var token = DW_LocalSharedToken.LoadToken();
+
+        if (token != null && !token.IsExpired)
+        {
+            Debug.Log("Using saved token");
+            DW_SDK.SetAuthToken(token);
+        }
+        else
+        {
+            Debug.Log("Need to re-authenticate");
+            // Start auth flow
+        }
+    }
+}
+```
+
+### Token Refresh
+
+SDK automatically handles token refresh:
+
+```csharp
+// SDK will auto-refresh token before expiration
+DW_AuthManager.OnTokenRefreshed += (newToken) => {
+    Debug.Log("Token refreshed");
+    // New token is auto-saved
+};
+```
+
+### Manual Token Refresh
+
+For manual refresh:
+
+```csharp
+async void RefreshToken()
+{
+    try
+    {
+        var newToken = await DW_AuthManager.RefreshTokenAsync();
+        Debug.Log("Token refresh successful");
+    }
+    catch (Exception e)
+    {
+        Debug.LogError($"Token refresh failed: {e.Message}");
+    }
+}
+```
+
+## Platform-Specific Configuration
+
+### WebGL Platform
+
+WebGL requires special storage handling:
+
+```csharp
+#if UNITY_WEBGL
+using Developerworks;
+
+public class WebGLAuth : MonoBehaviour
+{
+    void Start()
+    {
+        // WebGL uses browser storage
+        DW_WebGLStorage.Initialize();
+
+        // Other auth code...
+    }
+}
+#endif
+```
+
+### Mobile Platforms (iOS/Android)
+
+Mobile platforms need permission configuration:
+
+#### iOS (Info.plist)
+```xml
+<key>NSMicrophoneUsageDescription</key>
+<string>For voice interaction features</string>
+```
+
+#### Android (AndroidManifest.xml)
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
+
+## Complete Example
+
+Here's a complete authentication example:
+
+```csharp
+using UnityEngine;
+using Developerworks;
+using System;
+
+public class CompleteAuthExample : MonoBehaviour
+{
+    private DW_AuthFlowManager authManager;
+
+    async void Start()
+    {
+        // 1. Try to load token from local storage
+        var savedToken = DW_LocalSharedToken.LoadToken();
+
+        if (savedToken != null && !savedToken.IsExpired)
+        {
+            // Use saved token
+            DW_SDK.SetAuthToken(savedToken);
+            OnAuthComplete();
+        }
+        else
+        {
+            // 2. Start new auth flow
+            await StartAuthentication();
+        }
+    }
+
+    async System.Threading.Tasks.Task StartAuthentication()
+    {
+        authManager = new DW_AuthFlowManager();
+
+        // Configure auth
+        var config = new OAuthConfig
+        {
+            ClientId = "your-client-id",
+            RedirectUri = "your-redirect-uri"
+        };
+
+        // Listen to auth events
+        authManager.OnAuthSuccess += OnAuthSuccess;
+        authManager.OnAuthFailure += OnAuthFailure;
+
+        // Start auth
+        await authManager.StartAuthFlowAsync(config);
+    }
+
+    void OnAuthSuccess(string token)
+    {
+        Debug.Log("Authentication successful!");
+
+        // Save token
+        DW_LocalSharedToken.SaveToken(token);
+
+        // Set SDK token
+        DW_SDK.SetAuthToken(token);
+
+        OnAuthComplete();
+    }
+
+    void OnAuthFailure(string error)
+    {
+        Debug.LogError($"Authentication failed: {error}");
+        // Handle error...
+    }
+
+    void OnAuthComplete()
+    {
+        Debug.Log("Ready to use SDK features!");
+        // Initialize your app...
+    }
+
+    void OnDestroy()
+    {
+        // Clean up event listeners
+        if (authManager != null)
+        {
+            authManager.OnAuthSuccess -= OnAuthSuccess;
+            authManager.OnAuthFailure -= OnAuthFailure;
+        }
+    }
+}
+```
+
+## Best Practices
+
+### 1. Secure Storage
+
+- Use encrypted storage for sensitive information
+- Don't hardcode keys in client code
+- Rotate keys regularly
+
+### 2. Error Handling
+
+```csharp
+try
+{
+    await DW_SDK.Initialize("your-key");
+}
+catch (DW_AuthenticationException e)
+{
+    Debug.LogError($"Auth error: {e.Message}");
+    // Prompt user to re-login
+}
+catch (Exception e)
+{
+    Debug.LogError($"Unknown error: {e.Message}");
+}
+```
+
+### 3. Token Lifecycle Management
+
+```csharp
+// Check token status
+if (DW_AuthManager.IsTokenExpiringSoon())
+{
+    await DW_AuthManager.RefreshTokenAsync();
+}
+```
+
+### 4. Logout
+
+```csharp
+public void Logout()
+{
+    // Clear local token
+    DW_LocalSharedToken.ClearToken();
+
+    // Clear SDK state
+    DW_SDK.ClearAuth();
+
+    Debug.Log("Logged out");
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### Authentication Failure
+
+If authentication keeps failing:
+
+1. Check API key is correct
+2. Ensure network connection is working
+3. Verify time sync (OAuth is time-sensitive)
+4. Check console logs for detailed errors
+
+#### Token Expiration
+
+```csharp
+// Handle token expiration
+DW_SDK.OnTokenExpired += async () => {
+    Debug.Log("Token expired, refreshing...");
+    await DW_AuthManager.RefreshTokenAsync();
+};
+```
+
+#### WebGL Storage Issues
+
+On WebGL platform, ensure:
+
+1. Browser allows localStorage
+2. Not running in private/incognito mode
+3. Domain is properly configured
+
+For more issues, see the [Troubleshooting](/unity/troubleshooting) page.

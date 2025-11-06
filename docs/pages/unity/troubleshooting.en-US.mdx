@@ -1,0 +1,281 @@
+# Troubleshooting
+
+This page lists common issues and solutions when using Developerworks Unity SDK.
+
+## Installation Issues
+
+### Unity Package Manager Installation Failed
+
+**Problem**: Adding git URL through Package Manager fails.
+
+**Solution**:
+1. Ensure Git is installed and added to system PATH
+2. Check network connection
+3. Try HTTPS instead of SSH URL
+4. Update Unity Package Manager: `Window > Package Manager > Advanced > Reset Packages to defaults`
+
+### Compilation Errors
+
+**Problem**: Compilation errors after importing SDK.
+
+**Solution**:
+1. Check Unity version (requires 2021.3 or higher)
+2. Set API compatibility level to .NET Standard 2.1
+   - `Edit > Project Settings > Player > Other Settings > Api Compatibility Level`
+3. Clear Library folder and recompile
+4. Reimport SDK
+
+### Missing Dependencies
+
+**Problem**: Missing TextMesh Pro or other dependencies.
+
+**Solution**:
+```
+Window > TextMeshPro > Import TMP Essential Resources
+```
+
+## Authentication Issues
+
+### Authentication Failed
+
+**Problem**: `DW_AuthenticationException: Authentication failed`
+
+**Solution**:
+1. Verify API key is correct
+2. Ensure key hasn't expired
+3. Check key has proper permissions
+4. Verify initialization:
+   ```csharp
+   DW_SDK.Initialize("your-api-key");
+   ```
+
+### Token Expiration
+
+**Problem**: Token expires frequently.
+
+**Solution**:
+```csharp
+// Enable automatic token refresh
+DW_AuthManager.OnTokenRefreshed += (newToken) => {
+    Debug.Log("Token refreshed");
+};
+
+// Check token status
+if (DW_AuthManager.IsTokenExpiringSoon())
+{
+    await DW_AuthManager.RefreshTokenAsync();
+}
+```
+
+### WebGL Authentication Issues
+
+**Problem**: Cannot save auth info on WebGL.
+
+**Solution**:
+```csharp
+#if UNITY_WEBGL
+DW_WebGLStorage.Initialize();
+// Use WebGL-specific storage
+#endif
+```
+
+Ensure browser allows localStorage.
+
+## Network Issues
+
+### Request Timeout
+
+**Problem**: `DW_NetworkException: Request timeout`
+
+**Solution**:
+1. Check network connection
+2. Increase timeout:
+   ```csharp
+   DW_SDK.SetRequestTimeout(30); // 30 seconds
+   ```
+3. Check firewall settings
+4. Verify API endpoint accessibility
+
+### Rate Limiting
+
+**Problem**: `DW_RateLimitException: Rate limit exceeded`
+
+**Solution**:
+```csharp
+try
+{
+    await chatClient.SendMessageAsync("message");
+}
+catch (DW_RateLimitException e)
+{
+    Debug.Log($"Wait {e.RetryAfter} seconds");
+    await Task.Delay(e.RetryAfter * 1000);
+    // Retry request
+}
+```
+
+### CORS Errors (WebGL)
+
+**Problem**: CORS errors in WebGL builds.
+
+**Solution**:
+- Ensure server has correct CORS headers
+- Use proxy server
+- Contact API provider for CORS whitelist
+
+## Voice Feature Issues
+
+### Microphone Permission Denied
+
+**Problem**: Cannot access microphone.
+
+**Solution**:
+
+**iOS** (Info.plist):
+```xml
+<key>NSMicrophoneUsageDescription</key>
+<string>For voice chat features</string>
+```
+
+**Android** (AndroidManifest.xml):
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
+
+Request permission in code:
+```csharp
+#if UNITY_ANDROID || UNITY_IOS
+if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
+{
+    Permission.RequestUserPermission(Permission.Microphone);
+}
+#endif
+```
+
+### Voice Recognition Inaccurate
+
+**Problem**: Voice recognition results are inaccurate.
+
+**Solution**:
+1. Ensure quiet recording environment
+2. Use high-quality microphone
+3. Adjust recording parameters:
+   ```csharp
+   var voiceModule = new DW_NPCClient_VoiceModule();
+   voiceModule.SetRecordingQuality(AudioQuality.High);
+   ```
+
+## Performance Issues
+
+### Slow Response Times
+
+**Problem**: API response takes too long.
+
+**Solution**:
+1. Use streaming:
+   ```csharp
+   await chatClient.StreamMessageAsync(message, OnChunk);
+   ```
+2. Enable caching:
+   ```csharp
+   chatClient.EnableCache = true;
+   ```
+3. Reduce MaxTokens:
+   ```csharp
+   chatClient.MaxTokens = 300;
+   ```
+
+### High Memory Usage
+
+**Problem**: SDK uses too much memory.
+
+**Solution**:
+```csharp
+// Clear cache periodically
+chatClient.ClearCache();
+
+// Clear conversation history
+chatClient.ClearContext();
+
+// Release unused resources
+Resources.UnloadUnusedAssets();
+```
+
+## Platform-Specific Issues
+
+### WebGL Build Issues
+
+**Problem**: Features not working after WebGL build.
+
+**Solution**:
+1. Use WebGL-compatible code
+2. Check browser console errors
+3. Enable exceptions: `Edit > Project Settings > Player > WebGL > Publishing Settings > Enable Exceptions`
+
+### iOS Build Issues
+
+**Problem**: Features not working on iOS.
+
+**Solution**:
+1. Use IL2CPP backend
+2. Configure required permissions
+3. Test on real device, not simulator
+
+### Android Permission Issues
+
+**Problem**: Permission requests failing on Android.
+
+**Solution**:
+```csharp
+void Start()
+{
+    if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
+    {
+        Permission.RequestUserPermission(Permission.Microphone);
+    }
+}
+```
+
+## Debugging Tips
+
+### Enable Verbose Logging
+
+```csharp
+// Enable SDK debug logging
+DW_SDK.EnableDebugLogging = true;
+
+// Custom log handler
+DW_SDK.OnLog += (level, message) => {
+    Debug.Log($"[{level}] {message}");
+};
+```
+
+### Network Request Monitoring
+
+```csharp
+DW_SDK.OnRequestStart += (url) => {
+    Debug.Log($"Request started: {url}");
+};
+
+DW_SDK.OnRequestComplete += (url, duration) => {
+    Debug.Log($"Request completed: {url}, Duration: {duration}ms");
+};
+```
+
+## Getting More Help
+
+If the above solutions don't resolve your issue:
+
+1. **Check Examples**: [Examples Page](/unity/examples)
+2. **API Documentation**: [API Reference](/unity/api-reference)
+3. **Search Known Issues**: [GitHub Issues](https://github.com/cnqdztp/Developerworks-UnitySDK/issues)
+4. **Submit New Issue**: [Create Issue](https://github.com/cnqdztp/Developerworks-UnitySDK/issues/new)
+5. **Contact Support**: support@developerworks.com
+
+When submitting issues, include:
+- Unity version
+- SDK version
+- Platform (Windows/Mac/iOS/Android/WebGL)
+- Error messages
+- Reproduction steps
+- Relevant code snippets

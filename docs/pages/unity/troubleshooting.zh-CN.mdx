@@ -1,0 +1,420 @@
+# 故障排除
+
+本页面列出了使用 Developerworks Unity SDK 时的常见问题及解决方案。
+
+## 安装问题
+
+### Unity Package Manager 安装失败
+
+**问题**: 通过 Package Manager 添加 git URL 时失败。
+
+**解决方案**:
+1. 确保已安装 Git 并添加到系统 PATH
+2. 检查网络连接
+3. 尝试使用 HTTPS 而不是 SSH URL
+4. 更新 Unity Package Manager：`Window > Package Manager > Advanced > Reset Packages to defaults`
+
+### 编译错误
+
+**问题**: 导入 SDK 后出现编译错误。
+
+**解决方案**:
+1. 检查 Unity 版本（需要 2021.3 或更高）
+2. 确保 API 兼容性级别设置为 .NET Standard 2.1
+   - `Edit > Project Settings > Player > Other Settings > Api Compatibility Level`
+3. 清除 Library 文件夹并重新编译
+4. 重新导入 SDK
+
+### 缺少依赖项
+
+**问题**: 提示缺少 TextMesh Pro 或其他依赖。
+
+**解决方案**:
+```
+Window > TextMeshPro > Import TMP Essential Resources
+```
+
+## 认证问题
+
+### 认证失败
+
+**问题**: `DW_AuthenticationException: Authentication failed`
+
+**解决方案**:
+1. 检查 API 密钥是否正确
+2. 确保密钥没有过期
+3. 验证密钥有正确的权限
+4. 检查是否正确初始化：
+   ```csharp
+   DW_SDK.Initialize("your-api-key");
+   ```
+
+### 令牌过期
+
+**问题**: 令牌频繁过期。
+
+**解决方案**:
+```csharp
+// 启用自动令牌刷新
+DW_AuthManager.OnTokenRefreshed += (newToken) => {
+    Debug.Log("令牌已刷新");
+};
+
+// 检查令牌状态
+if (DW_AuthManager.IsTokenExpiringSoon())
+{
+    await DW_AuthManager.RefreshTokenAsync();
+}
+```
+
+### WebGL 认证问题
+
+**问题**: WebGL 平台无法保存认证信息。
+
+**解决方案**:
+```csharp
+#if UNITY_WEBGL
+DW_WebGLStorage.Initialize();
+// 使用 WebGL 特定的存储
+#endif
+```
+
+确保浏览器允许 localStorage。
+
+## 网络问题
+
+### 请求超时
+
+**问题**: `DW_NetworkException: Request timeout`
+
+**解决方案**:
+1. 检查网络连接
+2. 增加超时时间：
+   ```csharp
+   DW_SDK.SetRequestTimeout(30); // 30 秒
+   ```
+3. 检查防火墙设置
+4. 验证 API 端点是否可访问
+
+### 请求频率限制
+
+**问题**: `DW_RateLimitException: Rate limit exceeded`
+
+**解决方案**:
+```csharp
+try
+{
+    await chatClient.SendMessageAsync("消息");
+}
+catch (DW_RateLimitException e)
+{
+    Debug.Log($"请等待 {e.RetryAfter} 秒");
+    await Task.Delay(e.RetryAfter * 1000);
+    // 重试请求
+}
+```
+
+实施请求队列：
+```csharp
+// 限制并发请求数量
+private SemaphoreSlim requestSemaphore = new SemaphoreSlim(3, 3);
+
+public async Task<string> SendMessageWithRateLimit(string message)
+{
+    await requestSemaphore.WaitAsync();
+    try
+    {
+        return await chatClient.SendMessageAsync(message);
+    }
+    finally
+    {
+        requestSemaphore.Release();
+    }
+}
+```
+
+### CORS 错误（WebGL）
+
+**问题**: WebGL 构建中出现 CORS 错误。
+
+**解决方案**:
+- 确保服务器配置了正确的 CORS 头
+- 使用代理服务器
+- 联系 API 提供商配置 CORS 白名单
+
+## 语音功能问题
+
+### 麦克风权限被拒绝
+
+**问题**: 无法访问麦克风。
+
+**解决方案**:
+
+**iOS** (Info.plist):
+```xml
+<key>NSMicrophoneUsageDescription</key>
+<string>用于语音聊天功能</string>
+```
+
+**Android** (AndroidManifest.xml):
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
+
+在代码中请求权限：
+```csharp
+#if UNITY_ANDROID || UNITY_IOS
+if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
+{
+    Permission.RequestUserPermission(Permission.Microphone);
+}
+#endif
+```
+
+### 语音识别不准确
+
+**问题**: 语音识别结果不准确。
+
+**解决方案**:
+1. 确保录音环境安静
+2. 使用高质量麦克风
+3. 调整录音参数：
+   ```csharp
+   var voiceModule = new DW_NPCClient_VoiceModule();
+   voiceModule.SetRecordingQuality(AudioQuality.High);
+   ```
+4. 说话清晰，语速适中
+
+### 语音合成无声音
+
+**问题**: TextToSpeech 返回的音频无法播放。
+
+**解决方案**:
+```csharp
+var audioClip = await voiceModule.TextToSpeechAsync("测试");
+
+// 检查音频是否有效
+if (audioClip != null && audioClip.length > 0)
+{
+    audioSource.clip = audioClip;
+    audioSource.volume = 1.0f;
+    audioSource.Play();
+}
+else
+{
+    Debug.LogError("音频生成失败");
+}
+```
+
+## 性能问题
+
+### 响应速度慢
+
+**问题**: API 响应时间过长。
+
+**解决方案**:
+1. 使用流式响应：
+   ```csharp
+   await chatClient.StreamMessageAsync(message, OnChunk);
+   ```
+2. 启用缓存：
+   ```csharp
+   chatClient.EnableCache = true;
+   ```
+3. 减少 MaxTokens：
+   ```csharp
+   chatClient.MaxTokens = 300;
+   ```
+4. 使用批量请求
+
+### 内存占用过高
+
+**问题**: SDK 占用大量内存。
+
+**解决方案**:
+```csharp
+// 定期清除缓存
+chatClient.ClearCache();
+
+// 清除对话历史
+chatClient.ClearContext();
+
+// 释放不使用的资源
+Resources.UnloadUnusedAssets();
+```
+
+### 帧率下降
+
+**问题**: 使用 SDK 时帧率下降。
+
+**解决方案**:
+```csharp
+// 在后台线程处理
+await Task.Run(async () => {
+    var response = await chatClient.SendMessageAsync(message);
+    // 在主线程更新 UI
+    UnityMainThreadDispatcher.Instance.Enqueue(() => {
+        UpdateUI(response);
+    });
+});
+```
+
+## 平台特定问题
+
+### WebGL 构建问题
+
+**问题**: WebGL 构建后功能异常。
+
+**解决方案**:
+1. 确保使用 WebGL 兼容的代码
+2. 检查浏览器控制台错误
+3. 启用异常：`Edit > Project Settings > Player > WebGL > Publishing Settings > Enable Exceptions`
+4. 增加内存限制
+
+### iOS 构建问题
+
+**问题**: iOS 上无法使用某些功能。
+
+**解决方案**:
+1. 使用 IL2CPP 后端
+2. 配置所需权限
+3. 在真机而非模拟器上测试
+4. 检查 iOS 版本兼容性
+
+### Android 权限问题
+
+**问题**: Android 上权限请求失败。
+
+**解决方案**:
+```csharp
+void Start()
+{
+    RequestPermissions();
+}
+
+void RequestPermissions()
+{
+    if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
+    {
+        Permission.RequestUserPermission(Permission.Microphone);
+    }
+
+    if (!Permission.HasUserAuthorizedPermission(Permission.Internet))
+    {
+        Permission.RequestUserPermission(Permission.Internet);
+    }
+}
+```
+
+## NPC 相关问题
+
+### NPC 回复不符合角色设定
+
+**问题**: NPC 的回复与设定的性格不符。
+
+**解决方案**:
+```csharp
+// 提供更详细的角色设定
+npcClient.SetCharacter(new NPCCharacter {
+    Name = "村长",
+    Personality = "智慧、友善、负责任、说话简洁",
+    Background = "在村子担任村长20年，了解村里的历史和每个村民",
+    Goals = "保护村民安全，解决村里的问题，帮助有需要的人",
+    SpeakingStyle = "使用简单直接的语言，经常引用村里的俗语"
+});
+
+// 添加示例对话
+chatClient.AddContextMessage("user", "村子安全吗？");
+chatClient.AddContextMessage("assistant", "孩子，这村子安全着呢。有我在，哥布林不敢靠近。");
+```
+
+### NPC 记忆丢失
+
+**问题**: NPC 忘记之前的对话。
+
+**解决方案**:
+```csharp
+// 确保使用同一个 NPC 实例
+// 不要每次对话都创建新实例
+
+// 正确做法：
+private DW_NPCClient npcClient; // 类成员变量
+
+void Start()
+{
+    npcClient = new DW_NPCClient(); // 只创建一次
+}
+
+// 错误做法：
+void TalkToNPC()
+{
+    var npcClient = new DW_NPCClient(); // 每次都创建新实例
+}
+```
+
+## 调试技巧
+
+### 启用详细日志
+
+```csharp
+// 启用 SDK 调试日志
+DW_SDK.EnableDebugLogging = true;
+
+// 自定义日志处理
+DW_SDK.OnLog += (level, message) => {
+    Debug.Log($"[{level}] {message}");
+};
+```
+
+### 捕获所有异常
+
+```csharp
+void OnEnable()
+{
+    Application.logMessageReceived += HandleLog;
+}
+
+void OnDisable()
+{
+    Application.logMessageReceived -= HandleLog;
+}
+
+void HandleLog(string logString, string stackTrace, LogType type)
+{
+    if (type == LogType.Exception)
+    {
+        // 记录异常到分析系统
+        Debug.LogError($"异常: {logString}\n{stackTrace}");
+    }
+}
+```
+
+### 网络请求监控
+
+```csharp
+DW_SDK.OnRequestStart += (url) => {
+    Debug.Log($"请求开始: {url}");
+};
+
+DW_SDK.OnRequestComplete += (url, duration) => {
+    Debug.Log($"请求完成: {url}, 耗时: {duration}ms");
+};
+```
+
+## 获取更多帮助
+
+如果以上解决方案无法解决你的问题：
+
+1. **查看示例代码**: [示例页面](/unity/examples)
+2. **检查 API 文档**: [API 参考](/unity/api-reference)
+3. **搜索已知问题**: [GitHub Issues](https://github.com/cnqdztp/Developerworks-UnitySDK/issues)
+4. **提交新问题**: [创建 Issue](https://github.com/cnqdztp/Developerworks-UnitySDK/issues/new)
+5. **联系支持**: support@developerworks.com
+
+提交问题时，请包含：
+- Unity 版本
+- SDK 版本
+- 平台（Windows/Mac/iOS/Android/WebGL）
+- 错误消息
+- 复现步骤
+- 相关代码片段

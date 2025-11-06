@@ -1,0 +1,561 @@
+# API 参考
+
+本页面提供 Developerworks Unity SDK 的完整 API 参考文档。
+
+## 核心类
+
+### DW_SDK
+
+SDK 的主入口类，用于初始化和全局配置。
+
+#### 方法
+
+##### Initialize(string apiKey)
+
+初始化 SDK。
+
+```csharp
+public static void Initialize(string apiKey)
+```
+
+**参数:**
+- `apiKey` (string): 你的 API 密钥
+
+**示例:**
+```csharp
+DW_SDK.Initialize("your-api-key");
+```
+
+##### SetAuthToken(string token)
+
+设置认证令牌。
+
+```csharp
+public static void SetAuthToken(string token)
+```
+
+**参数:**
+- `token` (string): 认证令牌
+
+##### ClearAuth()
+
+清除认证信息。
+
+```csharp
+public static void ClearAuth()
+```
+
+#### 事件
+
+##### OnError
+
+SDK 错误事件。
+
+```csharp
+public static event Action<DW_Exception> OnError
+```
+
+**示例:**
+```csharp
+DW_SDK.OnError += (error) => {
+    Debug.LogError($"错误: {error.Message}");
+};
+```
+
+---
+
+### DW_AIChatClient
+
+AI 聊天客户端，用于文本对话。
+
+#### 构造函数
+
+```csharp
+public DW_AIChatClient()
+```
+
+#### 属性
+
+##### EnableCache
+
+是否启用缓存。
+
+```csharp
+public bool EnableCache { get; set; }
+```
+
+##### MaxTokens
+
+最大令牌数。
+
+```csharp
+public int MaxTokens { get; set; }
+```
+
+##### Temperature
+
+温度参数（0.0 - 2.0）。
+
+```csharp
+public float Temperature { get; set; }
+```
+
+#### 方法
+
+##### SendMessageAsync(string message)
+
+发送消息并获取响应。
+
+```csharp
+public async Task<string> SendMessageAsync(string message)
+```
+
+**参数:**
+- `message` (string): 要发送的消息
+
+**返回值:**
+- `Task<string>`: AI 的响应
+
+**异常:**
+- `DW_AuthenticationException`: 认证失败
+- `DW_NetworkException`: 网络错误
+- `DW_RateLimitException`: 超过请求限制
+
+**示例:**
+```csharp
+var response = await chatClient.SendMessageAsync("你好");
+```
+
+##### StreamMessageAsync(string message, Action<string> onChunk)
+
+流式发送消息。
+
+```csharp
+public async Task StreamMessageAsync(string message, Action<string> onChunk)
+```
+
+**参数:**
+- `message` (string): 要发送的消息
+- `onChunk` (Action<string>): 接收分块的回调
+
+**示例:**
+```csharp
+await chatClient.StreamMessageAsync("讲个故事", (chunk) => {
+    Debug.Log(chunk);
+});
+```
+
+##### AddContextMessage(string role, string content)
+
+添加上下文消息。
+
+```csharp
+public void AddContextMessage(string role, string content)
+```
+
+**参数:**
+- `role` (string): 角色 ("user" 或 "assistant")
+- `content` (string): 消息内容
+
+##### ClearContext()
+
+清除对话上下文。
+
+```csharp
+public void ClearContext()
+```
+
+---
+
+### DW_NPCClient
+
+NPC 客户端，用于创建智能 NPC。
+
+#### 构造函数
+
+```csharp
+public DW_NPCClient()
+```
+
+#### 方法
+
+##### SetCharacter(NPCCharacter character)
+
+设置 NPC 角色。
+
+```csharp
+public void SetCharacter(NPCCharacter character)
+```
+
+**参数:**
+- `character` (NPCCharacter): NPC 角色定义
+
+**示例:**
+```csharp
+npcClient.SetCharacter(new NPCCharacter {
+    Name = "村长",
+    Personality = "友善",
+    Background = "村子的领导者"
+});
+```
+
+##### ChatAsync(string message)
+
+与 NPC 对话。
+
+```csharp
+public async Task<string> ChatAsync(string message)
+```
+
+**参数:**
+- `message` (string): 玩家的消息
+
+**返回值:**
+- `Task<string>`: NPC 的回复
+
+##### RememberInteraction(string interaction)
+
+记录与玩家的互动。
+
+```csharp
+public void RememberInteraction(string interaction)
+```
+
+**参数:**
+- `interaction` (string): 互动描述
+
+---
+
+### DW_NPCClient_VoiceModule
+
+语音模块，提供语音识别和合成功能。
+
+#### 构造函数
+
+```csharp
+public DW_NPCClient_VoiceModule()
+```
+
+#### 方法
+
+##### StartRecording()
+
+开始录音。
+
+```csharp
+public void StartRecording()
+```
+
+##### StopRecordingAsync(Action<string> onResult)
+
+停止录音并获取识别结果。
+
+```csharp
+public async Task StopRecordingAsync(Action<string> onResult)
+```
+
+**参数:**
+- `onResult` (Action<string>): 接收识别结果的回调
+
+##### TextToSpeechAsync(string text)
+
+文字转语音。
+
+```csharp
+public async Task<AudioClip> TextToSpeechAsync(string text)
+```
+
+**参数:**
+- `text` (string): 要转换的文字
+
+**返回值:**
+- `Task<AudioClip>`: 生成的音频
+
+---
+
+## 认证类
+
+### DW_AuthManager
+
+认证管理器。
+
+#### 方法
+
+##### RefreshTokenAsync()
+
+刷新认证令牌。
+
+```csharp
+public static async Task<string> RefreshTokenAsync()
+```
+
+**返回值:**
+- `Task<string>`: 新的认证令牌
+
+##### IsTokenExpiringSoon()
+
+检查令牌是否即将过期。
+
+```csharp
+public static bool IsTokenExpiringSoon()
+```
+
+**返回值:**
+- `bool`: 如果令牌即将过期返回 true
+
+#### 事件
+
+##### OnTokenRefreshed
+
+令牌刷新事件。
+
+```csharp
+public static event Action<string> OnTokenRefreshed
+```
+
+---
+
+### DW_AuthFlowManager
+
+OAuth 认证流程管理器。
+
+#### 方法
+
+##### StartAuthFlowAsync(OAuthConfig config)
+
+启动认证流程。
+
+```csharp
+public async Task StartAuthFlowAsync(OAuthConfig config)
+```
+
+**参数:**
+- `config` (OAuthConfig): OAuth 配置
+
+#### 事件
+
+##### OnAuthSuccess
+
+认证成功事件。
+
+```csharp
+public event Action<string> OnAuthSuccess
+```
+
+##### OnAuthFailure
+
+认证失败事件。
+
+```csharp
+public event Action<string> OnAuthFailure
+```
+
+---
+
+### DW_LocalSharedToken
+
+本地令牌存储管理。
+
+#### 方法
+
+##### SaveToken(string token)
+
+保存令牌到本地。
+
+```csharp
+public static void SaveToken(string token)
+```
+
+##### LoadToken()
+
+从本地加载令牌。
+
+```csharp
+public static string LoadToken()
+```
+
+**返回值:**
+- `string`: 保存的令牌，如果不存在返回 null
+
+##### ClearToken()
+
+清除本地令牌。
+
+```csharp
+public static void ClearToken()
+```
+
+---
+
+## 服务类
+
+### ChatService
+
+聊天服务。
+
+#### 方法
+
+##### CreateSessionAsync()
+
+创建对话会话。
+
+```csharp
+public async Task<ChatSession> CreateSessionAsync()
+```
+
+**返回值:**
+- `Task<ChatSession>`: 创建的会话
+
+##### SendMessageAsync(string sessionId, string message)
+
+发送消息到会话。
+
+```csharp
+public async Task<string> SendMessageAsync(string sessionId, string message)
+```
+
+**参数:**
+- `sessionId` (string): 会话 ID
+- `message` (string): 消息内容
+
+**返回值:**
+- `Task<string>`: AI 响应
+
+##### GetHistoryAsync(string sessionId)
+
+获取对话历史。
+
+```csharp
+public async Task<List<ChatMessage>> GetHistoryAsync(string sessionId)
+```
+
+**参数:**
+- `sessionId` (string): 会话 ID
+
+**返回值:**
+- `Task<List<ChatMessage>>`: 对话历史
+
+---
+
+### TranscriptionService
+
+转录服务。
+
+#### 方法
+
+##### TranscribeAsync(AudioClip audio)
+
+转录音频。
+
+```csharp
+public async Task<string> TranscribeAsync(AudioClip audio)
+```
+
+**参数:**
+- `audio` (AudioClip): 要转录的音频
+
+**返回值:**
+- `Task<string>`: 转录文本
+
+---
+
+## 数据类型
+
+### NPCCharacter
+
+NPC 角色定义。
+
+```csharp
+public class NPCCharacter
+{
+    public string Name { get; set; }
+    public string Personality { get; set; }
+    public string Background { get; set; }
+    public string Goals { get; set; }
+}
+```
+
+### OAuthConfig
+
+OAuth 配置。
+
+```csharp
+public class OAuthConfig
+{
+    public string ClientId { get; set; }
+    public string RedirectUri { get; set; }
+    public string Scope { get; set; }
+}
+```
+
+### ChatSession
+
+对话会话。
+
+```csharp
+public class ChatSession
+{
+    public string Id { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+```
+
+### ChatMessage
+
+对话消息。
+
+```csharp
+public class ChatMessage
+{
+    public string Role { get; set; }
+    public string Content { get; set; }
+    public DateTime Timestamp { get; set; }
+}
+```
+
+---
+
+## 异常类型
+
+### DW_Exception
+
+SDK 基础异常类。
+
+```csharp
+public class DW_Exception : Exception
+```
+
+### DW_AuthenticationException
+
+认证异常。
+
+```csharp
+public class DW_AuthenticationException : DW_Exception
+```
+
+### DW_NetworkException
+
+网络异常。
+
+```csharp
+public class DW_NetworkException : DW_Exception
+```
+
+### DW_RateLimitException
+
+请求频率限制异常。
+
+```csharp
+public class DW_RateLimitException : DW_Exception
+{
+    public int RetryAfter { get; set; }
+}
+```
+
+---
+
+## 下一步
+
+- 查看 [示例代码](/unity/examples) 了解如何使用这些 API
+- 阅读 [核心功能](/unity/core-features) 了解功能详情
+- 访问 [故障排除](/unity/troubleshooting) 解决问题

@@ -1,0 +1,201 @@
+# 安装指南
+
+本指南详细说明如何在 Unity 项目中安装和配置 Developerworks SDK。
+
+## 系统要求
+
+### Unity 版本要求
+- **最低版本**: Unity 2021.3 LTS
+- **推荐版本**: Unity 2022.3 LTS 或更高
+
+### 平台支持
+- Windows (x64)
+- macOS (Intel & Apple Silicon)
+- Linux
+- WebGL
+- iOS
+- Android
+
+### 依赖项
+- .NET Standard 2.1
+- TextMesh Pro (自动安装)
+
+## 安装方法
+
+### 方法一：通过 Unity Package Manager（推荐）
+
+这是最简单和推荐的安装方式。
+
+1. 打开你的 Unity 项目
+2. 点击菜单 `Window > Package Manager`
+3. 点击左上角的 `+` 按钮
+4. 选择 `Add package from git URL`
+5. 输入以下 URL：
+   ```
+   https://github.com/cnqdztp/Developerworks-UnitySDK.git
+   ```
+6. 点击 `Add` 按钮
+7. 等待 Unity 下载并导入 SDK
+
+#### 安装特定版本
+
+如果需要安装特定版本，可以在 URL 后添加版本标签：
+
+```
+https://github.com/cnqdztp/Developerworks-UnitySDK.git#v1.0.0
+```
+
+### 方法二：手动下载安装
+
+如果你喜欢手动管理包，可以使用这种方式。
+
+1. 访问 [GitHub Releases 页面](https://github.com/cnqdztp/Developerworks-UnitySDK/releases)
+2. 下载最新版本的 `.unitypackage` 文件
+3. 在 Unity 中，选择 `Assets > Import Package > Custom Package`
+4. 选择下载的 `.unitypackage` 文件
+5. 在导入对话框中，确保所有文件都被选中
+6. 点击 `Import` 按钮
+
+### 方法三：克隆仓库
+
+如果你想参与开发或需要源代码：
+
+1. 打开终端/命令提示符
+2. 导航到你的 Unity 项目的 `Assets` 文件夹
+3. 运行以下命令：
+   ```bash
+   git clone https://github.com/cnqdztp/Developerworks-UnitySDK.git Developerworks_SDK
+   ```
+4. 返回 Unity 编辑器，SDK 会自动导入
+
+## 验证安装
+
+安装完成后，验证 SDK 是否正确安装：
+
+### 检查文件结构
+
+在 Project 窗口中，你应该能看到以下文件夹结构：
+
+```
+Assets/
+└── Developerworks_SDK/
+    ├── Auth/           # 认证模块
+    ├── Core/           # 核心功能
+    ├── Editor/         # 编辑器工具
+    ├── Example/        # 示例场景和脚本
+    ├── Public/         # 公共定义
+    └── Services/       # 服务模块
+```
+
+### 检查菜单项
+
+在 Unity 菜单栏中，你应该能看到：
+
+- `Tools > Developerworks > Auth Settings`
+- `Tools > Developerworks > Check for Updates`
+
+### 运行测试场景
+
+1. 导航到 `Assets/Developerworks_SDK/Example/Scenes`
+2. 打开任意示例场景
+3. 点击 Play 按钮
+
+如果场景可以正常运行，说明 SDK 安装成功。
+
+## 配置 SDK
+
+### 创建配置文件
+
+首次使用时，SDK 会自动创建配置文件：
+
+1. 点击 `Tools > Developerworks > Auth Settings`
+2. 在 Inspector 中配置你的 API 密钥
+3. 保存设置
+
+### 项目设置
+
+确保你的项目设置正确：
+
+#### API 兼容性级别
+
+1. 打开 `Edit > Project Settings > Player`
+2. 展开 `Other Settings`
+3. 将 `Api Compatibility Level` 设置为 `.NET Standard 2.1`
+
+#### 脚本后端
+
+对于最佳性能，推荐使用 IL2CPP：
+
+1. 在 `Player Settings` 中
+2. 找到 `Configuration` 部分
+3. 将 `Scripting Backend` 设置为 `IL2CPP`
+
+## 更新 SDK
+
+### 通过 Package Manager 更新
+
+如果你通过 Package Manager 安装：
+
+1. 打开 `Window > Package Manager`
+2. 在列表中找到 Developerworks SDK
+3. 如果有新版本，会显示 `Update` 按钮
+4. 点击 `Update` 更新到最新版本
+
+### 手动更新
+
+如果你手动安装：
+
+1. 删除现有的 `Developerworks_SDK` 文件夹
+2. 按照上述安装步骤重新安装新版本
+
+### 自动更新检查
+
+SDK 包含自动更新检查功能：
+
+- 每次打开项目时，SDK 会检查是否有新版本
+- 如果有更新，会在 Unity 控制台显示通知
+- 你可以在 `Tools > Developerworks > Check for Updates` 手动检查
+
+## 卸载 SDK
+
+如果需要卸载 SDK：
+
+### Package Manager 安装的卸载
+
+1. 打开 `Window > Package Manager`
+2. 找到 Developerworks SDK
+3. 点击 `Remove` 按钮
+
+### 手动安装的卸载
+
+1. 在 Project 窗口中，右键点击 `Developerworks_SDK` 文件夹
+2. 选择 `Delete`
+3. 确认删除
+
+## 故障排除
+
+### 编译错误
+
+如果遇到编译错误：
+
+1. 确保 Unity 版本满足最低要求
+2. 检查 API 兼容性级别设置
+3. 尝试重新导入 SDK
+4. 清空 Unity 缓存：删除 `Library` 文件夹后重新打开项目
+
+### 依赖项问题
+
+如果缺少依赖项：
+
+1. TextMesh Pro：`Window > TextMeshPro > Import TMP Essential Resources`
+2. 其他依赖项会在首次使用时自动安装
+
+### 权限问题
+
+在某些平台上可能需要额外权限：
+
+- **iOS**: 在 `Info.plist` 中添加麦克风权限
+- **Android**: 在 `AndroidManifest.xml` 中添加录音和网络权限
+- **WebGL**: 确保浏览器允许麦克风访问
+
+更多问题请查看[故障排除](/unity/troubleshooting)页面。

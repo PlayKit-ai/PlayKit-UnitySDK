@@ -1,0 +1,100 @@
+# 快速开始
+
+本指南将帮助你在几分钟内开始使用 Developerworks Unity SDK。
+
+## 前置条件
+
+在开始之前，请确保你已经：
+
+- 安装了 Unity 2021.3 或更高版本
+- 拥有 Developerworks 开发者账号
+- 获取了 API 密钥
+
+## 第一步：安装 SDK
+
+有多种方式可以安装 SDK：
+
+### 方式一：使用 Unity Package Manager
+
+1. 打开 Unity 项目
+2. 进入 `Window > Package Manager`
+3. 点击左上角的 `+` 按钮
+4. 选择 `Add package from git URL`
+5. 输入：`https://github.com/cnqdztp/Developerworks-UnitySDK.git`
+
+### 方式二：手动导入
+
+1. 从 [GitHub Releases](https://github.com/cnqdztp/Developerworks-UnitySDK/releases) 下载最新版本
+2. 解压下载的文件
+3. 将 `Assets/Developerworks_SDK` 文件夹拖入你的 Unity 项目
+
+详细的安装说明请参考[安装指南](/unity/installation)。
+
+## 第二步：配置认证
+
+在使用 SDK 之前，需要配置身份认证：
+
+```csharp
+using Developerworks;
+
+// 初始化 SDK
+DW_SDK.Initialize("YOUR_API_KEY");
+```
+
+更多认证选项请查看[身份认证](/unity/authentication)页面。
+
+## 第三步：创建你的第一个 AI 对话
+
+以下是一个简单的示例，展示如何创建一个 AI 对话：
+
+```csharp
+using UnityEngine;
+using Developerworks;
+
+public class MyFirstChat : MonoBehaviour
+{
+    private DW_AIChatClient chatClient;
+
+    async void Start()
+    {
+        // 初始化聊天客户端
+        chatClient = new DW_AIChatClient();
+
+        // 发送消息
+        var response = await chatClient.SendMessageAsync("你好，请介绍一下你自己");
+
+        // 显示回复
+        Debug.Log($"AI 回复: {response}");
+    }
+}
+```
+
+## 第四步：运行示例场景
+
+SDK 包含了多个示例场景，帮助你快速了解各项功能：
+
+1. 在 Project 窗口中，导航到 `Assets/Developerworks_SDK/Example/Scenes`
+2. 双击打开任意示例场景
+3. 点击 Play 按钮运行
+
+### 可用的示例场景
+
+- **ChatExample**: 演示文本对话功能
+- **VoiceExample**: 演示语音交互
+- **NPCExample**: 演示 NPC 对话系统
+- **ImageExample**: 演示图像生成功能
+
+## 下一步
+
+现在你已经完成了基本设置！接下来可以：
+
+- 探索[核心功能](/unity/core-features)，了解 SDK 的全部能力
+- 查看[API 参考](/unity/api-reference)，深入了解各个类和方法
+- 研究[示例代码](/unity/examples)，学习最佳实践
+
+## 需要帮助？
+
+如果遇到问题，请查看：
+
+- [故障排除](/unity/troubleshooting)页面
+- [GitHub Issues](https://github.com/cnqdztp/Developerworks-UnitySDK/issues)

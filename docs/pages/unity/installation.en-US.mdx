@@ -1,0 +1,201 @@
+# Installation Guide
+
+This guide details how to install and configure Developerworks SDK in your Unity project.
+
+## System Requirements
+
+### Unity Version Requirements
+- **Minimum Version**: Unity 2021.3 LTS
+- **Recommended Version**: Unity 2022.3 LTS or higher
+
+### Platform Support
+- Windows (x64)
+- macOS (Intel & Apple Silicon)
+- Linux
+- WebGL
+- iOS
+- Android
+
+### Dependencies
+- .NET Standard 2.1
+- TextMesh Pro (auto-installed)
+
+## Installation Methods
+
+### Method 1: Via Unity Package Manager (Recommended)
+
+This is the simplest and recommended installation method.
+
+1. Open your Unity project
+2. Go to `Window > Package Manager`
+3. Click the `+` button in the top left
+4. Select `Add package from git URL`
+5. Enter the following URL:
+   ```
+   https://github.com/cnqdztp/Developerworks-UnitySDK.git
+   ```
+6. Click `Add`
+7. Wait for Unity to download and import the SDK
+
+#### Install Specific Version
+
+To install a specific version, add a version tag to the URL:
+
+```
+https://github.com/cnqdztp/Developerworks-UnitySDK.git#v1.0.0
+```
+
+### Method 2: Manual Download Installation
+
+If you prefer manual package management:
+
+1. Visit the [GitHub Releases page](https://github.com/cnqdztp/Developerworks-UnitySDK/releases)
+2. Download the latest `.unitypackage` file
+3. In Unity, select `Assets > Import Package > Custom Package`
+4. Select the downloaded `.unitypackage` file
+5. Ensure all files are selected in the import dialog
+6. Click `Import`
+
+### Method 3: Clone Repository
+
+If you want to participate in development or need source code:
+
+1. Open terminal/command prompt
+2. Navigate to your Unity project's `Assets` folder
+3. Run:
+   ```bash
+   git clone https://github.com/cnqdztp/Developerworks-UnitySDK.git Developerworks_SDK
+   ```
+4. Return to Unity editor, SDK will auto-import
+
+## Verify Installation
+
+After installation, verify the SDK is correctly installed:
+
+### Check File Structure
+
+In the Project window, you should see:
+
+```
+Assets/
+└── Developerworks_SDK/
+    ├── Auth/           # Authentication module
+    ├── Core/           # Core functionality
+    ├── Editor/         # Editor tools
+    ├── Example/        # Example scenes and scripts
+    ├── Public/         # Public definitions
+    └── Services/       # Service modules
+```
+
+### Check Menu Items
+
+In Unity menu bar, you should see:
+
+- `Tools > Developerworks > Auth Settings`
+- `Tools > Developerworks > Check for Updates`
+
+### Run Test Scene
+
+1. Navigate to `Assets/Developerworks_SDK/Example/Scenes`
+2. Open any example scene
+3. Click Play button
+
+If the scene runs normally, the SDK is installed successfully.
+
+## Configure SDK
+
+### Create Configuration File
+
+On first use, SDK will auto-create configuration file:
+
+1. Click `Tools > Developerworks > Auth Settings`
+2. Configure your API key in Inspector
+3. Save settings
+
+### Project Settings
+
+Ensure your project settings are correct:
+
+#### API Compatibility Level
+
+1. Open `Edit > Project Settings > Player`
+2. Expand `Other Settings`
+3. Set `Api Compatibility Level` to `.NET Standard 2.1`
+
+#### Scripting Backend
+
+For best performance, recommend IL2CPP:
+
+1. In `Player Settings`
+2. Find `Configuration` section
+3. Set `Scripting Backend` to `IL2CPP`
+
+## Update SDK
+
+### Update via Package Manager
+
+If installed via Package Manager:
+
+1. Open `Window > Package Manager`
+2. Find Developerworks SDK in the list
+3. If new version available, `Update` button will appear
+4. Click `Update` to update to latest version
+
+### Manual Update
+
+If manually installed:
+
+1. Delete existing `Developerworks_SDK` folder
+2. Follow installation steps above to reinstall new version
+
+### Automatic Update Check
+
+SDK includes automatic update checking:
+
+- Checks for new versions when project opens
+- Displays notification in Unity console if update available
+- Manually check at `Tools > Developerworks > Check for Updates`
+
+## Uninstall SDK
+
+If you need to uninstall:
+
+### Package Manager Installation
+
+1. Open `Window > Package Manager`
+2. Find Developerworks SDK
+3. Click `Remove`
+
+### Manual Installation
+
+1. In Project window, right-click `Developerworks_SDK` folder
+2. Select `Delete`
+3. Confirm deletion
+
+## Troubleshooting
+
+### Compilation Errors
+
+If encountering compilation errors:
+
+1. Ensure Unity version meets minimum requirements
+2. Check API compatibility level settings
+3. Try reimporting SDK
+4. Clear Unity cache: delete `Library` folder and reopen project
+
+### Dependency Issues
+
+If missing dependencies:
+
+1. TextMesh Pro: `Window > TextMeshPro > Import TMP Essential Resources`
+2. Other dependencies auto-install on first use
+
+### Permission Issues
+
+Some platforms may require additional permissions:
+
+- **iOS**: Add microphone permission to `Info.plist`
+- **Android**: Add recording and network permissions to `AndroidManifest.xml`
+- **WebGL**: Ensure browser allows microphone access
+
+For more issues, see the [Troubleshooting](/unity/troubleshooting) page.

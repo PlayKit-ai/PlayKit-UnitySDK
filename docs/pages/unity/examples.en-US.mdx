@@ -1,0 +1,226 @@
+# Examples
+
+This page provides practical example code for Developerworks Unity SDK.
+
+## Basic Examples
+
+### Simple Chat Application
+
+Create a basic chat application:
+
+```csharp
+using UnityEngine;
+using UnityEngine.UI;
+using Developerworks;
+
+public class SimpleChatExample : MonoBehaviour
+{
+    public InputField inputField;
+    public Text chatDisplay;
+
+    private DW_AIChatClient chatClient;
+
+    async void Start()
+    {
+        DW_SDK.Initialize("your-api-key");
+        chatClient = new DW_AIChatClient();
+        chatClient.Temperature = 0.7f;
+        chatClient.MaxTokens = 500;
+    }
+
+    public async void SendMessage()
+    {
+        string message = inputField.text;
+        if (string.IsNullOrEmpty(message)) return;
+
+        chatDisplay.text += $"\nYou: {message}";
+        inputField.text = "";
+
+        try
+        {
+            var response = await chatClient.SendMessageAsync(message);
+            chatDisplay.text += $"\nAI: {response}";
+        }
+        catch (DW_Exception e)
+        {
+            Debug.LogError($"Error: {e.Message}");
+        }
+    }
+}
+```
+
+### Streaming Chat
+
+Implement streaming responses:
+
+```csharp
+using UnityEngine;
+using UnityEngine.UI;
+using Developerworks;
+
+public class StreamingChatExample : MonoBehaviour
+{
+    public InputField inputField;
+    public Text chatDisplay;
+    private DW_AIChatClient chatClient;
+
+    void Start()
+    {
+        DW_SDK.Initialize("your-api-key");
+        chatClient = new DW_AIChatClient();
+    }
+
+    public async void SendMessage()
+    {
+        string message = inputField.text;
+        inputField.text = "";
+        chatDisplay.text += $"\nYou: {message}\nAI: ";
+
+        await chatClient.StreamMessageAsync(message, (chunk) => {
+            chatDisplay.text += chunk;
+        });
+    }
+}
+```
+
+## NPC Examples
+
+### Intelligent NPC Dialogue
+
+Create an NPC with personality:
+
+```csharp
+using UnityEngine;
+using Developerworks;
+
+public class NPCDialogueExample : MonoBehaviour
+{
+    private DW_NPCClient npcClient;
+
+    void Start()
+    {
+        npcClient = new DW_NPCClient();
+        npcClient.SetCharacter(new NPCCharacter {
+            Name = "Blacksmith Thomas",
+            Personality = "Rough, direct, but kind-hearted",
+            Background = "Running the smithy for 30 years, crafts the best weapons",
+            Goals = "Help adventurers get quality equipment"
+        });
+    }
+
+    public async void TalkToNPC(string playerMessage)
+    {
+        var response = await npcClient.ChatAsync(playerMessage);
+        Debug.Log($"Thomas: {response}");
+    }
+}
+```
+
+## Voice Examples
+
+### Voice Chat
+
+Implement voice conversation:
+
+```csharp
+using UnityEngine;
+using Developerworks;
+
+public class VoiceChatExample : MonoBehaviour
+{
+    private DW_NPCClient_VoiceModule voiceModule;
+    private DW_AIChatClient chatClient;
+    public AudioSource audioSource;
+
+    void Start()
+    {
+        DW_SDK.Initialize("your-api-key");
+        voiceModule = new DW_NPCClient_VoiceModule();
+        chatClient = new DW_AIChatClient();
+    }
+
+    public void StartVoiceChat()
+    {
+        voiceModule.StartRecording();
+    }
+
+    public async void StopVoiceChat()
+    {
+        await voiceModule.StopRecordingAsync(async (text) => {
+            var response = await chatClient.SendMessageAsync(text);
+            var audio = await voiceModule.TextToSpeechAsync(response);
+            audioSource.clip = audio;
+            audioSource.Play();
+        });
+    }
+}
+```
+
+## Advanced Examples
+
+### Contextual Conversation
+
+Maintain conversation context:
+
+```csharp
+using UnityEngine;
+using Developerworks;
+
+public class ContextualChatExample : MonoBehaviour
+{
+    private DW_AIChatClient chatClient;
+
+    void Start()
+    {
+        DW_SDK.Initialize("your-api-key");
+        chatClient = new DW_AIChatClient();
+        chatClient.AddContextMessage("system", "You are a friendly game assistant");
+    }
+
+    public async void ContinueConversation()
+    {
+        var response1 = await chatClient.SendMessageAsync("My name is John");
+        var response2 = await chatClient.SendMessageAsync("What's my name?");
+        // AI will remember "John"
+    }
+}
+```
+
+### Error Handling
+
+Complete error handling example:
+
+```csharp
+using UnityEngine;
+using Developerworks;
+
+public class ErrorHandlingExample : MonoBehaviour
+{
+    async void SendMessageWithErrorHandling()
+    {
+        try
+        {
+            var chatClient = new DW_AIChatClient();
+            var response = await chatClient.SendMessageAsync("Hello");
+        }
+        catch (DW_AuthenticationException e)
+        {
+            Debug.LogError("Authentication failed");
+        }
+        catch (DW_NetworkException e)
+        {
+            Debug.LogError("Network error");
+        }
+        catch (DW_RateLimitException e)
+        {
+            Debug.LogError($"Rate limited. Retry after {e.RetryAfter}s");
+        }
+    }
+}
+```
+
+## More Resources
+
+- [Core Features](/unity/core-features) - Learn about all features
+- [API Reference](/unity/api-reference) - Detailed API documentation
+- [Troubleshooting](/unity/troubleshooting) - Common issue solutions
