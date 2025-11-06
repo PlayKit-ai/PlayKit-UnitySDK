@@ -69,6 +69,11 @@ namespace Developerworks_SDK
             {
                 Debug.Log("[Developerworks SDK] You are loading a developer token, this can cost you money, but is fine for development...");
                 _dwAuthManager.Setup(Instance.gameId, developerToken);
+
+                // Show developer key warning in non-editor builds
+#if !UNITY_EDITOR
+                ShowDeveloperKeyWarning();
+#endif
             }
             else
             {
@@ -91,6 +96,46 @@ namespace Developerworks_SDK
             _isInitialized = true;
             Debug.Log("[Developerworks SDK] Developerworks_SDK Initialized Successfully");
             return true;
+        }
+
+        /// <summary>
+        /// Shows the developer key warning UI in non-editor builds.
+        /// The warning automatically disappears after 5 seconds.
+        /// </summary>
+        private static void ShowDeveloperKeyWarning()
+        {
+            try
+            {
+                var warningPrefab = Resources.Load<GameObject>("DeveloperKeyWarning");
+                if (warningPrefab != null)
+                {
+                    var warningInstance = Instantiate(warningPrefab);
+                    DontDestroyOnLoad(warningInstance);
+
+                    // Auto-hide warning after 5 seconds
+                    Instance.StartCoroutine(HideWarningAfterDelay(warningInstance, 5f));
+                }
+                else
+                {
+                    Debug.LogWarning("[Developerworks SDK] DeveloperKeyWarning prefab not found in Resources.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[Developerworks SDK] Failed to show developer key warning: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Coroutine to hide the warning UI after a delay
+        /// </summary>
+        private static System.Collections.IEnumerator HideWarningAfterDelay(GameObject warningObject, float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            if (warningObject != null)
+            {
+                Destroy(warningObject);
+            }
         }
 
         /// <summary>
