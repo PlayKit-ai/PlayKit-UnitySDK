@@ -203,7 +203,7 @@ namespace Developerworks_SDK.Example
              * and if there is not, it will automatically start up the login modal.
              * If you pass in your developer key, the sdk skips player validation.
              */
-            var result = await DW_SDK.InitializeAsync();
+            var result = await DW_SDK.InitializeAsync("dev-ffaade38-b11d-4fc1-87e3-81867536512c");
 
             if (!result)
             {

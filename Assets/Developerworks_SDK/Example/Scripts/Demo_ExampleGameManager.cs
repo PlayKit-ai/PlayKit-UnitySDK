@@ -23,7 +23,7 @@ public class Demo_ExampleGameManager : MonoBehaviour
          and if there is not, it will automatically start up the login modal.
          If you pass in your developer key, the sdk skips player validation.
          */
-        var result = await DW_SDK.InitializeAsync("dev-b41a6b70-7abc-4ecf-b316-374f4b48caed");
+        var result = await DW_SDK.InitializeAsync();
 
         if(!result)
         {

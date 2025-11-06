@@ -6,7 +6,7 @@ namespace Developerworks_SDK
 {
     public class DW_SDK : MonoBehaviour
     {
-        public const string VERSION = "v0.1.7.2-beta";
+        public const string VERSION = "v0.1.7.3-beta";
 
         [Tooltip("Your game ID from Developerworks platform 从Developerworks平台获取的游戏ID")]
         [SerializeField] private string gameId;
@@ -112,8 +112,6 @@ namespace Developerworks_SDK
                     var warningInstance = Instantiate(warningPrefab);
                     DontDestroyOnLoad(warningInstance);
 
-                    // Auto-hide warning after 5 seconds
-                    Instance.StartCoroutine(HideWarningAfterDelay(warningInstance, 5f));
                 }
                 else
                 {
@@ -123,18 +121,6 @@ namespace Developerworks_SDK
             catch (Exception ex)
             {
                 Debug.LogWarning($"[Developerworks SDK] Failed to show developer key warning: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Coroutine to hide the warning UI after a delay
-        /// </summary>
-        private static System.Collections.IEnumerator HideWarningAfterDelay(GameObject warningObject, float delay)
-        {
-            yield return new WaitForSeconds(delay);
-            if (warningObject != null)
-            {
-                Destroy(warningObject);
             }
         }
 
