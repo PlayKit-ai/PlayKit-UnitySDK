@@ -1,0 +1,556 @@
+# 示例代码
+
+本页面提供 Developerworks Unity SDK 的实用示例代码。
+
+## 基础示例
+
+### 简单聊天应用
+
+创建一个基本的聊天应用：
+
+```csharp
+using UnityEngine;
+using UnityEngine.UI;
+using Developerworks;
+
+public class SimpleChatExample : MonoBehaviour
+{
+    public InputField inputField;
+    public Text chatDisplay;
+
+    private DW_AIChatClient chatClient;
+
+    async void Start()
+    {
+        // 初始化 SDK
+        DW_SDK.Initialize("your-api-key");
+
+        // 创建聊天客户端
+        chatClient = new DW_AIChatClient();
+
+        // 设置参数
+        chatClient.Temperature = 0.7f;
+        chatClient.MaxTokens = 500;
+    }
+
+    public async void SendMessage()
+    {
+        string message = inputField.text;
+        if (string.IsNullOrEmpty(message)) return;
+
+        // 显示用户消息
+        chatDisplay.text += $"\n你: {message}";
+        inputField.text = "";
+
+        try
+        {
+            // 发送消息并获取响应
+            var response = await chatClient.SendMessageAsync(message);
+
+            // 显示 AI 响应
+            chatDisplay.text += $"\nAI: {response}";
+        }
+        catch (DW_Exception e)
+        {
+            Debug.LogError($"错误: {e.Message}");
+            chatDisplay.text += $"\n错误: {e.Message}";
+        }
+    }
+}
+```
+
+### 流式聊天
+
+实现流式响应以提供更好的用户体验：
+
+```csharp
+using UnityEngine;
+using UnityEngine.UI;
+using Developerworks;
+
+public class StreamingChatExample : MonoBehaviour
+{
+    public InputField inputField;
+    public Text chatDisplay;
+
+    private DW_AIChatClient chatClient;
+    private string currentResponse = "";
+
+    void Start()
+    {
+        DW_SDK.Initialize("your-api-key");
+        chatClient = new DW_AIChatClient();
+    }
+
+    public async void SendMessage()
+    {
+        string message = inputField.text;
+        inputField.text = "";
+
+        chatDisplay.text += $"\n你: {message}\nAI: ";
+        currentResponse = "";
+
+        await chatClient.StreamMessageAsync(message, OnResponseChunk);
+    }
+
+    void OnResponseChunk(string chunk)
+    {
+        currentResponse += chunk;
+        chatDisplay.text = chatDisplay.text.Substring(0, chatDisplay.text.Length - currentResponse.Length + chunk.Length) + currentResponse;
+    }
+}
+```
+
+## NPC 示例
+
+### 智能 NPC 对话
+
+创建一个具有个性的 NPC：
+
+```csharp
+using UnityEngine;
+using Developerworks;
+
+public class NPCDialogueExample : MonoBehaviour
+{
+    private DW_NPCClient npcClient;
+
+    void Start()
+    {
+        // 初始化 NPC 客户端
+        npcClient = new DW_NPCClient();
+
+        // 设置 NPC 角色
+        npcClient.SetCharacter(new NPCCharacter {
+            Name = "铁匠托马斯",
+            Personality = "粗犷、直接、但心地善良",
+            Background = "在村子里经营铁匠铺已经30年，制作最好的武器和盔甲",
+            Goals = "帮助冒险者获得优质装备，保护村民安全"
+        });
+    }
+
+    public async void TalkToNPC(string playerMessage)
+    {
+        Debug.Log($"玩家: {playerMessage}");
+
+        var response = await npcClient.ChatAsync(playerMessage);
+
+        Debug.Log($"托马斯: {response}");
+
+        // 显示对话 UI
+        ShowDialogue("托马斯", response);
+    }
+
+    void ShowDialogue(string npcName, string message)
+    {
+        // 实现你的对话 UI
+    }
+}
+```
+
+### 任务给予 NPC
+
+创建一个可以给玩家任务的 NPC：
+
+```csharp
+using UnityEngine;
+using Developerworks;
+
+public class QuestGiverNPC : MonoBehaviour
+{
+    private DW_NPCClient npcClient;
+
+    void Start()
+    {
+        npcClient = new DW_NPCClient();
+
+        npcClient.SetCharacter(new NPCCharacter {
+            Name = "村长艾伦",
+            Personality = "智慧、负责任、关心村民",
+            Background = "村子的领导者，了解所有村里的问题和需求",
+            Goals = "保护村民，解决村子的问题"
+        });
+    }
+
+    public async void RequestQuest()
+    {
+        // 请求任务
+        var response = await npcClient.ChatAsync("村子里有什么需要帮助的吗？");
+
+        // NPC 会根据角色设定给出合适的任务
+        Debug.Log($"村长: {response}");
+
+        // 记录互动
+        npcClient.RememberInteraction("玩家询问了任务");
+    }
+
+    public async void CompleteQuest()
+    {
+        // 记录任务完成
+        npcClient.RememberInteraction("玩家完成了击退哥布林的任务");
+
+        // 与 NPC 对话
+        var response = await npcClient.ChatAsync("我完成了任务！");
+
+        Debug.Log($"村长: {response}");
+    }
+}
+```
+
+## 语音示例
+
+### 语音聊天
+
+实现语音对话功能：
+
+```csharp
+using UnityEngine;
+using Developerworks;
+
+public class VoiceChatExample : MonoBehaviour
+{
+    private DW_NPCClient_VoiceModule voiceModule;
+    private DW_AIChatClient chatClient;
+    public AudioSource audioSource;
+
+    void Start()
+    {
+        DW_SDK.Initialize("your-api-key");
+        voiceModule = new DW_NPCClient_VoiceModule();
+        chatClient = new DW_AIChatClient();
+    }
+
+    public void StartVoiceChat()
+    {
+        // 开始录音
+        voiceModule.StartRecording();
+        Debug.Log("正在录音...");
+    }
+
+    public async void StopVoiceChat()
+    {
+        // 停止录音并获取文字
+        await voiceModule.StopRecordingAsync(async (recognizedText) => {
+            Debug.Log($"你说: {recognizedText}");
+
+            // 发送到 AI 获取响应
+            var response = await chatClient.SendMessageAsync(recognizedText);
+            Debug.Log($"AI: {response}");
+
+            // 将响应转为语音
+            var audioClip = await voiceModule.TextToSpeechAsync(response);
+
+            // 播放语音
+            audioSource.clip = audioClip;
+            audioSource.Play();
+        });
+    }
+}
+```
+
+### 实时语音识别
+
+实现实时语音识别：
+
+```csharp
+using UnityEngine;
+using UnityEngine.UI;
+using Developerworks;
+
+public class RealtimeVoiceExample : MonoBehaviour
+{
+    public Text transcriptionText;
+    private DW_NPCClient_VoiceModule voiceModule;
+
+    void Start()
+    {
+        voiceModule = new DW_NPCClient_VoiceModule();
+    }
+
+    public void StartRealtimeRecognition()
+    {
+        voiceModule.StartRealtimeRecognition(OnPartialResult);
+    }
+
+    public void StopRealtimeRecognition()
+    {
+        voiceModule.StopRealtimeRecognition();
+    }
+
+    void OnPartialResult(string partialText)
+    {
+        // 实时更新 UI 显示识别结果
+        transcriptionText.text = partialText;
+    }
+}
+```
+
+## 高级示例
+
+### 上下文对话
+
+维护对话上下文：
+
+```csharp
+using UnityEngine;
+using Developerworks;
+
+public class ContextualChatExample : MonoBehaviour
+{
+    private DW_AIChatClient chatClient;
+
+    void Start()
+    {
+        DW_SDK.Initialize("your-api-key");
+        chatClient = new DW_AIChatClient();
+
+        // 设置系统提示
+        chatClient.AddContextMessage("system", "你是一个友好的游戏助手");
+    }
+
+    public async void ContinueConversation()
+    {
+        // 第一轮对话
+        var response1 = await chatClient.SendMessageAsync("我的名字是李明");
+        Debug.Log(response1);
+
+        // 第二轮对话 - AI 会记住名字
+        var response2 = await chatClient.SendMessageAsync("我叫什么名字？");
+        Debug.Log(response2); // 会回答 "李明"
+
+        // 清除上下文开始新对话
+        chatClient.ClearContext();
+    }
+}
+```
+
+### 错误处理
+
+完善的错误处理示例：
+
+```csharp
+using UnityEngine;
+using Developerworks;
+using System;
+
+public class ErrorHandlingExample : MonoBehaviour
+{
+    private DW_AIChatClient chatClient;
+
+    void Start()
+    {
+        // 设置全局错误处理
+        DW_SDK.OnError += HandleGlobalError;
+
+        chatClient = new DW_AIChatClient();
+    }
+
+    async void SendMessageWithErrorHandling()
+    {
+        try
+        {
+            var response = await chatClient.SendMessageAsync("你好");
+            Debug.Log(response);
+        }
+        catch (DW_AuthenticationException e)
+        {
+            Debug.LogError("认证失败，请检查 API 密钥");
+            // 提示用户重新登录
+        }
+        catch (DW_NetworkException e)
+        {
+            Debug.LogError("网络错误，请检查网络连接");
+            // 显示网络错误提示
+        }
+        catch (DW_RateLimitException e)
+        {
+            Debug.LogError($"请求过于频繁，请在 {e.RetryAfter} 秒后重试");
+            // 等待后自动重试
+            await WaitAndRetry(e.RetryAfter);
+        }
+        catch (DW_Exception e)
+        {
+            Debug.LogError($"SDK 错误: {e.Message}");
+        }
+    }
+
+    void HandleGlobalError(DW_Exception error)
+    {
+        Debug.LogError($"全局错误: {error.Message}");
+        // 记录到分析系统
+    }
+
+    async System.Threading.Tasks.Task WaitAndRetry(int seconds)
+    {
+        await System.Threading.Tasks.Task.Delay(seconds * 1000);
+        SendMessageWithErrorHandling();
+    }
+}
+```
+
+### 多个 NPC 管理
+
+管理多个 NPC：
+
+```csharp
+using UnityEngine;
+using System.Collections.Generic;
+using Developerworks;
+
+public class MultipleNPCExample : MonoBehaviour
+{
+    private Dictionary<string, DW_NPCClient> npcs = new Dictionary<string, DW_NPCClient>();
+
+    void Start()
+    {
+        DW_SDK.Initialize("your-api-key");
+
+        // 创建多个 NPC
+        CreateNPC("blacksmith", new NPCCharacter {
+            Name = "铁匠",
+            Personality = "粗犷",
+            Background = "经营铁匠铺"
+        });
+
+        CreateNPC("merchant", new NPCCharacter {
+            Name = "商人",
+            Personality = "精明",
+            Background = "出售各种商品"
+        });
+
+        CreateNPC("guard", new NPCCharacter {
+            Name = "守卫",
+            Personality = "严肃",
+            Background = "保护城镇安全"
+        });
+    }
+
+    void CreateNPC(string id, NPCCharacter character)
+    {
+        var npcClient = new DW_NPCClient();
+        npcClient.SetCharacter(character);
+        npcs[id] = npcClient;
+    }
+
+    public async void TalkToNPC(string npcId, string message)
+    {
+        if (npcs.ContainsKey(npcId))
+        {
+            var response = await npcs[npcId].ChatAsync(message);
+            Debug.Log($"{npcs[npcId]}: {response}");
+        }
+    }
+}
+```
+
+## WebGL 平台示例
+
+### WebGL 特定代码
+
+针对 WebGL 平台的优化：
+
+```csharp
+using UnityEngine;
+using Developerworks;
+
+public class WebGLExample : MonoBehaviour
+{
+    void Start()
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // WebGL 特定初始化
+        DW_WebGLStorage.Initialize();
+
+        // 使用浏览器存储
+        var savedToken = DW_WebGLStorage.GetItem("auth_token");
+        if (!string.IsNullOrEmpty(savedToken))
+        {
+            DW_SDK.SetAuthToken(savedToken);
+        }
+#else
+        // 其他平台初始化
+        DW_SDK.Initialize("your-api-key");
+#endif
+    }
+
+    void SaveToken(string token)
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        DW_WebGLStorage.SetItem("auth_token", token);
+#else
+        DW_LocalSharedToken.SaveToken(token);
+#endif
+    }
+}
+```
+
+## 完整游戏示例
+
+### RPG 对话系统
+
+完整的 RPG 对话系统实现：
+
+```csharp
+using UnityEngine;
+using UnityEngine.UI;
+using System.Collections.Generic;
+using Developerworks;
+
+public class RPGDialogueSystem : MonoBehaviour
+{
+    public GameObject dialoguePanel;
+    public Text npcNameText;
+    public Text dialogueText;
+    public InputField playerInputField;
+
+    private DW_NPCClient currentNPC;
+    private Queue<string> dialogueQueue = new Queue<string>();
+
+    public async void StartDialogue(NPCCharacter character)
+    {
+        // 创建 NPC
+        currentNPC = new DW_NPCClient();
+        currentNPC.SetCharacter(character);
+
+        // 显示对话面板
+        dialoguePanel.SetActive(true);
+        npcNameText.text = character.Name;
+
+        // NPC 打招呼
+        var greeting = await currentNPC.ChatAsync("你好");
+        ShowDialogue(greeting);
+    }
+
+    public async void SendPlayerMessage()
+    {
+        string message = playerInputField.text;
+        playerInputField.text = "";
+
+        if (string.IsNullOrEmpty(message)) return;
+
+        // 显示玩家消息
+        ShowDialogue($"你: {message}");
+
+        // 获取 NPC 回复
+        var response = await currentNPC.ChatAsync(message);
+        ShowDialogue(response);
+    }
+
+    void ShowDialogue(string text)
+    {
+        dialogueText.text += $"\n{text}";
+    }
+
+    public void EndDialogue()
+    {
+        dialoguePanel.SetActive(false);
+        currentNPC = null;
+    }
+}
+```
+
+## 更多资源
+
+- [核心功能](/unity/core-features) - 了解所有功能
+- [API 参考](/unity/api-reference) - 详细的 API 文档
+- [故障排除](/unity/troubleshooting) - 常见问题解决

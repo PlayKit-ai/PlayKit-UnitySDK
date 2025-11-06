@@ -1,0 +1,386 @@
+# API Reference
+
+This page provides complete API reference documentation for Developerworks Unity SDK.
+
+## Core Classes
+
+### DW_SDK
+
+Main entry point for the SDK, used for initialization and global configuration.
+
+#### Methods
+
+##### Initialize(string apiKey)
+
+Initialize the SDK.
+
+```csharp
+public static void Initialize(string apiKey)
+```
+
+**Parameters:**
+- `apiKey` (string): Your API key
+
+**Example:**
+```csharp
+DW_SDK.Initialize("your-api-key");
+```
+
+##### SetAuthToken(string token)
+
+Set authentication token.
+
+```csharp
+public static void SetAuthToken(string token)
+```
+
+##### ClearAuth()
+
+Clear authentication information.
+
+```csharp
+public static void ClearAuth()
+```
+
+#### Events
+
+##### OnError
+
+SDK error event.
+
+```csharp
+public static event Action<DW_Exception> OnError
+```
+
+---
+
+### DW_AIChatClient
+
+AI chat client for text conversations.
+
+#### Constructor
+
+```csharp
+public DW_AIChatClient()
+```
+
+#### Properties
+
+##### EnableCache
+
+Enable caching.
+
+```csharp
+public bool EnableCache { get; set; }
+```
+
+##### MaxTokens
+
+Maximum number of tokens.
+
+```csharp
+public int MaxTokens { get; set; }
+```
+
+##### Temperature
+
+Temperature parameter (0.0 - 2.0).
+
+```csharp
+public float Temperature { get; set; }
+```
+
+#### Methods
+
+##### SendMessageAsync(string message)
+
+Send message and get response.
+
+```csharp
+public async Task<string> SendMessageAsync(string message)
+```
+
+**Parameters:**
+- `message` (string): Message to send
+
+**Returns:**
+- `Task<string>`: AI response
+
+**Throws:**
+- `DW_AuthenticationException`: Authentication failed
+- `DW_NetworkException`: Network error
+- `DW_RateLimitException`: Rate limit exceeded
+
+##### StreamMessageAsync(string message, Action<string> onChunk)
+
+Stream message with real-time chunks.
+
+```csharp
+public async Task StreamMessageAsync(string message, Action<string> onChunk)
+```
+
+##### AddContextMessage(string role, string content)
+
+Add context message.
+
+```csharp
+public void AddContextMessage(string role, string content)
+```
+
+##### ClearContext()
+
+Clear conversation context.
+
+```csharp
+public void ClearContext()
+```
+
+---
+
+### DW_NPCClient
+
+NPC client for creating intelligent NPCs.
+
+#### Methods
+
+##### SetCharacter(NPCCharacter character)
+
+Set NPC character.
+
+```csharp
+public void SetCharacter(NPCCharacter character)
+```
+
+##### ChatAsync(string message)
+
+Chat with NPC.
+
+```csharp
+public async Task<string> ChatAsync(string message)
+```
+
+##### RememberInteraction(string interaction)
+
+Record player interaction.
+
+```csharp
+public void RememberInteraction(string interaction)
+```
+
+---
+
+### DW_NPCClient_VoiceModule
+
+Voice module for speech recognition and synthesis.
+
+#### Methods
+
+##### StartRecording()
+
+Start recording.
+
+```csharp
+public void StartRecording()
+```
+
+##### StopRecordingAsync(Action<string> onResult)
+
+Stop recording and get recognition result.
+
+```csharp
+public async Task StopRecordingAsync(Action<string> onResult)
+```
+
+##### TextToSpeechAsync(string text)
+
+Convert text to speech.
+
+```csharp
+public async Task<AudioClip> TextToSpeechAsync(string text)
+```
+
+---
+
+## Authentication Classes
+
+### DW_AuthManager
+
+Authentication manager.
+
+#### Methods
+
+##### RefreshTokenAsync()
+
+Refresh authentication token.
+
+```csharp
+public static async Task<string> RefreshTokenAsync()
+```
+
+##### IsTokenExpiringSoon()
+
+Check if token is expiring soon.
+
+```csharp
+public static bool IsTokenExpiringSoon()
+```
+
+---
+
+### DW_LocalSharedToken
+
+Local token storage management.
+
+#### Methods
+
+##### SaveToken(string token)
+
+Save token locally.
+
+```csharp
+public static void SaveToken(string token)
+```
+
+##### LoadToken()
+
+Load token from local storage.
+
+```csharp
+public static string LoadToken()
+```
+
+##### ClearToken()
+
+Clear local token.
+
+```csharp
+public static void ClearToken()
+```
+
+---
+
+## Service Classes
+
+### ChatService
+
+Chat service for conversation management.
+
+#### Methods
+
+##### CreateSessionAsync()
+
+Create conversation session.
+
+```csharp
+public async Task<ChatSession> CreateSessionAsync()
+```
+
+##### SendMessageAsync(string sessionId, string message)
+
+Send message to session.
+
+```csharp
+public async Task<string> SendMessageAsync(string sessionId, string message)
+```
+
+##### GetHistoryAsync(string sessionId)
+
+Get conversation history.
+
+```csharp
+public async Task<List<ChatMessage>> GetHistoryAsync(string sessionId)
+```
+
+---
+
+### TranscriptionService
+
+Audio transcription service.
+
+#### Methods
+
+##### TranscribeAsync(AudioClip audio)
+
+Transcribe audio.
+
+```csharp
+public async Task<string> TranscribeAsync(AudioClip audio)
+```
+
+---
+
+## Data Types
+
+### NPCCharacter
+
+NPC character definition.
+
+```csharp
+public class NPCCharacter
+{
+    public string Name { get; set; }
+    public string Personality { get; set; }
+    public string Background { get; set; }
+    public string Goals { get; set; }
+}
+```
+
+### OAuthConfig
+
+OAuth configuration.
+
+```csharp
+public class OAuthConfig
+{
+    public string ClientId { get; set; }
+    public string RedirectUri { get; set; }
+    public string Scope { get; set; }
+}
+```
+
+---
+
+## Exception Types
+
+### DW_Exception
+
+Base SDK exception class.
+
+```csharp
+public class DW_Exception : Exception
+```
+
+### DW_AuthenticationException
+
+Authentication exception.
+
+```csharp
+public class DW_AuthenticationException : DW_Exception
+```
+
+### DW_NetworkException
+
+Network exception.
+
+```csharp
+public class DW_NetworkException : DW_Exception
+```
+
+### DW_RateLimitException
+
+Rate limit exception.
+
+```csharp
+public class DW_RateLimitException : DW_Exception
+{
+    public int RetryAfter { get; set; }
+}
+```
+
+---
+
+## Next Steps
+
+- Check [Examples](/unity/examples) to learn how to use these APIs
+- Read [Core Features](/unity/core-features) for feature details
+- Visit [Troubleshooting](/unity/troubleshooting) to resolve issues

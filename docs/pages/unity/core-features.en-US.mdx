@@ -1,0 +1,319 @@
+# Core Features
+
+Developerworks Unity SDK provides rich functionality to enhance your Unity applications. This page details the core features of the SDK.
+
+## AI Conversation System
+
+### AI Chat Client (DW_AIChatClient)
+
+The AI Chat Client provides powerful conversation capabilities with support for contextual dialogue and streaming responses.
+
+#### Basic Usage
+
+```csharp
+using Developerworks;
+
+var chatClient = new DW_AIChatClient();
+
+// Send message and get response
+var response = await chatClient.SendMessageAsync("Hello");
+Debug.Log(response);
+```
+
+#### Streaming Responses
+
+```csharp
+// Use streaming to receive AI responses in real-time
+await chatClient.StreamMessageAsync("Tell me a story", (chunk) => {
+    Debug.Log($"Received chunk: {chunk}");
+    // Update UI
+});
+```
+
+#### Context Management
+
+```csharp
+// Add context messages
+chatClient.AddContextMessage("user", "My name is John");
+chatClient.AddContextMessage("assistant", "Hello John!");
+
+// Subsequent conversations will remember context
+var response = await chatClient.SendMessageAsync("What's my name?");
+// Response: "Your name is John"
+```
+
+### NPC Client (DW_NPCClient)
+
+The NPC Client is designed for game NPCs, supporting character settings and personalized dialogue.
+
+#### Creating an NPC
+
+```csharp
+var npcClient = new DW_NPCClient();
+
+// Set NPC character
+npcClient.SetCharacter(new NPCCharacter {
+    Name = "Village Elder",
+    Personality = "Friendly, wise, helpful",
+    Background = "Leader of the village, knows everything about the town",
+    Goals = "Help adventurers, protect villagers"
+});
+```
+
+#### NPC Dialogue
+
+```csharp
+// Chat with NPC
+var response = await npcClient.ChatAsync("What's happening in the village lately?");
+Debug.Log($"Elder: {response}");
+```
+
+#### NPC Memory System
+
+```csharp
+// NPC remembers interactions with player
+npcClient.RememberInteraction("Player helped defeat the goblins");
+
+// Future conversations will reference these memories
+var response = await npcClient.ChatAsync("Do you remember me?");
+```
+
+## Voice Features
+
+### Speech Recognition (DW_NPCClient_VoiceModule)
+
+The voice module provides speech recognition and text-to-speech functionality.
+
+#### Speech-to-Text
+
+```csharp
+var voiceModule = new DW_NPCClient_VoiceModule();
+
+// Start recording
+voiceModule.StartRecording();
+
+// Stop recording and get text
+await voiceModule.StopRecordingAsync((text) => {
+    Debug.Log($"Recognition result: {text}");
+});
+```
+
+#### Real-time Speech Recognition
+
+```csharp
+// Get recognition results in real-time
+voiceModule.StartRealtimeRecognition((partialText) => {
+    Debug.Log($"Real-time result: {partialText}");
+});
+```
+
+### Text-to-Speech
+
+```csharp
+// Text to speech
+var audioClip = await voiceModule.TextToSpeechAsync("Hello, welcome to the game world!");
+
+// Play audio
+audioSource.clip = audioClip;
+audioSource.Play();
+```
+
+#### Custom Voice Parameters
+
+```csharp
+var ttsOptions = new TextToSpeechOptions {
+    Voice = "female",
+    Speed = 1.0f,
+    Pitch = 1.0f,
+    Volume = 0.8f
+};
+
+var audioClip = await voiceModule.TextToSpeechAsync("Text content", ttsOptions);
+```
+
+## Image Generation
+
+### Basic Image Generation
+
+```csharp
+var imageService = new ImageGenerationService();
+
+// Generate image
+var texture = await imageService.GenerateImageAsync("A magical castle, fantasy style");
+
+// Apply to material
+renderer.material.mainTexture = texture;
+```
+
+### Advanced Options
+
+```csharp
+var options = new ImageGenerationOptions {
+    Width = 1024,
+    Height = 1024,
+    Style = "anime",
+    Quality = "high",
+    Steps = 50
+};
+
+var texture = await imageService.GenerateImageAsync("Description", options);
+```
+
+## Service Integration
+
+### Chat Service (ChatService)
+
+The Chat Service provides advanced conversation management functionality.
+
+```csharp
+var chatService = new ChatService();
+
+// Create conversation session
+var session = await chatService.CreateSessionAsync();
+
+// Send message
+var response = await chatService.SendMessageAsync(session.Id, "Message content");
+
+// Get conversation history
+var history = await chatService.GetHistoryAsync(session.Id);
+```
+
+### Transcription Service (TranscriptionService)
+
+The Transcription Service is used for audio file transcription.
+
+```csharp
+var transcriptionService = new TranscriptionService();
+
+// Transcribe audio file
+var text = await transcriptionService.TranscribeAsync(audioClip);
+Debug.Log($"Transcription result: {text}");
+```
+
+#### Batch Transcription
+
+```csharp
+// Transcribe multiple audio files
+var audioFiles = new AudioClip[] { clip1, clip2, clip3 };
+var results = await transcriptionService.BatchTranscribeAsync(audioFiles);
+
+foreach (var result in results) {
+    Debug.Log($"File {result.FileName}: {result.Text}");
+}
+```
+
+## Schema Library (DW_SchemaLibrary)
+
+The Schema Library is used to define and manage data structures, supporting structured AI output.
+
+### Defining Schema
+
+```csharp
+var schema = new SchemaDefinition {
+    Name = "GameCharacter",
+    Fields = new Field[] {
+        new Field { Name = "name", Type = "string", Required = true },
+        new Field { Name = "level", Type = "integer", Required = true },
+        new Field { Name = "class", Type = "string", Required = true }
+    }
+};
+
+DW_SchemaLibrary.RegisterSchema(schema);
+```
+
+### Using Schema
+
+```csharp
+// AI will return structured data according to Schema
+var response = await chatClient.SendMessageWithSchemaAsync(
+    "Create a level 10 warrior",
+    "GameCharacter"
+);
+
+var character = JsonUtility.FromJson<GameCharacter>(response);
+Debug.Log($"Character: {character.name}, Level: {character.level}");
+```
+
+## Error Handling
+
+The SDK provides specialized exception types for error handling.
+
+### Exception Types
+
+```csharp
+using Developerworks;
+
+try {
+    await chatClient.SendMessageAsync("Message");
+}
+catch (DW_AuthenticationException e) {
+    Debug.LogError($"Authentication error: {e.Message}");
+}
+catch (DW_NetworkException e) {
+    Debug.LogError($"Network error: {e.Message}");
+}
+catch (DW_RateLimitException e) {
+    Debug.LogError($"Rate limit exceeded: {e.Message}");
+    Debug.Log($"Please retry after {e.RetryAfter} seconds");
+}
+catch (DW_Exception e) {
+    Debug.LogError($"SDK error: {e.Message}");
+}
+```
+
+### Error Callbacks
+
+```csharp
+// Set global error handler
+DW_SDK.OnError += (error) => {
+    Debug.LogError($"SDK error: {error.Message}");
+    // Show error message to user
+};
+```
+
+## Platform Features
+
+### WebGL Support
+
+```csharp
+#if UNITY_WEBGL
+// WebGL specific initialization
+DW_WebGLStorage.Initialize();
+#endif
+```
+
+### Mobile Platform Optimization
+
+```csharp
+#if UNITY_IOS || UNITY_ANDROID
+// Low bandwidth mode for mobile platforms
+DW_SDK.SetLowBandwidthMode(true);
+#endif
+```
+
+## Performance Optimization
+
+### Request Caching
+
+```csharp
+// Enable response caching
+chatClient.EnableCache = true;
+
+// Same requests will use cache
+var response1 = await chatClient.SendMessageAsync("What is AI?");
+var response2 = await chatClient.SendMessageAsync("What is AI?"); // Uses cache
+```
+
+### Batch Requests
+
+```csharp
+// Send multiple requests in batch
+var messages = new string[] { "Message1", "Message2", "Message3" };
+var responses = await chatClient.BatchSendAsync(messages);
+```
+
+## Next Steps
+
+- Check the [API Reference](/unity/api-reference) for complete API documentation
+- Browse [Examples](/unity/examples) to learn practical applications
+- Read [Troubleshooting](/unity/troubleshooting) to resolve common issues

@@ -1,0 +1,387 @@
+# 身份认证
+
+Developerworks Unity SDK 提供了多种身份认证方式，以满足不同的使用场景。
+
+## 认证方式概述
+
+SDK 支持以下认证方式：
+
+1. **开发者密钥认证** - 适用于开发和测试
+2. **OAuth 流程** - 适用于生产环境
+3. **本地令牌管理** - 自动管理令牌刷新
+
+## 开发者密钥认证
+
+这是最简单的认证方式，适合快速开发和测试。
+
+### 获取开发者密钥
+
+1. 访问 [Developerworks 开发者控制台](https://developerworks.com/console)
+2. 创建或选择一个项目
+3. 在项目设置中生成 API 密钥
+4. 复制密钥以供使用
+
+### 配置密钥
+
+#### 方法一：通过编辑器配置
+
+1. 在 Unity 菜单中，选择 `Tools > Developerworks > Auth Settings`
+2. 在 Inspector 中粘贴你的开发者密钥
+3. 点击保存
+
+#### 方法二：通过代码配置
+
+```csharp
+using Developerworks;
+
+public class AuthSetup : MonoBehaviour
+{
+    void Start()
+    {
+        // 使用开发者密钥初始化
+        DW_SDK.Initialize("your-developer-key-here");
+    }
+}
+```
+
+### 安全提示
+
+⚠️ **警告**: 开发者密钥应该保密！
+
+- 不要将密钥提交到版本控制系统
+- 不要在客户端代码中硬编码密钥
+- 在生产环境中使用 OAuth 流程
+
+## OAuth 认证流程
+
+OAuth 是推荐的生产环境认证方式，提供更高的安全性。
+
+### 配置 OAuth
+
+```csharp
+using Developerworks;
+
+public class OAuthExample : MonoBehaviour
+{
+    private DW_AuthFlowManager authManager;
+
+    async void Start()
+    {
+        authManager = new DW_AuthFlowManager();
+
+        // 配置 OAuth 参数
+        var config = new OAuthConfig
+        {
+            ClientId = "your-client-id",
+            RedirectUri = "your-redirect-uri",
+            Scope = "read write"
+        };
+
+        // 启动认证流程
+        await authManager.StartAuthFlowAsync(config);
+    }
+}
+```
+
+### OAuth 流程步骤
+
+1. **初始化认证管理器**
+   ```csharp
+   var authManager = new DW_AuthFlowManager();
+   ```
+
+2. **启动认证流程**
+   ```csharp
+   await authManager.StartAuthFlowAsync(config);
+   ```
+
+3. **处理回调**
+   ```csharp
+   authManager.OnAuthSuccess += (token) => {
+       Debug.Log("认证成功!");
+       // 保存令牌
+   };
+
+   authManager.OnAuthFailure += (error) => {
+       Debug.LogError($"认证失败: {error}");
+   };
+   ```
+
+4. **使用令牌**
+   ```csharp
+   DW_SDK.SetAuthToken(token);
+   ```
+
+## 本地令牌管理
+
+SDK 提供了自动令牌管理功能，处理令牌存储和刷新。
+
+### 启用本地令牌存储
+
+```csharp
+using Developerworks;
+
+public class TokenManagement : MonoBehaviour
+{
+    void Start()
+    {
+        // 启用自动令牌管理
+        DW_LocalSharedToken.EnableAutoManagement = true;
+
+        // 尝试从本地加载令牌
+        var token = DW_LocalSharedToken.LoadToken();
+
+        if (token != null && !token.IsExpired)
+        {
+            Debug.Log("使用已保存的令牌");
+            DW_SDK.SetAuthToken(token);
+        }
+        else
+        {
+            Debug.Log("需要重新认证");
+            // 启动认证流程
+        }
+    }
+}
+```
+
+### 令牌刷新
+
+SDK 会自动处理令牌刷新：
+
+```csharp
+// SDK 会在令牌过期前自动刷新
+DW_AuthManager.OnTokenRefreshed += (newToken) => {
+    Debug.Log("令牌已刷新");
+    // 新令牌会自动保存
+};
+```
+
+### 手动刷新令牌
+
+如果需要手动刷新：
+
+```csharp
+async void RefreshToken()
+{
+    try
+    {
+        var newToken = await DW_AuthManager.RefreshTokenAsync();
+        Debug.Log("令牌刷新成功");
+    }
+    catch (Exception e)
+    {
+        Debug.LogError($"令牌刷新失败: {e.Message}");
+    }
+}
+```
+
+## 平台特定配置
+
+### WebGL 平台
+
+WebGL 平台需要特殊的存储处理：
+
+```csharp
+#if UNITY_WEBGL
+using Developerworks;
+
+public class WebGLAuth : MonoBehaviour
+{
+    void Start()
+    {
+        // WebGL 使用浏览器存储
+        DW_WebGLStorage.Initialize();
+
+        // 其他认证代码...
+    }
+}
+#endif
+```
+
+### 移动平台（iOS/Android）
+
+移动平台需要配置权限：
+
+#### iOS (Info.plist)
+```xml
+<key>NSMicrophoneUsageDescription</key>
+<string>用于语音交互功能</string>
+```
+
+#### Android (AndroidManifest.xml)
+```xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
+
+## 完整示例
+
+以下是一个完整的认证示例：
+
+```csharp
+using UnityEngine;
+using Developerworks;
+using System;
+
+public class CompleteAuthExample : MonoBehaviour
+{
+    private DW_AuthFlowManager authManager;
+
+    async void Start()
+    {
+        // 1. 尝试从本地加载令牌
+        var savedToken = DW_LocalSharedToken.LoadToken();
+
+        if (savedToken != null && !savedToken.IsExpired)
+        {
+            // 使用已保存的令牌
+            DW_SDK.SetAuthToken(savedToken);
+            OnAuthComplete();
+        }
+        else
+        {
+            // 2. 启动新的认证流程
+            await StartAuthentication();
+        }
+    }
+
+    async System.Threading.Tasks.Task StartAuthentication()
+    {
+        authManager = new DW_AuthFlowManager();
+
+        // 配置认证
+        var config = new OAuthConfig
+        {
+            ClientId = "your-client-id",
+            RedirectUri = "your-redirect-uri"
+        };
+
+        // 监听认证事件
+        authManager.OnAuthSuccess += OnAuthSuccess;
+        authManager.OnAuthFailure += OnAuthFailure;
+
+        // 启动认证
+        await authManager.StartAuthFlowAsync(config);
+    }
+
+    void OnAuthSuccess(string token)
+    {
+        Debug.Log("认证成功!");
+
+        // 保存令牌
+        DW_LocalSharedToken.SaveToken(token);
+
+        // 设置 SDK 令牌
+        DW_SDK.SetAuthToken(token);
+
+        OnAuthComplete();
+    }
+
+    void OnAuthFailure(string error)
+    {
+        Debug.LogError($"认证失败: {error}");
+        // 处理错误...
+    }
+
+    void OnAuthComplete()
+    {
+        Debug.Log("可以开始使用 SDK 功能了!");
+        // 初始化你的应用...
+    }
+
+    void OnDestroy()
+    {
+        // 清理事件监听
+        if (authManager != null)
+        {
+            authManager.OnAuthSuccess -= OnAuthSuccess;
+            authManager.OnAuthFailure -= OnAuthFailure;
+        }
+    }
+}
+```
+
+## 最佳实践
+
+### 1. 安全存储
+
+- 使用加密存储敏感信息
+- 不要在客户端代码中硬编码密钥
+- 定期轮换密钥
+
+### 2. 错误处理
+
+```csharp
+try
+{
+    await DW_SDK.Initialize("your-key");
+}
+catch (DW_AuthenticationException e)
+{
+    Debug.LogError($"认证错误: {e.Message}");
+    // 提示用户重新登录
+}
+catch (Exception e)
+{
+    Debug.LogError($"未知错误: {e.Message}");
+}
+```
+
+### 3. 令牌生命周期管理
+
+```csharp
+// 检查令牌状态
+if (DW_AuthManager.IsTokenExpiringSoon())
+{
+    await DW_AuthManager.RefreshTokenAsync();
+}
+```
+
+### 4. 注销
+
+```csharp
+public void Logout()
+{
+    // 清除本地令牌
+    DW_LocalSharedToken.ClearToken();
+
+    // 清除 SDK 状态
+    DW_SDK.ClearAuth();
+
+    Debug.Log("已注销");
+}
+```
+
+## 故障排除
+
+### 常见问题
+
+#### 认证失败
+
+如果认证持续失败：
+
+1. 检查 API 密钥是否正确
+2. 确保网络连接正常
+3. 验证时间同步（OAuth 对时间敏感）
+4. 检查控制台日志获取详细错误信息
+
+#### 令牌过期
+
+```csharp
+// 处理令牌过期
+DW_SDK.OnTokenExpired += async () => {
+    Debug.Log("令牌已过期，正在刷新...");
+    await DW_AuthManager.RefreshTokenAsync();
+};
+```
+
+#### WebGL 存储问题
+
+在 WebGL 平台，确保：
+
+1. 浏览器允许 localStorage
+2. 没有在隐私模式下运行
+3. 域名已正确配置
+
+更多问题请查看[故障排除](/unity/troubleshooting)页面。

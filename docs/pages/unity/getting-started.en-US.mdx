@@ -1,0 +1,100 @@
+# Getting Started
+
+This guide will help you get started with Developerworks Unity SDK in minutes.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- Unity 2021.3 or higher installed
+- A Developerworks developer account
+- An API key
+
+## Step 1: Install the SDK
+
+There are multiple ways to install the SDK:
+
+### Method 1: Using Unity Package Manager
+
+1. Open your Unity project
+2. Go to `Window > Package Manager`
+3. Click the `+` button in the top left
+4. Select `Add package from git URL`
+5. Enter: `https://github.com/cnqdztp/Developerworks-UnitySDK.git`
+
+### Method 2: Manual Import
+
+1. Download the latest version from [GitHub Releases](https://github.com/cnqdztp/Developerworks-UnitySDK/releases)
+2. Extract the downloaded file
+3. Drag the `Assets/Developerworks_SDK` folder into your Unity project
+
+For detailed installation instructions, see the [Installation Guide](/unity/installation).
+
+## Step 2: Configure Authentication
+
+Before using the SDK, you need to configure authentication:
+
+```csharp
+using Developerworks;
+
+// Initialize SDK
+DW_SDK.Initialize("YOUR_API_KEY");
+```
+
+For more authentication options, see the [Authentication](/unity/authentication) page.
+
+## Step 3: Create Your First AI Conversation
+
+Here's a simple example showing how to create an AI conversation:
+
+```csharp
+using UnityEngine;
+using Developerworks;
+
+public class MyFirstChat : MonoBehaviour
+{
+    private DW_AIChatClient chatClient;
+
+    async void Start()
+    {
+        // Initialize chat client
+        chatClient = new DW_AIChatClient();
+
+        // Send a message
+        var response = await chatClient.SendMessageAsync("Hello, please introduce yourself");
+
+        // Display response
+        Debug.Log($"AI Response: {response}");
+    }
+}
+```
+
+## Step 4: Run Example Scenes
+
+The SDK includes several example scenes to help you quickly understand the features:
+
+1. In the Project window, navigate to `Assets/Developerworks_SDK/Example/Scenes`
+2. Double-click to open any example scene
+3. Click the Play button to run
+
+### Available Example Scenes
+
+- **ChatExample**: Demonstrates text conversation functionality
+- **VoiceExample**: Demonstrates voice interaction
+- **NPCExample**: Demonstrates NPC dialogue system
+- **ImageExample**: Demonstrates image generation functionality
+
+## Next Steps
+
+Now that you've completed the basic setup! Next, you can:
+
+- Explore [Core Features](/unity/core-features) to learn about all SDK capabilities
+- Check the [API Reference](/unity/api-reference) for in-depth understanding of classes and methods
+- Study [Examples](/unity/examples) to learn best practices
+
+## Need Help?
+
+If you encounter issues, please check:
+
+- [Troubleshooting](/unity/troubleshooting) page
+- [GitHub Issues](https://github.com/cnqdztp/Developerworks-UnitySDK/issues)

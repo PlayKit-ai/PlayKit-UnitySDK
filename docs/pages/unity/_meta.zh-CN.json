@@ -1,0 +1,26 @@
+{
+  "index": {
+    "title": "概述"
+  },
+  "getting-started": {
+    "title": "快速开始"
+  },
+  "installation": {
+    "title": "安装指南"
+  },
+  "authentication": {
+    "title": "身份认证"
+  },
+  "core-features": {
+    "title": "核心功能"
+  },
+  "api-reference": {
+    "title": "API 参考"
+  },
+  "examples": {
+    "title": "示例代码"
+  },
+  "troubleshooting": {
+    "title": "故障排除"
+  }
+}

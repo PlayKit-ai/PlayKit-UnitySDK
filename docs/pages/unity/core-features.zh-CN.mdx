@@ -1,0 +1,319 @@
+# 核心功能
+
+Developerworks Unity SDK 提供了丰富的功能来增强你的 Unity 应用。本页面详细介绍 SDK 的核心功能。
+
+## AI 对话系统
+
+### AI 聊天客户端 (DW_AIChatClient)
+
+AI 聊天客户端提供了强大的对话能力，支持上下文对话和流式响应。
+
+#### 基本用法
+
+```csharp
+using Developerworks;
+
+var chatClient = new DW_AIChatClient();
+
+// 发送消息并获取响应
+var response = await chatClient.SendMessageAsync("你好");
+Debug.Log(response);
+```
+
+#### 流式响应
+
+```csharp
+// 使用流式响应实时接收 AI 回复
+await chatClient.StreamMessageAsync("讲一个故事", (chunk) => {
+    Debug.Log($"收到分块: {chunk}");
+    // 更新 UI
+});
+```
+
+#### 上下文管理
+
+```csharp
+// 添加上下文消息
+chatClient.AddContextMessage("user", "我叫小明");
+chatClient.AddContextMessage("assistant", "你好小明！");
+
+// 后续对话会记住上下文
+var response = await chatClient.SendMessageAsync("我叫什么名字？");
+// 回复: "你叫小明"
+```
+
+### NPC 客户端 (DW_NPCClient)
+
+NPC 客户端专为游戏 NPC 设计，支持角色设定和个性化对话。
+
+#### 创建 NPC
+
+```csharp
+var npcClient = new DW_NPCClient();
+
+// 设置 NPC 角色
+npcClient.SetCharacter(new NPCCharacter {
+    Name = "村长",
+    Personality = "友善、智慧、乐于助人",
+    Background = "村子的领导者，了解村里的所有事情",
+    Goals = "帮助冒险者，保护村民"
+});
+```
+
+#### NPC 对话
+
+```csharp
+// 与 NPC 对话
+var response = await npcClient.ChatAsync("村子最近有什么事情发生吗？");
+Debug.Log($"村长: {response}");
+```
+
+#### NPC 记忆系统
+
+```csharp
+// NPC 会记住与玩家的互动
+npcClient.RememberInteraction("玩家帮助击退了哥布林");
+
+// 后续对话会参考这些记忆
+var response = await npcClient.ChatAsync("还记得我吗？");
+```
+
+## 语音功能
+
+### 语音识别 (DW_NPCClient_VoiceModule)
+
+语音模块提供了语音识别和语音合成功能。
+
+#### 语音转文字
+
+```csharp
+var voiceModule = new DW_NPCClient_VoiceModule();
+
+// 开始录音
+voiceModule.StartRecording();
+
+// 停止录音并获取文字
+await voiceModule.StopRecordingAsync((text) => {
+    Debug.Log($"识别结果: {text}");
+});
+```
+
+#### 实时语音识别
+
+```csharp
+// 实时获取识别结果
+voiceModule.StartRealtimeRecognition((partialText) => {
+    Debug.Log($"实时结果: {partialText}");
+});
+```
+
+### 语音合成
+
+```csharp
+// 文字转语音
+var audioClip = await voiceModule.TextToSpeechAsync("你好，欢迎来到游戏世界！");
+
+// 播放音频
+audioSource.clip = audioClip;
+audioSource.Play();
+```
+
+#### 自定义语音参数
+
+```csharp
+var ttsOptions = new TextToSpeechOptions {
+    Voice = "female",
+    Speed = 1.0f,
+    Pitch = 1.0f,
+    Volume = 0.8f
+};
+
+var audioClip = await voiceModule.TextToSpeechAsync("文字内容", ttsOptions);
+```
+
+## 图像生成
+
+### 基本图像生成
+
+```csharp
+var imageService = new ImageGenerationService();
+
+// 生成图像
+var texture = await imageService.GenerateImageAsync("一座魔法城堡，梦幻风格");
+
+// 应用到材质
+renderer.material.mainTexture = texture;
+```
+
+### 高级选项
+
+```csharp
+var options = new ImageGenerationOptions {
+    Width = 1024,
+    Height = 1024,
+    Style = "anime",
+    Quality = "high",
+    Steps = 50
+};
+
+var texture = await imageService.GenerateImageAsync("描述", options);
+```
+
+## 服务集成
+
+### 聊天服务 (ChatService)
+
+聊天服务提供了高级的对话管理功能。
+
+```csharp
+var chatService = new ChatService();
+
+// 创建对话会话
+var session = await chatService.CreateSessionAsync();
+
+// 发送消息
+var response = await chatService.SendMessageAsync(session.Id, "消息内容");
+
+// 获取对话历史
+var history = await chatService.GetHistoryAsync(session.Id);
+```
+
+### 转录服务 (TranscriptionService)
+
+转录服务用于音频文件的转录。
+
+```csharp
+var transcriptionService = new TranscriptionService();
+
+// 转录音频文件
+var text = await transcriptionService.TranscribeAsync(audioClip);
+Debug.Log($"转录结果: {text}");
+```
+
+#### 批量转录
+
+```csharp
+// 转录多个音频文件
+var audioFiles = new AudioClip[] { clip1, clip2, clip3 };
+var results = await transcriptionService.BatchTranscribeAsync(audioFiles);
+
+foreach (var result in results) {
+    Debug.Log($"文件 {result.FileName}: {result.Text}");
+}
+```
+
+## Schema 库 (DW_SchemaLibrary)
+
+Schema 库用于定义和管理数据结构，支持 AI 结构化输出。
+
+### 定义 Schema
+
+```csharp
+var schema = new SchemaDefinition {
+    Name = "GameCharacter",
+    Fields = new Field[] {
+        new Field { Name = "name", Type = "string", Required = true },
+        new Field { Name = "level", Type = "integer", Required = true },
+        new Field { Name = "class", Type = "string", Required = true }
+    }
+};
+
+DW_SchemaLibrary.RegisterSchema(schema);
+```
+
+### 使用 Schema
+
+```csharp
+// AI 会根据 Schema 返回结构化数据
+var response = await chatClient.SendMessageWithSchemaAsync(
+    "创建一个10级战士",
+    "GameCharacter"
+);
+
+var character = JsonUtility.FromJson<GameCharacter>(response);
+Debug.Log($"角色: {character.name}, 等级: {character.level}");
+```
+
+## 错误处理
+
+SDK 提供了专门的异常类型用于错误处理。
+
+### 异常类型
+
+```csharp
+using Developerworks;
+
+try {
+    await chatClient.SendMessageAsync("消息");
+}
+catch (DW_AuthenticationException e) {
+    Debug.LogError($"认证错误: {e.Message}");
+}
+catch (DW_NetworkException e) {
+    Debug.LogError($"网络错误: {e.Message}");
+}
+catch (DW_RateLimitException e) {
+    Debug.LogError($"请求频率限制: {e.Message}");
+    Debug.Log($"请在 {e.RetryAfter} 秒后重试");
+}
+catch (DW_Exception e) {
+    Debug.LogError($"SDK 错误: {e.Message}");
+}
+```
+
+### 错误回调
+
+```csharp
+// 设置全局错误处理器
+DW_SDK.OnError += (error) => {
+    Debug.LogError($"SDK 错误: {error.Message}");
+    // 显示错误提示给用户
+};
+```
+
+## 平台特性
+
+### WebGL 支持
+
+```csharp
+#if UNITY_WEBGL
+// WebGL 特定初始化
+DW_WebGLStorage.Initialize();
+#endif
+```
+
+### 移动平台优化
+
+```csharp
+#if UNITY_IOS || UNITY_ANDROID
+// 移动平台低带宽模式
+DW_SDK.SetLowBandwidthMode(true);
+#endif
+```
+
+## 性能优化
+
+### 请求缓存
+
+```csharp
+// 启用响应缓存
+chatClient.EnableCache = true;
+
+// 相同的请求会使用缓存
+var response1 = await chatClient.SendMessageAsync("什么是 AI？");
+var response2 = await chatClient.SendMessageAsync("什么是 AI？"); // 使用缓存
+```
+
+### 批量请求
+
+```csharp
+// 批量发送多个请求
+var messages = new string[] { "消息1", "消息2", "消息3" };
+var responses = await chatClient.BatchSendAsync(messages);
+```
+
+## 下一步
+
+- 查看 [API 参考](/unity/api-reference) 了解完整的 API 文档
+- 浏览 [示例代码](/unity/examples) 学习实际应用
+- 阅读 [故障排除](/unity/troubleshooting) 解决常见问题

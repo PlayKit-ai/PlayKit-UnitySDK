@@ -1,0 +1,26 @@
+{
+  "index": {
+    "title": "Overview"
+  },
+  "getting-started": {
+    "title": "Getting Started"
+  },
+  "installation": {
+    "title": "Installation Guide"
+  },
+  "authentication": {
+    "title": "Authentication"
+  },
+  "core-features": {
+    "title": "Core Features"
+  },
+  "api-reference": {
+    "title": "API Reference"
+  },
+  "examples": {
+    "title": "Examples"
+  },
+  "troubleshooting": {
+    "title": "Troubleshooting"
+  }
+}
