@@ -6,7 +6,7 @@ namespace Developerworks_SDK
 {
     public class DW_SDK : MonoBehaviour
     {
-        public const string VERSION = "v0.1.7.1-beta";
+        public const string VERSION = "v0.1.7.2-beta";
 
         [Tooltip("Your game ID from Developerworks platform 从Developerworks平台获取的游戏ID")]
         [SerializeField] private string gameId;

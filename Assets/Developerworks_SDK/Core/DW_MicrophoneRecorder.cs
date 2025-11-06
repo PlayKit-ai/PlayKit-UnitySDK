@@ -47,7 +47,13 @@ namespace Developerworks_SDK
         /// <summary>
         /// The microphone device currently being used
         /// </summary>
-        public string CurrentDevice => microphoneDevice ?? (Microphone.devices.Length > 0 ? Microphone.devices[0] : "None");
+        public string CurrentDevice => microphoneDevice ??
+            #if !UNITY_WEBGL
+            (Microphone.devices.Length > 0 ? Microphone.devices[0] : "None")
+            #else
+            "WebGL Not Supported"
+            #endif
+            ;
 
         /// <summary>
         /// Last recorded AudioClip (available after StopRecording)
@@ -80,6 +86,10 @@ namespace Developerworks_SDK
         /// <returns>True if recording started successfully, false otherwise</returns>
         public bool StartRecording(string deviceName = null)
         {
+#if UNITY_WEBGL
+            Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
+            return false;
+#else
             if (isRecording)
             {
                 Debug.LogWarning("[MicrophoneRecorder] Already recording!");
@@ -114,6 +124,7 @@ namespace Developerworks_SDK
             OnRecordingStarted?.Invoke();
 
             return true;
+#endif
         }
 
         /// <summary>
@@ -122,6 +133,10 @@ namespace Developerworks_SDK
         /// <returns>Recorded AudioClip trimmed to actual recording duration</returns>
         public AudioClip StopRecording()
         {
+#if UNITY_WEBGL
+            Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
+            return null;
+#else
             if (!isRecording)
             {
                 Debug.LogWarning("[MicrophoneRecorder] Not currently recording!");
@@ -144,6 +159,7 @@ namespace Developerworks_SDK
             OnRecordingStopped?.Invoke(trimmedClip);
 
             return trimmedClip;
+#endif
         }
 
         /// <summary>
@@ -151,6 +167,9 @@ namespace Developerworks_SDK
         /// </summary>
         public void CancelRecording()
         {
+#if UNITY_WEBGL
+            Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
+#else
             if (!isRecording) return;
 
             Microphone.End(microphoneDevice);
@@ -159,6 +178,7 @@ namespace Developerworks_SDK
             LastRecording = null;
 
             Debug.Log("[MicrophoneRecorder] Recording cancelled");
+#endif
         }
 
         /// <summary>
@@ -168,6 +188,10 @@ namespace Developerworks_SDK
         /// <returns>RMS (Root Mean Square) volume level</returns>
         public float GetCurrentVolume()
         {
+#if UNITY_WEBGL
+            Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
+            return 0f;
+#else
             if (!isRecording || _recordingClip == null) return 0f;
 
             // Sample window for volume calculation
@@ -189,6 +213,7 @@ namespace Developerworks_SDK
             }
 
             return Mathf.Sqrt(sum / sampleWindow);
+#endif
         }
 
         /// <summary>
@@ -197,7 +222,12 @@ namespace Developerworks_SDK
         /// <returns>Array of device names</returns>
         public static string[] GetAvailableDevices()
         {
+#if UNITY_WEBGL
+            Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
+            return new string[] { "WebGL Not Supported" };
+#else
             return Microphone.devices;
+#endif
         }
 
         /// <summary>
@@ -283,21 +313,25 @@ namespace Developerworks_SDK
 
         private void OnDestroy()
         {
+#if !UNITY_WEBGL
             // Ensure microphone is stopped when component is destroyed
             if (isRecording)
             {
                 Microphone.End(microphoneDevice);
             }
+#endif
         }
 
         private void OnApplicationPause(bool pauseStatus)
         {
+#if !UNITY_WEBGL
             // Stop recording when application is paused (e.g., on mobile)
             if (pauseStatus && isRecording)
             {
                 Debug.Log("[MicrophoneRecorder] Application paused, stopping recording");
                 StopRecording();
             }
+#endif
         }
     }
 }
