@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace Developerworks_SDK.Provider.AI
+namespace PlayKit_SDK.Provider.AI
 {
     /// <summary>
     /// Provider for the platform AI object generation endpoint (/ai/{gameId}/v1/generateObject)
@@ -13,10 +13,10 @@ namespace Developerworks_SDK.Provider.AI
     /// </summary>
     internal class AIObjectProvider : IObjectProvider
     {
-        private readonly Auth.DW_AuthManager _authManager;
+        private readonly Auth.PlayKit_AuthManager _authManager;
         private readonly bool _useOversea = false;
 
-        public AIObjectProvider(Auth.DW_AuthManager authManager, bool useOversea = false)
+        public AIObjectProvider(Auth.PlayKit_AuthManager authManager, bool useOversea = false)
         {
             _authManager = authManager;
             _useOversea = useOversea;
@@ -32,7 +32,7 @@ namespace Developerworks_SDK.Provider.AI
             {
                 return $"https://dwoversea.agentlandlab.com/ai/{_authManager.gameId}/v1/generateObject";
             }
-            return $"https://developerworks.agentlandlab.com/ai/{_authManager.gameId}/v1/generateObject";
+            return $"https://playkit.agentlandlab.com/ai/{_authManager.gameId}/v1/generateObject";
         }
 
         private string GetAuthToken()

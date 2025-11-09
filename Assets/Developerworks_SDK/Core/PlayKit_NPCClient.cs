@@ -3,16 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Developerworks_SDK.Public;
+using PlayKit_SDK.Public;
 using UnityEngine;
 
-namespace Developerworks_SDK
+namespace PlayKit_SDK
 {
     /// <summary>
     /// A simplified NPC chat client that automatically manages conversation history.
     /// This is a "sugar" wrapper around DW_AIChatClient for easier usage.
     /// </summary>
-    public class DW_NPCClient : MonoBehaviour
+    public class PlayKit_NPCClient : MonoBehaviour
     {
         [Tooltip("Character design/system prompt for this NPC 该NPC的角色设定/系统提示词")]
         
@@ -20,7 +20,7 @@ namespace Developerworks_SDK
         [Tooltip("Chat model name to use (leave empty to use SDK default) 使用的对话模型名称（留空则使用SDK默认值）")]
         [SerializeField] private string chatModel;
         public string CharacterDesign=>characterDesign;
-        private DW_AIChatClient _chatClient;
+        private PlayKit_AIChatClient _chatClient;
         private List<DW_ChatMessage> _conversationHistory;
         private string _currentPrompt;
         private bool _isTalking;
@@ -28,7 +28,7 @@ namespace Developerworks_SDK
         private bool _isReady;
         public bool IsReady { get { return _isReady; } }
 
-        public void Setup (DW_AIChatClient chatClient)
+        public void Setup (PlayKit_AIChatClient chatClient)
         {
             _chatClient = chatClient;
             _isReady = true;
@@ -44,16 +44,16 @@ namespace Developerworks_SDK
 
         private async UniTask Initialize()
         {
-            await UniTask.WaitUntil(() => DW_SDK.IsReady());
+            await UniTask.WaitUntil(() => PlayKit_SDK.IsReady());
             if(!string.IsNullOrEmpty(characterDesign))
                 SetSystemPrompt(characterDesign);
             if (!string.IsNullOrEmpty(chatModel))
             {
-                DW_SDK.Populate.CreateNpc(this,chatModel);
+                PlayKit_SDK.Populate.CreateNpc(this,chatModel);
             }
             else
             {
-                DW_SDK.Populate.CreateNpc(this);
+                PlayKit_SDK.Populate.CreateNpc(this);
 
             }
         }
@@ -630,7 +630,7 @@ namespace Developerworks_SDK
         public void PrintPrettyChatMessages(string title = null)
         {
             string displayTitle = title ?? $"NPC '{gameObject.name}' Conversation History";
-            DW_AIChatClient.PrintPrettyChatMessages(_conversationHistory, displayTitle);
+            PlayKit_AIChatClient.PrintPrettyChatMessages(_conversationHistory, displayTitle);
         }
 
         /// <summary>

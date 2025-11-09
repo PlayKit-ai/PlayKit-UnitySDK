@@ -6,18 +6,18 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
-using Developerworks_SDK.Provider.AI;
+using PlayKit_SDK.Provider.AI;
 
-namespace Developerworks_SDK
+namespace PlayKit_SDK
 {
-    public class DW_AIChatClient
+    public class PlayKit_AIChatClient
     {
         private readonly string _model;
         private readonly Services.ChatService _chatService;
         private readonly IObjectProvider _objectProvider;
-        private DW_SchemaLibrary _schemaLibrary;
+        private PlayKit_SchemaLibrary _schemaLibrary;
 
-        internal DW_AIChatClient(string model, Services.ChatService chatService, IObjectProvider objectProvider)
+        internal PlayKit_AIChatClient(string model, Services.ChatService chatService, IObjectProvider objectProvider)
         {
             _model = model;
             _chatService = chatService;
@@ -34,7 +34,7 @@ namespace Developerworks_SDK
         /// Set a custom schema library for structured output
         /// </summary>
         /// <param name="schemaLibrary">The schema library to use</param>
-        public void SetSchemaLibrary(DW_SchemaLibrary schemaLibrary)
+        public void SetSchemaLibrary(PlayKit_SchemaLibrary schemaLibrary)
         {
             _schemaLibrary = schemaLibrary;
         }
@@ -44,7 +44,7 @@ namespace Developerworks_SDK
         /// </summary>
         private void LoadDefaultSchemaLibrary()
         {
-            _schemaLibrary = Resources.Load<DW_SchemaLibrary>("SchemaLibrary");
+            _schemaLibrary = Resources.Load<PlayKit_SchemaLibrary>("SchemaLibrary");
             if (_schemaLibrary == null)
             {
                 Debug.LogWarning("[DW_AIChatClient] No default SchemaLibrary found at Resources/SchemaLibrary. You can create one or set a custom library with SetSchemaLibrary()");
@@ -442,7 +442,7 @@ namespace Developerworks_SDK
         /// <summary>
         /// Get the current schema library
         /// </summary>
-        public DW_SchemaLibrary CurrentSchemaLibrary => _schemaLibrary;
+        public PlayKit_SchemaLibrary CurrentSchemaLibrary => _schemaLibrary;
 
         /// <summary>
         /// Print chat messages in a pretty format for debugging

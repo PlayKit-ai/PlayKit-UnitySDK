@@ -3,21 +3,21 @@ using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
-using Developerworks_SDK.Provider;
-using Developerworks_SDK.Provider.AI;
+using PlayKit_SDK.Provider;
+using PlayKit_SDK.Provider.AI;
 
-namespace Developerworks_SDK
+namespace PlayKit_SDK
 {
     /// <summary>
     /// Client for AI image generation using platform-hosted models
     /// Provides simple interface for generating images from text prompts
     /// </summary>
-    public class DW_AIImageClient
+    public class PlayKit_AIImageClient
     {
         private readonly string _modelName;
         private readonly IImageProvider _imageProvider;
 
-        internal DW_AIImageClient(string modelName, IImageProvider imageProvider)
+        internal PlayKit_AIImageClient(string modelName, IImageProvider imageProvider)
         {
             _modelName = modelName;
             _imageProvider = imageProvider;
@@ -121,19 +121,19 @@ namespace Developerworks_SDK
                 Debug.Log($"[DW_AIImageClient] Successfully generated {results.Count} images");
                 return results;
             }
-            catch (DW_ImageSizeValidationException ex)
+            catch (PlayKitImageSizeValidationException ex)
             {
                 // Log a concise error message for size validation
                 // Debug.LogError($"[DW_AIImageClient] Size validation failed ({ex.ErrorCode}): {ex.Message}");
                 throw; // Re-throw for caller to handle
             }
-            catch (DW_ApiErrorException ex)
+            catch (PlayKitApiErrorException ex)
             {
                 // Log API errors concisely
                 // Debug.LogError($"[DW_AIImageClient] API error ({ex.ErrorCode}): {ex.Message}");
                 throw; // Re-throw for caller to handle
             }
-            catch (DWException)
+            catch (PlayKitException)
             {
                 // Don't log here as it's already logged in AIImageProvider
                 throw; // Re-throw for caller to handle
@@ -141,7 +141,7 @@ namespace Developerworks_SDK
             catch (Exception ex)
             {
                 Debug.LogError($"[DW_AIImageClient] Unexpected error: {ex.Message}");
-                throw new DWException("Unexpected error during image generation", ex);
+                throw new PlayKitException("Unexpected error during image generation", ex);
             }
         }
 
@@ -192,19 +192,19 @@ namespace Developerworks_SDK
 
                 return results;
             }
-            catch (DW_ImageSizeValidationException ex)
+            catch (PlayKitImageSizeValidationException ex)
             {
                 // Log a concise error message for size validation
                 Debug.LogError($"[DW_AIImageClient] Size validation failed ({ex.ErrorCode}): {ex.Message}");
                 throw; // Re-throw for caller to handle
             }
-            catch (DW_ApiErrorException ex)
+            catch (PlayKitApiErrorException ex)
             {
                 // Log API errors concisely
                 Debug.LogError($"[DW_AIImageClient] API error ({ex.ErrorCode}): {ex.Message}");
                 throw; // Re-throw for caller to handle
             }
-            catch (DWException)
+            catch (PlayKitException)
             {
                 // Don't log here as it's already logged in AIImageProvider
                 throw; // Re-throw for caller to handle
@@ -212,7 +212,7 @@ namespace Developerworks_SDK
             catch (Exception ex)
             {
                 Debug.LogError($"[DW_AIImageClient] Unexpected error: {ex.Message}");
-                throw new DWException("Unexpected error during image generation", ex);
+                throw new PlayKitException("Unexpected error during image generation", ex);
             }
         }
 
@@ -309,7 +309,7 @@ namespace Developerworks_SDK
         /// </summary>
         public Texture2D ToTexture2D()
         {
-            return DW_AIImageClient.Base64ToTexture2D(ImageBase64);
+            return PlayKit_AIImageClient.Base64ToTexture2D(ImageBase64);
         }
         
         /// <summary>
@@ -319,7 +319,7 @@ namespace Developerworks_SDK
         public Sprite ToSprite()
         {
             Texture2D texture = ToTexture2D();
-            return DW_AIImageClient.Texture2DToSprite(texture);
+            return PlayKit_AIImageClient.Texture2DToSprite(texture);
         }
     }
 

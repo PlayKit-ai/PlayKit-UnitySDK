@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 8779212229848074699}
   - component: {fileID: 5963292248406742379}
   m_Layer: 0
-  m_Name: DW_SDK
+  m_Name: PlayKit_SDK
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

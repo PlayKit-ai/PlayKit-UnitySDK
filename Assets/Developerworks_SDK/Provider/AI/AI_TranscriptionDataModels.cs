@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace Developerworks_SDK.Provider.AI
+namespace PlayKit_SDK.Provider.AI
 {
     /// <summary>
     /// Data models for audio transcription API

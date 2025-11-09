@@ -5,20 +5,20 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace Developerworks_SDK.Editor
+namespace PlayKit_SDK.Editor
 {
     /// <summary>
     /// Automatically checks for SDK updates on Unity Editor startup
     /// </summary>
     [InitializeOnLoad]
-    public static class DW_UpdateChecker
+    public static class PlayKit_UpdateChecker
     {
-        private const string VERSION_API_URL = "https://developerworks.agentlandlab.com/api/sdk/version/unity";
-        private const string DOWNLOAD_URL = "https://developerworks.agentlandlab.com";
-        private const string LAST_CHECK_KEY = "DW_SDK_LastUpdateCheck";
-        private const string SKIP_VERSION_KEY = "DW_SDK_SkipVersion";
+        private const string VERSION_API_URL = "https://playkit.agentlandlab.com/api/sdk/version/unity";
+        private const string DOWNLOAD_URL = "https://playkit.agentlandlab.com";
+        private const string LAST_CHECK_KEY = "PlayKit_SDK_LastUpdateCheck";
+        private const string SKIP_VERSION_KEY = "PlayKit_SDK_SkipVersion";
 
-        static DW_UpdateChecker()
+        static PlayKit_UpdateChecker()
         {
             // Delay the check slightly to avoid interfering with Unity startup
             EditorApplication.delayCall += () => CheckForUpdatesAuto();
@@ -93,7 +93,7 @@ namespace Developerworks_SDK.Editor
                         return;
                     }
 
-                    string currentVersion = DW_SDK.VERSION;
+                    string currentVersion = PlayKit_SDK.VERSION;
                     string latestVersion = response.version;
 
                     // Check if user has chosen to skip this version

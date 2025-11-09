@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using PlayKit_SDK.Public;
 
-namespace Developerworks_SDK.Provider.AI
+namespace PlayKit_SDK.Provider.AI
 {
     /// <summary>
     /// Data models for AI structured object generation endpoint
@@ -19,7 +20,7 @@ namespace Developerworks_SDK.Provider.AI
         public string Prompt { get; set; }
 
         [JsonProperty("messages")]
-        public List<Developerworks_SDK.Public.DW_ChatMessage> Messages { get; set; }
+        public List<DW_ChatMessage> Messages { get; set; }
         
         [JsonProperty("schema")]
         public object Schema { get; set; }

@@ -2,9 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
-using Developerworks_SDK;
-using Developerworks_SDK.Auth;
-using Developerworks_SDK.Public;
+using PlayKit_SDK;
+using PlayKit_SDK.Auth;
+using PlayKit_SDK.Public;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -23,7 +23,7 @@ public class Demo_ExampleGameManager : MonoBehaviour
          and if there is not, it will automatically start up the login modal.
          If you pass in your developer key, the sdk skips player validation.
          */
-        var result = await DW_SDK.InitializeAsync();
+        var result = await PlayKit_SDK.PlayKit_SDK.InitializeAsync();
 
         if(!result)
         {
@@ -40,7 +40,7 @@ public class Demo_ExampleGameManager : MonoBehaviour
 
     async UniTask StandardImageGen()
     {
-        var imageGen = DW_SDK.Factory.CreateImageClient();
+        var imageGen = PlayKit_SDK.PlayKit_SDK.Factory.CreateImageClient();
         var genResult = await imageGen.GenerateImageAsync("a futuristic city","1024x1024");
         _image.sprite =  genResult.ToSprite();
     }
@@ -58,7 +58,7 @@ public class Demo_ExampleGameManager : MonoBehaviour
             Role = "user",
             Content = "你的工作是什么"
         });
-        var chat = DW_SDK.Factory.CreateChatClient();//新建一个对话客户端
+        var chat = PlayKit_SDK.PlayKit_SDK.Factory.CreateChatClient();//新建一个对话客户端
         var result = await chat.TextGenerationAsync(new DW_ChatConfig(_selfManagedHistory));//对话
         _selfManagedHistory.Add(new DW_ChatMessage()
         {
@@ -80,7 +80,7 @@ public class Demo_ExampleGameManager : MonoBehaviour
         
     }
     
-    [SerializeField] private DW_NPCClient _npcClient,_npcClient2;
+    [SerializeField] private PlayKit_NPCClient _npcClient,_npcClient2;
     async UniTask SimpleChat()
     {
         var npc =_npcClient;
@@ -102,7 +102,7 @@ public class Demo_ExampleGameManager : MonoBehaviour
     async UniTask StandardChatStream()
     {
 
-        var chat = DW_SDK.Factory.CreateChatClient();
+        var chat = PlayKit_SDK.PlayKit_SDK.Factory.CreateChatClient();
         _selfManagedHistory.Add(new DW_ChatMessage()
         {
             Role = "system",

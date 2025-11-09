@@ -6,14 +6,14 @@ using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace Developerworks_SDK
+namespace PlayKit_SDK
 {
-    public class DW_PlayerClient : MonoBehaviour
+    public class PlayKit_PlayerClient : MonoBehaviour
     {
         
         
         // Settings can be passed via constructor if needed
-        private string baseUrl = "https://developerworks.agentlandlab.com";
+        private string baseUrl = "https://playkit.agentlandlab.com";
         private int timeoutSeconds = 30;
         private int maxRetryCount = 3;
         private float retryDelaySeconds = 3.0f;

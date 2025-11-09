@@ -5,14 +5,14 @@ using UnityEngine;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 
-namespace Developerworks_SDK
+namespace PlayKit_SDK
 {
     /// <summary>
     /// ScriptableObject that contains a collection of JSON schemas for AI object generation
     /// This allows designers to manage all schemas in one place
     /// </summary>
     [CreateAssetMenu(fileName = "SchemaLibrary", menuName = "Developerworks SDK/Schema Library")]
-    public class DW_SchemaLibrary : ScriptableObject
+    public class PlayKit_SchemaLibrary : ScriptableObject
     {
         [System.Serializable]
         public class SchemaEntry

@@ -3,20 +3,20 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Cysharp.Threading.Tasks;
-using Developerworks_SDK;
-using Developerworks_SDK.Public;
+using PlayKit_SDK;
+using PlayKit_SDK.Public;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace Developerworks_SDK.Example
+namespace PlayKit_SDK.Example
 {
     public class Demo_ChatSceneManager : MonoBehaviour
     {
         // Start is called before the first frame update
         [SerializeField] private Text _text;
-        [SerializeField] private DW_NPCClient _npcClient;
-        [SerializeField] private DW_AIChatClient _aiChatClient;
+        [SerializeField] private PlayKit_NPCClient _npcClient;
+        [SerializeField] private PlayKit_AIChatClient _aiChatClient;
         [SerializeField] private Toggle useStreamToggle;
         [SerializeField] private Dropdown variantDropdown;
         [SerializeField] private Button saveBtn,loadBtn,userSendBtn;
@@ -70,7 +70,7 @@ namespace Developerworks_SDK.Example
             OnVariantDropdownChanged(variantDropdown.value);
             OnUseStreamClicked(useStreamToggle.isOn);
             userSendBtn.onClick.AddListener(OnUserSendClicked);
-            var recorder = _npcClient.GetComponent<DW_NPCClient_VoiceModule>().GetOrCreateRecorder();
+            var recorder = _npcClient.GetComponent<PlayKit_NPCClient_VoiceModule>().GetOrCreateRecorder();
             recorder.OnRecordingStarted += () =>
             {
                 stopNpcRecordBtn.gameObject.SetActive(true);
@@ -78,7 +78,7 @@ namespace Developerworks_SDK.Example
             };
             recorder.OnRecordingStopped += clip =>
             {
-                _npcClient.GetComponent<DW_NPCClient_VoiceModule>().ListenOnly(clip);
+                _npcClient.GetComponent<PlayKit_NPCClient_VoiceModule>().ListenOnly(clip);
                 stopNpcRecordBtn.gameObject.SetActive(false);
                 npcRecordBtn.gameObject.SetActive(true);
             };
@@ -86,14 +86,14 @@ namespace Developerworks_SDK.Example
 
         private void OnStopNpcRecord()
         {
-            var recorder = _npcClient.GetComponent<DW_NPCClient_VoiceModule>().GetOrCreateRecorder();
+            var recorder = _npcClient.GetComponent<PlayKit_NPCClient_VoiceModule>().GetOrCreateRecorder();
             recorder.StopRecording();
             
         }
 
         private void OnNpcRecord()
         {
-            var recorder = _npcClient.GetComponent<DW_NPCClient_VoiceModule>().GetOrCreateRecorder();
+            var recorder = _npcClient.GetComponent<PlayKit_NPCClient_VoiceModule>().GetOrCreateRecorder();
             recorder.StartRecording();
             
         }
@@ -203,14 +203,14 @@ namespace Developerworks_SDK.Example
              * and if there is not, it will automatically start up the login modal.
              * If you pass in your developer key, the sdk skips player validation.
              */
-            var result = await DW_SDK.InitializeAsync("dev-ffaade38-b11d-4fc1-87e3-81867536512c");
+            var result = await PlayKit_SDK.InitializeAsync("dev-ffaade38-b11d-4fc1-87e3-81867536512c");
 
             if (!result)
             {
                 Debug.LogError("initialization failed, you should place a sdk object first, then fill in your gameId in the sdk object. 初始化失败，你需要放置一个sdk prefab，然后将你的游戏Id填写到sdk里");
                 return;
             }
-            _aiChatClient = DW_SDK.Factory.CreateChatClient(); 
+            _aiChatClient = PlayKit_SDK.Factory.CreateChatClient(); 
             npcSettingField.text = _npcClient.CharacterDesign;
 
 

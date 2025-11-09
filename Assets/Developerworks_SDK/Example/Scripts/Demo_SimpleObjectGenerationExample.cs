@@ -3,9 +3,10 @@ using Cysharp.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using System.Collections.Generic;
-using Developerworks_SDK;
+using PlayKit_SDK;
+using PlayKit_SDK.Public;
 
-namespace Developerworks_SDK.Example
+namespace PlayKit_SDK.Example
 {
     /// <summary>
     /// Simplified example demonstrating the new schema library system for AI Object Generation
@@ -14,10 +15,10 @@ namespace Developerworks_SDK.Example
     public class Demo_SimpleObjectGenerationExample : MonoBehaviour
     {
         [Header("Settings")]
-        [SerializeField] private DW_SchemaLibrary customSchemaLibrary; // Optional custom library
-        [SerializeField] private DW_NPCClient npcClient;
+        [SerializeField] private PlayKit_SchemaLibrary customSchemaLibrary; // Optional custom library
+        [SerializeField] private PlayKit_NPCClient npcClient;
         
-        private DW_AIChatClient chatClient;
+        private PlayKit_AIChatClient chatClient;
 
         private void Start()
         {
@@ -26,12 +27,12 @@ namespace Developerworks_SDK.Example
 
         private async UniTask InitializeExample()
         {
-            await DW_SDK.InitializeAsync();
+            await PlayKit_SDK.InitializeAsync();
             // Wait for SDK to be ready
-            await UniTask.WaitUntil(() => DW_SDK.IsReady());
+            await UniTask.WaitUntil(() => PlayKit_SDK.IsReady());
             
             // Create chat client with structured output capabilities
-            chatClient = DW_SDK.Factory.CreateChatClient();
+            chatClient = PlayKit_SDK.Factory.CreateChatClient();
             
             if (chatClient == null)
             {
@@ -260,24 +261,24 @@ namespace Developerworks_SDK.Example
             }
 
             // Create a conversation with messages using Public.DW_ChatMessage
-            var messages = new List<Developerworks_SDK.Public.DW_ChatMessage>
+            var messages = new List<DW_ChatMessage>
             {
-                new Developerworks_SDK.Public.DW_ChatMessage
+                new DW_ChatMessage
                 {
                     Role = "system",
                     Content = "You are a helpful shop assistant in a fantasy RPG game."
                 },
-                new Developerworks_SDK.Public.DW_ChatMessage
+                new DW_ChatMessage
                 {
                     Role = "user", 
                     Content = "What potions do you have for sale?"
                 },
-                new Developerworks_SDK.Public.DW_ChatMessage
+                new DW_ChatMessage
                 {
                     Role = "assistant",
                     Content = "We have healing potions, mana potions, and strength potions available."
                 },
-                new Developerworks_SDK.Public.DW_ChatMessage
+                new DW_ChatMessage
                 {
                     Role = "user",
                     Content = "Give me details about your healing potions in a structured format."
@@ -482,7 +483,7 @@ namespace Developerworks_SDK.Example
         /// </summary>
         private void OnGUI()
         {
-            if (!DW_SDK.IsReady()) return;
+            if (!PlayKit_SDK.IsReady()) return;
 
             GUILayout.BeginArea(new Rect(10, 10, 400, 300));
             GUILayout.Label("Simplified AI Object Generation Examples");

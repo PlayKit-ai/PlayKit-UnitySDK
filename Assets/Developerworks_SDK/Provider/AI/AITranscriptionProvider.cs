@@ -6,20 +6,20 @@ using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace Developerworks_SDK.Provider.AI
+namespace PlayKit_SDK.Provider.AI
 {
     /// <summary>
     /// Provider for the platform audio transcription endpoint (/ai/{gameId}/v1/audio/transcriptions)
     /// </summary>
     internal class AITranscriptionProvider : ITranscriptionProvider
     {
-        private readonly Auth.DW_AuthManager _authManager;
-        private readonly bool _useOversea;
+        private readonly Auth.PlayKit_AuthManager _authManager;
+        // private readonly bool _useOversea;
 
-        public AITranscriptionProvider(Auth.DW_AuthManager authManager, bool useOversea = false)
+        public AITranscriptionProvider(Auth.PlayKit_AuthManager authManager, bool useOversea = false)
         {
             _authManager = authManager;
-            _useOversea = useOversea;
+            // _useOversea = useOversea;
         }
 
         private string GetTranscriptionUrl()
@@ -29,11 +29,11 @@ namespace Developerworks_SDK.Provider.AI
                 throw new InvalidOperationException("PublishableKey (GameId) is not available from AuthManager.");
             }
 
-            if (_useOversea)
-            {
-                return $"https://dwoversea.agentlandlab.com/ai/{_authManager.gameId}/v1/audio/transcriptions";
-            }
-            return $"https://developerworks.agentlandlab.com/ai/{_authManager.gameId}/v1/audio/transcriptions";
+            // if (_useOversea)
+            // {
+            //     return $"https://dwoversea.agentlandlab.com/ai/{_authManager.gameId}/v1/audio/transcriptions";
+            // }
+            return $"https://playkit.agentlandlab.com/ai/{_authManager.gameId}/v1/audio/transcriptions";
         }
 
         private string GetAuthToken()

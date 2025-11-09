@@ -7,13 +7,13 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Networking;
 using UnityEngine.UI;
-namespace Developerworks_SDK.Auth
+namespace PlayKit_SDK.Auth
 {
     /// <summary>
     /// Manages the headless authentication flow by directly calling the backend API.
     /// This component now also drives the UI flow based on serialized fields.
     /// </summary>
-    public class DW_AuthFlowManager : MonoBehaviour
+    public class PlayKit_AuthFlowManager : MonoBehaviour
     {
         // Public property to signal the final outcome of the entire flow.
         public bool IsSuccess { get; private set; } = false;
@@ -52,10 +52,10 @@ namespace Developerworks_SDK.Auth
         [SerializeField] private GameObject dialogue;
 
         [Header("API Configuration")] [Tooltip("The base URL of your backend authentication API.")]
-        private string apiBaseUrl = "https://developerworks.agentlandlab.com";
+        private string apiBaseUrl = "https://playkit.agentlandlab.com";
 
         // --- Public Properties ---
-        public DW_AuthManager AuthManager { get; set; }
+        public PlayKit_AuthManager AuthManager { get; set; }
 
         // --- Private State ---
         private string _currentSessionId;
@@ -362,9 +362,9 @@ namespace Developerworks_SDK.Auth
                 string playerToken = playerClient.GetPlayerToken();
                 string expiresAt = playerClient.LastExchangeResponse.ExpiresAt;
 
-                DW_AuthManager.SavePlayerToken(playerToken, expiresAt);
+                PlayKit_AuthManager.SavePlayerToken(playerToken, expiresAt);
                 // Also save to shared token storage for cross-app usage
-                DW_LocalSharedToken.SaveToken(playerToken);
+                PlayKit_LocalSharedToken.SaveToken(playerToken);
                 Debug.Log("[DW Auth] JWT exchanged for Player Token and saved successfully (both local and shared).");
                 return true;
             }

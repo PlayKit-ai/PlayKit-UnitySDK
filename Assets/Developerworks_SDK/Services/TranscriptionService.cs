@@ -2,11 +2,11 @@ using System;
 using System.IO;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Developerworks_SDK.Provider;
-using Developerworks_SDK.Provider.AI;
+using PlayKit_SDK.Provider;
+using PlayKit_SDK.Provider.AI;
 using UnityEngine;
 
-namespace Developerworks_SDK.Services
+namespace PlayKit_SDK.Services
 {
     /// <summary>
     /// Service for audio transcription, handles audio format conversion and API communication

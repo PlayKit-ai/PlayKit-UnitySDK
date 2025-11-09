@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Developerworks_SDK.Public
+namespace PlayKit_SDK.Public
 {
     public class DW_AIResult<T> { public bool Success { get; } public T Response { get; } public string ErrorMessage { get; } public DW_AIResult(T data) { Success = true; Response = data; } public DW_AIResult(string errorMessage) { Success = false; Response = default; ErrorMessage = errorMessage; } }
     

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace Developerworks_SDK.Provider.AI
+namespace PlayKit_SDK.Provider.AI
 {
     /// <summary>
     /// Data models for AI image generation endpoint

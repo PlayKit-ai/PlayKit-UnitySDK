@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text; // MODIFIED: Added for StringBuilder
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Developerworks_SDK.Provider.AI;
+using PlayKit_SDK.Provider.AI;
 
-namespace Developerworks_SDK.Services
+namespace PlayKit_SDK.Services
 {
     internal class ChatService
     {

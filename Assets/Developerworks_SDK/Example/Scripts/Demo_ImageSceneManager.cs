@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace Developerworks_SDK.Example
+namespace PlayKit_SDK.Example
 {
     public class Demo_ImageSceneManager : MonoBehaviour
     {
@@ -20,7 +20,7 @@ namespace Developerworks_SDK.Example
              * and if there is not, it will automatically start up the login modal.
              * If you pass in your developer key, the sdk skips player validation.
              */
-            var result = await DW_SDK.InitializeAsync();
+            var result = await PlayKit_SDK.InitializeAsync();
 
             if (!result)
             {
@@ -69,7 +69,7 @@ namespace Developerworks_SDK.Example
         private async UniTaskVoid OnButtonClicked()
         {
             sendBtn.interactable = false;
-            var imageGen = DW_SDK.Factory.CreateImageClient("flux-1-schnell");
+            var imageGen = PlayKit_SDK.Factory.CreateImageClient("flux-1-schnell");
             try
             {
                 var genResult = await imageGen.GenerateImageAsync(userInputField.text,"1024x1024");

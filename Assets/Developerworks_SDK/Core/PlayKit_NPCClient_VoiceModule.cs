@@ -3,14 +3,14 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-namespace Developerworks_SDK
+namespace PlayKit_SDK
 {
     /// <summary>
     /// Voice input module for NPC Client
     /// Provides speech-to-text capabilities for NPC conversations
     /// Automatically integrates with DW_NPCClient on the same GameObject
     /// </summary>
-    public class DW_NPCClient_VoiceModule : MonoBehaviour
+    public class PlayKit_NPCClient_VoiceModule : MonoBehaviour
     {
         [Header("Voice Transcription Configuration 语音转录配置")]
         [Tooltip("Transcription model name (e.g., whisper-1) 转录模型名称（例如：whisper-1）")]
@@ -20,14 +20,14 @@ namespace Developerworks_SDK
 
         [Header("Microphone Recording (Optional) 麦克风录制（可选）")]
         [Tooltip("Optional: Attach a DW_MicrophoneRecorder for integrated recording functionality 可选：附加DW_MicrophoneRecorder组件以集成录制功能")]
-        [SerializeField] private DW_MicrophoneRecorder microphoneRecorder;
+        [SerializeField] private PlayKit_MicrophoneRecorder microphoneRecorder;
 
         [Header("Debug Options 调试选项")]
         [Tooltip("Log transcription results to console 将转录结果输出到控制台")]
         [SerializeField] private bool logTranscription = true;
 
-        private DW_NPCClient _npcClient;
-        private DW_AudioTranscriptionClient _transcriptionClient;
+        private PlayKit_NPCClient _npcClient;
+        private PlayKit_AudioTranscriptionClient _transcriptionClient;
         private bool _isReady;
 
         /// <summary>
@@ -53,10 +53,10 @@ namespace Developerworks_SDK
         private async UniTask Initialize()
         {
             // Wait for SDK to be ready
-            await UniTask.WaitUntil(() => DW_SDK.IsReady());
+            await UniTask.WaitUntil(() => PlayKit_SDK.IsReady());
 
             // Auto-find NPCClient on the same GameObject
-            _npcClient = GetComponent<DW_NPCClient>();
+            _npcClient = GetComponent<PlayKit_NPCClient>();
             if (_npcClient == null)
             {
                 Debug.LogError("[VoiceModule] No DW_NPCClient found on this GameObject! Voice module requires DW_NPCClient component.");
@@ -69,7 +69,7 @@ namespace Developerworks_SDK
             // Create transcription client
             try
             {
-                _transcriptionClient = DW_SDK.CreateTranscriptionClient(transcriptionModel);
+                _transcriptionClient = PlayKit_SDK.CreateTranscriptionClient(transcriptionModel);
                 _isReady = true;
                 Debug.Log($"[VoiceModule] Ready! Using transcription model '{transcriptionModel}' with NPC '{gameObject.name}'");
             }
@@ -312,7 +312,7 @@ namespace Developerworks_SDK
         /// <summary>
         /// Get the associated NPCClient
         /// </summary>
-        public DW_NPCClient GetNPCClient()
+        public PlayKit_NPCClient GetNPCClient()
         {
             return _npcClient;
         }
@@ -320,7 +320,7 @@ namespace Developerworks_SDK
         /// <summary>
         /// Get the transcription client (for advanced usage)
         /// </summary>
-        public DW_AudioTranscriptionClient GetTranscriptionClient()
+        public PlayKit_AudioTranscriptionClient GetTranscriptionClient()
         {
             return _transcriptionClient;
         }
@@ -329,14 +329,14 @@ namespace Developerworks_SDK
         /// Get or create a microphone recorder component
         /// </summary>
         /// <returns>The DW_MicrophoneRecorder instance</returns>
-        public DW_MicrophoneRecorder GetOrCreateRecorder()
+        public PlayKit_MicrophoneRecorder GetOrCreateRecorder()
         {
             if (microphoneRecorder == null)
             {
-                microphoneRecorder = GetComponent<DW_MicrophoneRecorder>();
+                microphoneRecorder = GetComponent<PlayKit_MicrophoneRecorder>();
                 if (microphoneRecorder == null)
                 {
-                    microphoneRecorder = gameObject.AddComponent<DW_MicrophoneRecorder>();
+                    microphoneRecorder = gameObject.AddComponent<PlayKit_MicrophoneRecorder>();
                     Debug.Log("[VoiceModule] Created new DW_MicrophoneRecorder component");
                 }
             }

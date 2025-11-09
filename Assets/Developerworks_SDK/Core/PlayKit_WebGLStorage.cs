@@ -1,9 +1,9 @@
 using System.Runtime.InteropServices;
 using UnityEngine;
 
-namespace Developerworks_SDK.Core
+namespace PlayKit_SDK.Core
 {
-    public static class DW_WebGLStorage
+    public static class PlayKit_WebGLStorage
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
         [DllImport("__Internal")]

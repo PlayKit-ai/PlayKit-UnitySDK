@@ -1,8 +1,8 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Developerworks_SDK.Provider.AI;
+using PlayKit_SDK.Provider.AI;
 
-namespace Developerworks_SDK.Provider
+namespace PlayKit_SDK.Provider
 {
     /// <summary>
     /// Interface for audio transcription providers

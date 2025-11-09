@@ -5,11 +5,11 @@ using System.Security.Cryptography;
 #endif
 using System.Text;
 using UnityEngine;
-using Developerworks_SDK.Core;
+using PlayKit_SDK.Core;
 
-namespace Developerworks_SDK.Auth
+namespace PlayKit_SDK.Auth
 {
-    public static class DW_LocalSharedToken
+    public static class PlayKit_LocalSharedToken
     {
     private const string TokenFileName = "shared_token.txt";
     private const string SharedFolderName = "DeveloperWorks_SDK";

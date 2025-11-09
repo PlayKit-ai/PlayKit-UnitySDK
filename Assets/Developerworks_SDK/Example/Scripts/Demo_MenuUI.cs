@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace Developerworks_SDK.Example
+namespace PlayKit_SDK.Example
 {
     public class Demo_MenuUI : MonoBehaviour
     {
@@ -32,7 +32,7 @@ namespace Developerworks_SDK.Example
              * and if there is not, it will automatically start up the login modal.
              * If you pass in your developer key, the sdk skips player validation.
              */
-            var result = await DW_SDK.InitializeAsync();
+            var result = await PlayKit_SDK.InitializeAsync();
 
             if (!result)
             {

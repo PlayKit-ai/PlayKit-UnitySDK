@@ -2,24 +2,24 @@ using System;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-namespace Developerworks_SDK
+namespace PlayKit_SDK
 {
-    public class DW_SDK : MonoBehaviour
+    public class PlayKit_SDK : MonoBehaviour
     {
         public const string VERSION = "v0.1.7.3-beta";
 
-        [Tooltip("Your game ID from Developerworks platform 从Developerworks平台获取的游戏ID")]
+        [Tooltip("Your game ID from PlayKit platform 从PlayKit平台获取的游戏ID")]
         [SerializeField] private string gameId;
         [Tooltip("Default chat model to use (e.g., gpt-4o-mini) 默认使用的对话模型（例如：gpt-4o-mini）")]
         [SerializeField] private string defaultChatModel;
         [Tooltip("Default image generation model to use 默认使用的图像生成模型")]
         [SerializeField] private string defaultImageModel;
-        [Tooltip("Reference to DW_AuthManager component DW_AuthManager组件引用")]
-        [SerializeField] private Auth.DW_AuthManager authManager;
+        [Tooltip("Reference to PlayKit_AuthManager component PlayKit_AuthManager组件引用")]
+        [SerializeField] private Auth.PlayKit_AuthManager authManager;
         [Tooltip("Ignore developer token (use player tokens only) 忽略开发者令牌（仅使用玩家令牌）")]
         [SerializeField] private bool ignoreDeveloperToken;
         
-        public static DW_SDK Instance { get; private set; }
+        public static PlayKit_SDK Instance { get; private set; }
 
         private void Awake()
         {
@@ -35,7 +35,7 @@ namespace Developerworks_SDK
         }
 
         private static bool _isInitialized = false;
-        private static Auth.DW_AuthManager _dwAuthManager => Instance.authManager;
+        private static Auth.PlayKit_AuthManager PlayKitAuthManager => Instance.authManager;
         private static Provider.IChatProvider _chatProvider;
         private static Provider.IImageProvider _imageProvider;
         private static Provider.AI.IObjectProvider _objectProvider;
@@ -56,7 +56,7 @@ namespace Developerworks_SDK
 
             if (string.IsNullOrEmpty(Instance.gameId))
             {
-                Debug.LogError("Please fill in gameId from your game. Get one from https://developerworks.agentlandlab.com");
+                Debug.LogError("Please fill in gameId from your game. Get one from https://playkit.agentlandlab.com \n请填写gameId到你的DW_SDK预制体中，从https://playkit.agentlandlab.com获取");
                 return false;
             }
             
@@ -68,7 +68,7 @@ namespace Developerworks_SDK
             if (developerToken != null && !Instance.ignoreDeveloperToken)
             {
                 Debug.Log("[Developerworks SDK] You are loading a developer token, this can cost you money, but is fine for development...");
-                _dwAuthManager.Setup(Instance.gameId, developerToken);
+                PlayKitAuthManager.Setup(Instance.gameId, developerToken);
 
                 // Show developer key warning in non-editor builds
 #if !UNITY_EDITOR
@@ -78,10 +78,10 @@ namespace Developerworks_SDK
             else
             {
                 
-                _dwAuthManager.Setup(Instance.gameId);
+                PlayKitAuthManager.Setup(Instance.gameId);
 
             }
-            bool authSuccess = await _dwAuthManager.AuthenticateAsync();
+            bool authSuccess = await PlayKitAuthManager.AuthenticateAsync();
 
             if (!authSuccess)
             {
@@ -89,10 +89,10 @@ namespace Developerworks_SDK
                 return false;
             }
 
-            _chatProvider = new Provider.AI.AIChatProvider(_dwAuthManager);
-            _imageProvider = new Provider.AI.AIImageProvider(_dwAuthManager);
-            _objectProvider = new Provider.AI.AIObjectProvider(_dwAuthManager);
-            _transcriptionProvider = new Provider.AI.AITranscriptionProvider(_dwAuthManager);
+            _chatProvider = new Provider.AI.AIChatProvider(PlayKitAuthManager);
+            _imageProvider = new Provider.AI.AIImageProvider(PlayKitAuthManager);
+            _objectProvider = new Provider.AI.AIObjectProvider(PlayKitAuthManager);
+            _transcriptionProvider = new Provider.AI.AITranscriptionProvider(PlayKitAuthManager);
             _isInitialized = true;
             Debug.Log("[Developerworks SDK] Developerworks_SDK Initialized Successfully");
             return true;
@@ -129,15 +129,15 @@ namespace Developerworks_SDK
         /// This can be used to check user credits, get user info, etc.
         /// </summary>
         /// <returns>The PlayerClient instance, or null if SDK not initialized or user not authenticated</returns>
-        public static DW_PlayerClient GetPlayerClient()
+        public static PlayKit_PlayerClient GetPlayerClient()
         {
-            if (!_isInitialized || _dwAuthManager == null)
+            if (!_isInitialized || PlayKitAuthManager == null)
             {
                 Debug.LogWarning("SDK not initialized. Please call DW_SDK.InitializeAsync() first.");
                 return null;
             }
 
-            return _dwAuthManager.GetPlayerClient();
+            return PlayKitAuthManager.GetPlayerClient();
         }
 
         /// <summary>
@@ -146,7 +146,7 @@ namespace Developerworks_SDK
         /// <returns>True if ready to use, false otherwise</returns>
         public static bool IsReady()
         {
-            return _isInitialized && _dwAuthManager != null;
+            return _isInitialized && PlayKitAuthManager != null;
         }
 
         public static class Factory
@@ -154,7 +154,7 @@ namespace Developerworks_SDK
             /// <summary>
             /// Creates a standard chat client with both text and structured output capabilities
             /// </summary>
-            public static DW_AIChatClient CreateChatClient(string modelName = null)
+            public static PlayKit_AIChatClient CreateChatClient(string modelName = null)
             {
                 if (!Instance)
                 {
@@ -168,13 +168,13 @@ namespace Developerworks_SDK
                 
                 string model = modelName ?? Instance.defaultChatModel;
                 var chatService = new Services.ChatService(_chatProvider);
-                return new DW_AIChatClient(model, chatService, _objectProvider);
+                return new PlayKit_AIChatClient(model, chatService, _objectProvider);
             }
 
             /// <summary>
             /// Creates an image generation client for AI-powered image creation
             /// </summary>
-            public static DW_AIImageClient CreateImageClient(string modelName = null)
+            public static PlayKit_AIImageClient CreateImageClient(string modelName = null)
             {
                 if (!Instance)
                 {
@@ -194,7 +194,7 @@ namespace Developerworks_SDK
                     return null;
                 }
                 
-                return new DW_AIImageClient(model, _imageProvider);
+                return new PlayKit_AIImageClient(model, _imageProvider);
             }
 
             /// <summary>
@@ -202,7 +202,7 @@ namespace Developerworks_SDK
             /// </summary>
             /// <param name="modelName">The transcription model to use (e.g., "whisper-1")</param>
             /// <returns>An audio transcription client</returns>
-            public static DW_AudioTranscriptionClient CreateTranscriptionClient(string modelName)
+            public static PlayKit_AudioTranscriptionClient CreateTranscriptionClient(string modelName)
             {
                 if (!Instance)
                 {
@@ -222,7 +222,7 @@ namespace Developerworks_SDK
                 }
 
                 var transcriptionService = new Services.TranscriptionService(_transcriptionProvider);
-                return new DW_AudioTranscriptionClient(modelName, transcriptionService);
+                return new PlayKit_AudioTranscriptionClient(modelName, transcriptionService);
             }
 
         }
@@ -236,7 +236,7 @@ namespace Developerworks_SDK
             /// <param name="recipient">The NPC Object</param>
             /// <param name="modelName">Optional specific model to use</param>
             /// <returns>An NPC client ready for conversation</returns>
-            public static void CreateNpc(DW_NPCClient recipient, string modelName = null)
+            public static void CreateNpc(PlayKit_NPCClient recipient, string modelName = null)
             {
                 if (!Instance)
                 {
@@ -264,7 +264,7 @@ namespace Developerworks_SDK
         /// </summary>
         /// <param name="modelName">The transcription model to use (e.g., "whisper-1")</param>
         /// <returns>An audio transcription client</returns>
-        public static DW_AudioTranscriptionClient CreateTranscriptionClient(string modelName)
+        public static PlayKit_AudioTranscriptionClient CreateTranscriptionClient(string modelName)
         {
             return Factory.CreateTranscriptionClient(modelName);
         }

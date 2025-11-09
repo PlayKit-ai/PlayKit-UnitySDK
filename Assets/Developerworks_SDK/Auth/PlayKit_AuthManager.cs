@@ -1,11 +1,11 @@
 using System;
 using Cysharp.Threading.Tasks;
-using Developerworks_SDK.Art;
+using PlayKit_SDK.Art;
 using UnityEngine;
 
-namespace Developerworks_SDK.Auth
+namespace PlayKit_SDK.Auth
 {
-    public class DW_AuthManager : MonoBehaviour
+    public class PlayKit_AuthManager : MonoBehaviour
     {
         // CHANGED: Keys are now more specific to "PlayerToken"
         private const string PlayerTokenKey = "DW_SDK_PlayerToken";
@@ -15,8 +15,8 @@ namespace Developerworks_SDK.Auth
         public string AuthToken { get; private set; }
         public bool IsDeveloperToken { get; private set; }
 
-        [SerializeField]private DW_PlayerClient _playerClient;
-        public DW_PlayerClient PlayerClient { get => _playerClient; }
+        [SerializeField]private PlayKit_PlayerClient _playerClient;
+        public PlayKit_PlayerClient PlayerClient { get => _playerClient; }
         private LoadingSpinner standaloneLoadingObject;
 
         public void Setup(string publishableKey, string developerToken = null)
@@ -89,7 +89,7 @@ namespace Developerworks_SDK.Auth
             }
 
             var loginWebInstance = GameObject.Instantiate(loginWebPrefab);
-            var authFlowManager = loginWebInstance.GetComponent<DW_AuthFlowManager>();
+            var authFlowManager = loginWebInstance.GetComponent<PlayKit_AuthFlowManager>();
             if (authFlowManager == null)
             {
                 Debug.LogError("[Developerworks SDK] AuthFlowManager component not found on the LoginWeb prefab!");
@@ -132,7 +132,7 @@ namespace Developerworks_SDK.Auth
             // Do not overwrite a developer token or existing valid token.
             if (IsDeveloperToken || !string.IsNullOrEmpty(AuthToken)) return;
 
-            string sharedToken = DW_LocalSharedToken.LoadToken();
+            string sharedToken = PlayKit_LocalSharedToken.LoadToken();
             if (!string.IsNullOrEmpty(sharedToken))
             {
                 AuthToken = sharedToken;
@@ -275,7 +275,7 @@ namespace Developerworks_SDK.Auth
             PlayerPrefs.Save();
             
             // Also save to shared token storage
-            DW_LocalSharedToken.SaveToken(token);
+            PlayKit_LocalSharedToken.SaveToken(token);
             
             Debug.Log("[Developerworks SDK] New player token saved successfully (both local and shared).");
         }
@@ -287,7 +287,7 @@ namespace Developerworks_SDK.Auth
             PlayerPrefs.Save();
             
             // Also clear the shared token
-            DW_LocalSharedToken.EraseToken();
+            PlayKit_LocalSharedToken.EraseToken();
         }
         
         /// <summary>
@@ -295,7 +295,7 @@ namespace Developerworks_SDK.Auth
         /// This should be called after successful authentication.
         /// </summary>
         /// <returns>The PlayerClient instance, or null if not authenticated</returns>
-        public DW_PlayerClient GetPlayerClient()
+        public PlayKit_PlayerClient GetPlayerClient()
         {
             // Only return the PlayerClient if we have a valid token
             if (IsTokenValid())

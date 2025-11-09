@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using UnityEngine;
 
-namespace Developerworks_SDK.Art
+namespace PlayKit_SDK.Art
 {
     public class LoadingSpinner : MonoBehaviour
     {

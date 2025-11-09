@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace Developerworks_SDK.Provider.AI
+namespace PlayKit_SDK.Provider.AI
 {
     /// <summary>
     /// Provider for the platform AI image endpoint (/ai/{gameId}/v1/image)
@@ -13,9 +13,9 @@ namespace Developerworks_SDK.Provider.AI
     /// </summary>
     internal class AIImageProvider : IImageProvider
     {
-        private readonly Auth.DW_AuthManager _authManager;
+        private readonly Auth.PlayKit_AuthManager _authManager;
         private readonly bool _useOversea = false;
-        public AIImageProvider(Auth.DW_AuthManager authManager, bool useOversea = false)
+        public AIImageProvider(Auth.PlayKit_AuthManager authManager, bool useOversea = false)
         {
             _authManager = authManager;
             _useOversea = useOversea;
@@ -31,7 +31,7 @@ namespace Developerworks_SDK.Provider.AI
             {
                 return $"https://dwoversea.agentlandlab.com/ai/{_authManager.gameId}/v1/image";
             }
-            return $"https://developerworks.agentlandlab.com/ai/{_authManager.gameId}/v1/image";
+            return $"https://playkit.agentlandlab.com/ai/{_authManager.gameId}/v1/image";
         }
 
         private string GetAuthToken()
@@ -81,18 +81,18 @@ namespace Developerworks_SDK.Provider.AI
                         // Try to parse error response
                         try
                         {
-                            var errorResponse = JsonConvert.DeserializeObject<DW_ApiErrorResponse>(webRequest.downloadHandler.text);
+                            var errorResponse = JsonConvert.DeserializeObject<PlayKit_ApiErrorResponse>(webRequest.downloadHandler.text);
                             if (errorResponse?.error != null)
                             {
                                 // Check for specific image size validation errors
-                                if (errorResponse.error.code == DW_ErrorCodes.INVALID_SIZE_FORMAT ||
-                                    errorResponse.error.code == DW_ErrorCodes.INVALID_SIZE_VALUE ||
-                                    errorResponse.error.code == DW_ErrorCodes.SIZE_EXCEEDS_LIMIT ||
-                                    errorResponse.error.code == DW_ErrorCodes.SIZE_NOT_MULTIPLE ||
-                                    errorResponse.error.code == DW_ErrorCodes.SIZE_NOT_ALLOWED)
+                                if (errorResponse.error.code == PlayKit_ErrorCodes.INVALID_SIZE_FORMAT ||
+                                    errorResponse.error.code == PlayKit_ErrorCodes.INVALID_SIZE_VALUE ||
+                                    errorResponse.error.code == PlayKit_ErrorCodes.SIZE_EXCEEDS_LIMIT ||
+                                    errorResponse.error.code == PlayKit_ErrorCodes.SIZE_NOT_MULTIPLE ||
+                                    errorResponse.error.code == PlayKit_ErrorCodes.SIZE_NOT_ALLOWED)
                                 {
                                     // Don't log here, let the caller handle it
-                                    throw new DW_ImageSizeValidationException(
+                                    throw new PlayKitImageSizeValidationException(
                                         errorResponse.error.message,
                                         errorResponse.error.code,
                                         request.Size
@@ -100,7 +100,7 @@ namespace Developerworks_SDK.Provider.AI
                                 }
 
                                 // Throw general API error
-                                throw new DW_ApiErrorException(
+                                throw new PlayKitApiErrorException(
                                     errorResponse.error.message,
                                     errorResponse.error.code,
                                     (int)webRequest.responseCode
@@ -116,12 +116,12 @@ namespace Developerworks_SDK.Provider.AI
                     
                     // Only log for actual network/unknown errors
                     Debug.LogError($"[AIImageProvider] API request failed: {ex.Message}");
-                    throw new DWException($"Network request failed: {ex.Message}", ex);
+                    throw new PlayKitException($"Network request failed: {ex.Message}", ex);
                 }
-                catch (Exception ex) when (!(ex is OperationCanceledException) && !(ex is DW_ImageSizeValidationException) && !(ex is DW_ApiErrorException) && !(ex is DWException))
+                catch (Exception ex) when (!(ex is OperationCanceledException) && !(ex is PlayKitImageSizeValidationException) && !(ex is PlayKitApiErrorException) && !(ex is PlayKitException))
                 {
                     Debug.LogError($"[AIImageProvider] Unexpected error: {ex.Message}");
-                    throw new DWException($"Unexpected error: {ex.Message}", ex);
+                    throw new PlayKitException($"Unexpected error: {ex.Message}", ex);
                 }
                 
                 if (webRequest.result != UnityWebRequest.Result.Success) 
@@ -131,17 +131,17 @@ namespace Developerworks_SDK.Provider.AI
                     // Try to parse error response
                     try
                     {
-                        var errorResponse = JsonConvert.DeserializeObject<DW_ApiErrorResponse>(webRequest.downloadHandler.text);
+                        var errorResponse = JsonConvert.DeserializeObject<PlayKit_ApiErrorResponse>(webRequest.downloadHandler.text);
                         if (errorResponse?.error != null)
                         {
                             // Check for specific image size validation errors
-                            if (errorResponse.error.code == DW_ErrorCodes.INVALID_SIZE_FORMAT ||
-                                errorResponse.error.code == DW_ErrorCodes.INVALID_SIZE_VALUE ||
-                                errorResponse.error.code == DW_ErrorCodes.SIZE_EXCEEDS_LIMIT ||
-                                errorResponse.error.code == DW_ErrorCodes.SIZE_NOT_MULTIPLE ||
-                                errorResponse.error.code == DW_ErrorCodes.SIZE_NOT_ALLOWED)
+                            if (errorResponse.error.code == PlayKit_ErrorCodes.INVALID_SIZE_FORMAT ||
+                                errorResponse.error.code == PlayKit_ErrorCodes.INVALID_SIZE_VALUE ||
+                                errorResponse.error.code == PlayKit_ErrorCodes.SIZE_EXCEEDS_LIMIT ||
+                                errorResponse.error.code == PlayKit_ErrorCodes.SIZE_NOT_MULTIPLE ||
+                                errorResponse.error.code == PlayKit_ErrorCodes.SIZE_NOT_ALLOWED)
                             {
-                                throw new DW_ImageSizeValidationException(
+                                throw new PlayKitImageSizeValidationException(
                                     errorResponse.error.message,
                                     errorResponse.error.code,
                                     request.Size
@@ -149,7 +149,7 @@ namespace Developerworks_SDK.Provider.AI
                             }
 
                             // Throw general API error
-                            throw new DW_ApiErrorException(
+                            throw new PlayKitApiErrorException(
                                 errorResponse.error.message,
                                 errorResponse.error.code,
                                 (int)webRequest.responseCode
@@ -160,18 +160,18 @@ namespace Developerworks_SDK.Provider.AI
                     {
                         // If error response parsing fails, continue to throw generic error below
                     }
-                    catch (DW_ImageSizeValidationException)
+                    catch (PlayKitImageSizeValidationException)
                     {
                         // Re-throw image size validation exceptions
                         throw;
                     }
-                    catch (DW_ApiErrorException)
+                    catch (PlayKitApiErrorException)
                     {
                         // Re-throw API error exceptions
                         throw;
                     }
 
-                    throw new DWException(
+                    throw new PlayKitException(
                         $"API request failed with status {webRequest.responseCode}: {webRequest.error}",
                         null,
                         (int)webRequest.responseCode

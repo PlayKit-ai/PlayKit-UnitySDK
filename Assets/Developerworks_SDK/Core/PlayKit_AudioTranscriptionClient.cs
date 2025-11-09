@@ -2,18 +2,18 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-namespace Developerworks_SDK
+namespace PlayKit_SDK
 {
     /// <summary>
     /// Client for audio transcription functionality
     /// Converts audio (AudioClip or raw bytes) to text using AI models
     /// </summary>
-    public class DW_AudioTranscriptionClient
+    public class PlayKit_AudioTranscriptionClient
     {
         private readonly string _model;
         private readonly Services.TranscriptionService _service;
 
-        internal DW_AudioTranscriptionClient(string model, Services.TranscriptionService service)
+        internal PlayKit_AudioTranscriptionClient(string model, Services.TranscriptionService service)
         {
             _model = model;
             _service = service;

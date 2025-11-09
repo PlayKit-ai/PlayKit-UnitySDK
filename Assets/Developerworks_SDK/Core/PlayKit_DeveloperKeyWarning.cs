@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class DW_DeveloperKeyWarning : MonoBehaviour
+public class PlayKit_DeveloperKeyWarning : MonoBehaviour
 {
     [SerializeField] private Button label,modal;
 

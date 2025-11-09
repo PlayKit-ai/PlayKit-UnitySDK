@@ -1,14 +1,14 @@
 using System;
 using UnityEngine;
 
-namespace Developerworks_SDK
+namespace PlayKit_SDK
 {
     /// <summary>
     /// Microphone recorder component that wraps Unity's Microphone API
     /// Provides simple recording, stopping, and AudioClip retrieval
     /// Supports Voice Activity Detection (VAD) for automatic silence detection
     /// </summary>
-    public class DW_MicrophoneRecorder : MonoBehaviour
+    public class PlayKit_MicrophoneRecorder : MonoBehaviour
     {
         [Header("Recording Configuration 录制配置")]
         [Tooltip("Maximum recording duration in seconds 最大录制时长（秒）")]
