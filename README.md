@@ -1,6 +1,6 @@
 # Developerworks Unity SDK
 
-[![Version](https://img.shields.io/badge/version-v0.1.7.2--beta-blue.svg)](https://github.com/cnqdztp/Developerworks-UnitySDK)
+[![Version](https://img.shields.io/badge/version-v0.1.7.2--beta-blue.svg)](https://github.com/cnqdztp/PlayKit-UnitySDK)
 [![Unity](https://img.shields.io/badge/Unity-2020.3+-brightgreen.svg)](https://unity.com/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20WebGL-lightgrey.svg)](https://unity.com/)
 
