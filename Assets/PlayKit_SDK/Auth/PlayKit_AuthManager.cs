@@ -19,6 +19,15 @@ namespace PlayKit_SDK.Auth
         public PlayKit_PlayerClient PlayerClient { get => _playerClient; }
         private LoadingSpinner standaloneLoadingObject;
 
+        private void Awake()
+        {
+            // Create PlayerClient if it doesn't exist (for dynamically added components)
+            if (_playerClient == null)
+            {
+                _playerClient = gameObject.AddComponent<PlayKit_PlayerClient>();
+            }
+        }
+
         public void Setup(string publishableKey, string developerToken = null)
         {
             _gameId = publishableKey;
@@ -33,7 +42,7 @@ namespace PlayKit_SDK.Auth
                 var loginWebPrefab = Resources.Load<GameObject>("Loading");
                 standaloneLoadingObject = Instantiate(loginWebPrefab).GetComponent<LoadingSpinner>();
             }
-            
+
         }
 
         public async UniTask<bool> AuthenticateAsync()

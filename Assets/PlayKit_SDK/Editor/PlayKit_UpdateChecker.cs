@@ -4,6 +4,7 @@ using Cysharp.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
+using L10n = PlayKit.SDK.Editor.L10n;
 
 namespace PlayKit_SDK.Editor
 {
@@ -32,13 +33,13 @@ namespace PlayKit_SDK.Editor
 
         private static void CheckForUpdatesAuto()
         {
-            // Check if we should auto-check (once per day)
+            // Check if we should auto-check (every 6 hours)
             string lastCheckStr = EditorPrefs.GetString(LAST_CHECK_KEY, "");
             if (!string.IsNullOrEmpty(lastCheckStr))
             {
                 if (DateTime.TryParse(lastCheckStr, out DateTime lastCheck))
                 {
-                    if ((DateTime.Now - lastCheck).TotalHours < 24)
+                    if ((DateTime.Now - lastCheck).TotalHours < 6)
                     {
                         return; // Already checked today
                     }
@@ -68,9 +69,9 @@ namespace PlayKit_SDK.Editor
                     if (isManual)
                     {
                         EditorUtility.DisplayDialog(
-                            "Update Check Failed 无法检查更新",
-                            $"Failed to check for updates:\n{webRequest.error}",
-                            "OK"
+                            L10n.Get("update.check_failed.title"),
+                            L10n.GetFormat("update.check_failed.message", webRequest.error),
+                            L10n.Get("common.ok")
                         );
                     }
                     return;
@@ -85,9 +86,9 @@ namespace PlayKit_SDK.Editor
                         if (isManual)
                         {
                             EditorUtility.DisplayDialog(
-                                "Update Check Failed 检查更新失败",
-                                "Invalid response from version server.",
-                                "OK"
+                                L10n.Get("update.check_failed.title"),
+                                L10n.GetFormat("update.check_failed.message", "Invalid response from version server."),
+                                L10n.Get("common.ok")
                             );
                         }
                         return;
@@ -108,7 +109,7 @@ namespace PlayKit_SDK.Editor
                     if (comparison < 0)
                     {
                         // New version available
-                        string message = $"A new version of Developerworks Unity SDK is available!\n" +
+                        string message = $"A new version of PlayKit Unity SDK is available!\n" +
                                        $"{currentVersion} -> {latestVersion}\n";
 
                         if (!string.IsNullOrEmpty(response.name))
@@ -127,11 +128,11 @@ namespace PlayKit_SDK.Editor
                         }
                         
                         int option = EditorUtility.DisplayDialogComplex(
-                            "SDK Update Available 新版本的SDK可供下载",
+                            L10n.Get("update.available.title"),
                             message,
-                            "Download Now 立刻下载",
-                            "Skip This Version",
-                            "Remind Me Later"
+                            L10n.Get("update.available.download"),
+                            L10n.Get("update.available.skip"),
+                            L10n.Get("update.available.later")
                         );
 
                         switch (option)
@@ -151,9 +152,9 @@ namespace PlayKit_SDK.Editor
                     {
                         // Only show "up to date" message for manual checks
                         EditorUtility.DisplayDialog(
-                            "No Updates Available",
-                            $"You are using the latest version ({currentVersion}).",
-                            "OK"
+                            L10n.Get("update.no_updates.title"),
+                            L10n.GetFormat("update.no_updates.message", currentVersion),
+                            L10n.Get("common.ok")
                         );
                     }
                 }
@@ -162,9 +163,9 @@ namespace PlayKit_SDK.Editor
                     if (isManual)
                     {
                         EditorUtility.DisplayDialog(
-                            "Update Check Failed",
-                            $"Failed to parse version information:\n{ex.Message}",
-                            "OK"
+                            L10n.Get("update.check_failed.title"),
+                            L10n.GetFormat("update.check_failed.message", $"Failed to parse version information:\n{ex.Message}"),
+                            L10n.Get("common.ok")
                         );
                     }
                     Debug.LogError($"[Developerworks SDK] Update check failed: {ex.Message}");

@@ -134,7 +134,18 @@ namespace Developerworks.SDK
         public static string LocalDeveloperToken
         {
             get => UnityEditor.EditorPrefs.GetString("PlayKit_LocalDeveloperToken", "");
-            set => UnityEditor.EditorPrefs.SetString("PlayKit_LocalDeveloperToken", value);
+            set
+            {
+                if (string.IsNullOrEmpty(value))
+                {
+                    // Delete the key when setting to empty to ensure clean state
+                    UnityEditor.EditorPrefs.DeleteKey("PlayKit_LocalDeveloperToken");
+                }
+                else
+                {
+                    UnityEditor.EditorPrefs.SetString("PlayKit_LocalDeveloperToken", value);
+                }
+            }
         }
 
         /// <summary>

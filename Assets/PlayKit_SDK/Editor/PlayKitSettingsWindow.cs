@@ -1,14 +1,15 @@
 using PlayKit_SDK.Editor;
 using UnityEngine;
 using UnityEditor;
+using System.Linq;
+using PlayKit.SDK.Editor;
+using L10n = PlayKit.SDK.Editor.L10n;
 
 namespace Developerworks.SDK
 {
     /// <summary>
     /// Editor window for configuring PlayKit SDK settings.
     /// Access via PlayKit SDK > Settings
-    /// PlayKit SDK 配置窗口
-    /// 通过 PlayKit SDK > Settings 访问
     /// </summary>
     public class PlayKitSettingsWindow : EditorWindow
     {
@@ -20,7 +21,6 @@ namespace Developerworks.SDK
         private enum Tab
         {
             Configuration,  // 配置
-            Development,    // 开发
             About          // 关于
         }
         private Tab currentTab = Tab.Configuration;
@@ -43,6 +43,7 @@ namespace Developerworks.SDK
             public GameInfo game;
             public TokenInfo token;
             public string error;
+            public bool tokenWasProvided; // Track if a token was provided for validation
         }
 
         [System.Serializable]
@@ -68,7 +69,8 @@ namespace Developerworks.SDK
         [MenuItem("PlayKit SDK/Settings", priority = 0)]
         public static void ShowWindow()
         {
-            PlayKitSettingsWindow window = GetWindow<PlayKitSettingsWindow>("PlayKit SDK Settings");
+            PlayKitSettingsWindow window = GetWindow<PlayKitSettingsWindow>(L10n.Get("window.title"));
+            
             window.minSize = new Vector2(500, 550);
             window.Show();
         }
@@ -94,11 +96,7 @@ namespace Developerworks.SDK
                 LoadSettings();
                 if (settings == null)
                 {
-                    EditorGUILayout.HelpBox(
-                        "Failed to load PlayKit settings. Please check console for errors.\n" +
-                        "无法加载 PlayKit 设置。请检查控制台错误。",
-                        MessageType.Error
-                    );
+                    EditorGUILayout.HelpBox(L10n.Get("common.failed"), MessageType.Error);
                     return;
                 }
             }
@@ -124,9 +122,6 @@ namespace Developerworks.SDK
                 case Tab.Configuration:
                     DrawConfigurationTab();
                     break;
-                case Tab.Development:
-                    DrawDevelopmentTab();
-                    break;
                 case Tab.About:
                     DrawAboutTab();
                     break;
@@ -147,13 +142,38 @@ namespace Developerworks.SDK
         {
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            GUILayout.Label("PlayKit SDK", new GUIStyle(EditorStyles.boldLabel)
+            // Title and language selector row
+            EditorGUILayout.BeginHorizontal();
+
+            GUILayout.FlexibleSpace();
+
+            GUILayout.Label(L10n.Get("header.title"), new GUIStyle(EditorStyles.boldLabel)
             {
                 fontSize = 18,
                 alignment = TextAnchor.MiddleCenter
             });
 
-            GUILayout.Label("Unity游戏AI开发套件 Unity Game AI Development Kit", new GUIStyle(EditorStyles.label)
+            GUILayout.FlexibleSpace();
+
+            // Language selector on the right
+            EditorGUI.BeginChangeCheck();
+            string currentLang = EditorLocalization.GetCurrentLanguage();
+            int currentIndex = System.Array.IndexOf(EditorLocalization.SupportedLanguages.Keys.ToArray(), currentLang);
+            if (currentIndex < 0) currentIndex = 0;
+
+            string[] languageNames = EditorLocalization.SupportedLanguages.Values.ToArray();
+            int newIndex = EditorGUILayout.Popup(currentIndex, languageNames, GUILayout.Width(100));
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                string newLang = EditorLocalization.SupportedLanguages.Keys.ToArray()[newIndex];
+                EditorLocalization.SetLanguage(newLang);
+                Repaint(); // Refresh UI immediately
+            }
+
+            EditorGUILayout.EndHorizontal();
+
+            GUILayout.Label(L10n.Get("header.subtitle"), new GUIStyle(EditorStyles.label)
             {
                 fontSize = 10,
                 alignment = TextAnchor.MiddleCenter,
@@ -173,17 +193,12 @@ namespace Developerworks.SDK
                 fixedHeight = 30
             };
 
-            if (GUILayout.Toggle(currentTab == Tab.Configuration, "配置 Configuration", tabStyle))
+            if (GUILayout.Toggle(currentTab == Tab.Configuration, L10n.Get("tab.configuration"), tabStyle))
             {
                 currentTab = Tab.Configuration;
             }
 
-            if (GUILayout.Toggle(currentTab == Tab.Development, "开发 Development", tabStyle))
-            {
-                currentTab = Tab.Development;
-            }
-
-            if (GUILayout.Toggle(currentTab == Tab.About, "关于 About", tabStyle))
+            if (GUILayout.Toggle(currentTab == Tab.About, L10n.Get("tab.about"), tabStyle))
             {
                 currentTab = Tab.About;
             }
@@ -202,6 +217,11 @@ namespace Developerworks.SDK
 
             EditorGUILayout.Space(10);
 
+            // Developer Token Configuration
+            DrawDeveloperTokenConfiguration();
+
+            EditorGUILayout.Space(10);
+
             // Validation Status
             DrawValidationStatus();
 
@@ -209,11 +229,16 @@ namespace Developerworks.SDK
 
             // AI Model Defaults
             DrawModelDefaults();
+
+            EditorGUILayout.Space(10);
+
+            // Developer Tools
+            DrawDeveloperTools();
         }
 
         private void DrawGameConfiguration()
         {
-            GUILayout.Label("游戏配置 | Game Configuration", EditorStyles.boldLabel);
+            GUILayout.Label(L10n.Get("config.game.title"), EditorStyles.boldLabel);
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
@@ -221,8 +246,8 @@ namespace Developerworks.SDK
             SerializedProperty gameIdProp = serializedSettings.FindProperty("gameId");
             EditorGUI.BeginChangeCheck();
             EditorGUILayout.PropertyField(gameIdProp, new GUIContent(
-                "游戏 ID | Game ID",
-                "从 PlayKit 控制台获取的游戏ID\nYour Game ID from the PlayKit dashboard"
+                L10n.Get("config.game.id.label"),
+                L10n.Get("config.game.id.tooltip")
             ));
 
             // Auto-validate when Game ID changes
@@ -233,29 +258,117 @@ namespace Developerworks.SDK
 
             if (string.IsNullOrWhiteSpace(gameIdProp.stringValue))
             {
-                EditorGUILayout.HelpBox(
-                    "⚠ 游戏 ID 是必填项！请从 PlayKit 控制台获取。\n" +
-                    "⚠ Game ID is required! Get your Game ID from the PlayKit dashboard.",
-                    MessageType.Warning
-                );
+                EditorGUILayout.HelpBox(L10n.Get("config.game.id.required"), MessageType.Warning);
             }
+
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawDeveloperTokenConfiguration()
+        {
+            GUILayout.Label(L10n.Get("dev.token.title"), EditorStyles.boldLabel);
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            // Storage Mode Toggle
+            EditorGUILayout.LabelField(L10n.Get("dev.storage.title"), EditorStyles.miniBoldLabel);
+
+            SerializedProperty useLocalProp = serializedSettings.FindProperty("useLocalDeveloperToken");
+            EditorGUILayout.PropertyField(useLocalProp, new GUIContent(
+                L10n.Get("dev.storage.use_local"),
+                L10n.Get("dev.storage.use_local.tooltip")
+            ));
+
+            EditorGUILayout.Space(5);
+
+            // Display appropriate help message based on storage mode
+            if (useLocalProp.boolValue)
+            {
+                EditorGUILayout.HelpBox(L10n.Get("dev.storage.local_mode"), MessageType.Info);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox(L10n.Get("dev.storage.project_mode"), MessageType.Info);
+            }
+
+            EditorGUILayout.Space(8);
+
+            // Developer Token Input
+            if (useLocalProp.boolValue)
+            {
+                // Local storage mode - use EditorPrefs
+                string localToken = PlayKitSettings.LocalDeveloperToken;
+
+                EditorGUI.BeginChangeCheck();
+                if (showDeveloperToken)
+                {
+                    string newToken = EditorGUILayout.TextField(L10n.Get("dev.token.label"), localToken);
+                    if (newToken != localToken)
+                    {
+                        PlayKitSettings.LocalDeveloperToken = newToken;
+                    }
+                }
+
+                // Auto-validate when token changes (including when cleared)
+                if (EditorGUI.EndChangeCheck())
+                {
+                    ValidateConfiguration();
+                }
+                else
+                {
+                    string maskedToken = string.IsNullOrEmpty(localToken) ?
+                        L10n.Get("dev.token.not_set") : new string('●', 20);
+                    EditorGUILayout.LabelField(L10n.Get("dev.token.label"), maskedToken);
+                }
+            }
+            else
+            {
+                // Project storage mode - use ScriptableObject
+                SerializedProperty tokenProp = serializedSettings.FindProperty("developerToken");
+
+                EditorGUI.BeginChangeCheck();
+                if (showDeveloperToken)
+                {
+                    EditorGUILayout.PropertyField(tokenProp, new GUIContent(L10n.Get("dev.token.label")));
+                }
+                else
+                {
+                    string maskedToken = string.IsNullOrEmpty(tokenProp.stringValue) ?
+                        L10n.Get("dev.token.not_set") : new string('●', 20);
+                    EditorGUILayout.LabelField(L10n.Get("dev.token.label"), maskedToken);
+                }
+
+                // Auto-validate when token changes (including when cleared)
+                if (EditorGUI.EndChangeCheck())
+                {
+                    ValidateConfiguration();
+                }
+            }
+
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button(
+                showDeveloperToken ? L10n.Get("dev.token.hide") : L10n.Get("dev.token.show"),
+                GUILayout.Height(25),
+                GUILayout.Width(200)))
+            {
+                showDeveloperToken = !showDeveloperToken;
+            }
+            GUILayout.FlexibleSpace();
+            EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.EndVertical();
         }
 
         private void DrawValidationStatus()
         {
-            GUILayout.Label("配置验证状态 | Configuration Validation Status", EditorStyles.boldLabel);
+            GUILayout.Label(L10n.Get("config.validation.title"), EditorStyles.boldLabel);
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
             if (isValidating)
             {
-                EditorGUILayout.HelpBox(
-                    "🔄 正在验证配置...\n" +
-                    "🔄 Validating configuration...",
-                    MessageType.Info
-                );
+                EditorGUILayout.HelpBox(L10n.Get("config.validation.validating"), MessageType.Info);
             }
             else if (validationResult != null)
             {
@@ -263,19 +376,11 @@ namespace Developerworks.SDK
             }
             else if (!string.IsNullOrWhiteSpace(settings.GameId))
             {
-                EditorGUILayout.HelpBox(
-                    "ℹ️ 配置已更改，将在下次保存时自动验证。\n" +
-                    "ℹ️ Configuration changed, will auto-validate on next save.",
-                    MessageType.Info
-                );
+                EditorGUILayout.HelpBox(L10n.Get("config.validation.changed"), MessageType.Info);
             }
             else
             {
-                EditorGUILayout.HelpBox(
-                    "ℹ️ 请先配置游戏 ID。\n" +
-                    "ℹ️ Please configure Game ID first.",
-                    MessageType.Info
-                );
+                EditorGUILayout.HelpBox(L10n.Get("config.validation.need_gameid"), MessageType.Info);
             }
 
             EditorGUILayout.EndVertical();
@@ -287,7 +392,7 @@ namespace Developerworks.SDK
             {
                 // Game not found or API error
                 EditorGUILayout.HelpBox(
-                    $"❌ 验证失败 | Validation Failed\n\n{validationResult.error}",
+                    $"{L10n.Get("config.validation.failed")}\n\n{validationResult.error}",
                     MessageType.Error
                 );
                 return;
@@ -299,69 +404,65 @@ namespace Developerworks.SDK
                 string gameName = validationResult.game.name ?? "Unknown";
                 string gameDesc = validationResult.game.description ?? "";
 
-                EditorGUILayout.LabelField("游戏信息 | Game Information", EditorStyles.miniBoldLabel);
-                EditorGUILayout.LabelField("名称 | Name:", gameName);
+                EditorGUILayout.LabelField(L10n.Get("config.validation.game_info"), EditorStyles.miniBoldLabel);
+                EditorGUILayout.LabelField(L10n.Get("config.validation.name"), gameName);
                 if (!string.IsNullOrEmpty(gameDesc))
                 {
-                    EditorGUILayout.LabelField("描述 | Description:", gameDesc, EditorStyles.wordWrappedLabel);
+                    EditorGUILayout.LabelField(L10n.Get("config.validation.description"), gameDesc, EditorStyles.wordWrappedLabel);
                 }
 
                 // Game status warnings
                 if (validationResult.game.is_suspended)
                 {
-                    EditorGUILayout.HelpBox(
-                        "⚠️ 游戏已被暂停 | Game is suspended",
-                        MessageType.Warning
-                    );
+                    EditorGUILayout.HelpBox(L10n.Get("config.validation.suspended"), MessageType.Warning);
                 }
 
                 EditorGUILayout.Space(5);
             }
 
-            // Token validation
-            if (validationResult.tokenValid && validationResult.token != null)
+            // Token validation - only show warnings if a token was actually provided
+            if (validationResult.tokenWasProvided)
             {
-                EditorGUILayout.HelpBox(
-                    $"✅ 开发者令牌有效 | Developer Token Valid\n\n" +
-                    $"令牌名称 | Token Name: {validationResult.token.name}\n" +
-                    $"创建时间 | Created: {validationResult.token.created_at}",
-                    MessageType.Info
-                );
-            }
-            else if (!string.IsNullOrEmpty(validationResult.tokenError))
-            {
-                EditorGUILayout.HelpBox(
-                    $"⚠️ 开发者令牌无效 | Developer Token Invalid\n\n{validationResult.tokenError}",
-                    MessageType.Warning
-                );
+                // User provided a token, show validation results
+                if (validationResult.tokenValid && validationResult.token != null)
+                {
+                    EditorGUILayout.HelpBox(
+                        L10n.GetFormat("config.validation.token_valid", validationResult.token.name, validationResult.token.created_at),
+                        MessageType.Info
+                    );
+                }
+                else if (!string.IsNullOrEmpty(validationResult.tokenError))
+                {
+                    EditorGUILayout.HelpBox(
+                        L10n.GetFormat("config.validation.token_invalid", validationResult.tokenError),
+                        MessageType.Warning
+                    );
+                }
+                else
+                {
+                    EditorGUILayout.HelpBox(L10n.Get("config.validation.token_error"), MessageType.Warning);
+                }
             }
             else
             {
-                EditorGUILayout.HelpBox(
-                    "ℹ️ 未提供开发者令牌，将使用玩家认证。\n" +
-                    "ℹ️ No developer token provided, will use player authentication.",
-                    MessageType.Info
-                );
+                // No token provided - this is fine for production use
+                EditorGUILayout.HelpBox(L10n.Get("config.validation.no_token"), MessageType.Info);
             }
         }
 
         private void DrawModelDefaults()
         {
-            GUILayout.Label("AI 模型默认值 | AI Model Defaults", EditorStyles.boldLabel);
+            GUILayout.Label(L10n.Get("config.models.title"), EditorStyles.boldLabel);
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            EditorGUILayout.HelpBox(
-                "配置默认使用的 AI 模型。留空则使用服务器默认值。\n" +
-                "Configure default AI models. Leave empty to use server defaults.",
-                MessageType.Info
-            );
+            EditorGUILayout.HelpBox(L10n.Get("config.models.info"), MessageType.Info);
 
             // Default Chat Model
             SerializedProperty chatModelProp = serializedSettings.FindProperty("defaultChatModel");
             EditorGUILayout.PropertyField(chatModelProp, new GUIContent(
-                "默认对话模型 | Default Chat Model",
-                "例如：gpt-4o-mini\nExample: gpt-4o-mini"
+                L10n.Get("config.models.chat.label"),
+                L10n.Get("config.models.chat.tooltip")
             ));
 
             EditorGUILayout.Space(5);
@@ -369,150 +470,42 @@ namespace Developerworks.SDK
             // Default Image Model
             SerializedProperty imageModelProp = serializedSettings.FindProperty("defaultImageModel");
             EditorGUILayout.PropertyField(imageModelProp, new GUIContent(
-                "默认图像模型 | Default Image Model",
-                "例如：dall-e-3\nExample: dall-e-3"
+                L10n.Get("config.models.image.label"),
+                L10n.Get("config.models.image.tooltip")
             ));
 
             EditorGUILayout.EndVertical();
         }
 
-        #endregion
-
-        #region Development Tab
-
-        private void DrawDevelopmentTab()
+        private void DrawDeveloperTools()
         {
-            EditorGUILayout.Space(10);
-
-            GUILayout.Label("开发者工具 | Developer Tools", EditorStyles.boldLabel);
+            GUILayout.Label(L10n.Get("dev.tools.title"), EditorStyles.boldLabel);
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-
-            // Storage Mode Toggle
-            EditorGUILayout.LabelField("开发者令牌存储方式 | Developer Token Storage", EditorStyles.miniBoldLabel);
-
-            SerializedProperty useLocalProp = serializedSettings.FindProperty("useLocalDeveloperToken");
-            EditorGUILayout.PropertyField(useLocalProp, new GUIContent(
-                "使用本地存储 | Use Local Storage",
-                "启用：令牌存储在 EditorPrefs（本地，不会提交到版本控制）\n" +
-                "禁用：令牌存储在项目设置（可提交到版本控制，适合团队共享）\n\n" +
-                "Enabled: Token stored in EditorPrefs (local, not tracked by version control)\n" +
-                "Disabled: Token stored in project settings (can be committed, suitable for team sharing)"
-            ));
-
-            EditorGUILayout.Space(5);
-
-            // Display appropriate help message based on storage mode
-            if (useLocalProp.boolValue)
-            {
-                EditorGUILayout.HelpBox(
-                    "🔒 本地模式：令牌存储在本地 EditorPrefs，不会被 Git 追踪。适合个人开发。\n" +
-                    "🔒 Local Mode: Token stored in local EditorPrefs, not tracked by Git. Suitable for personal development.",
-                    MessageType.Info
-                );
-            }
-            else
-            {
-                EditorGUILayout.HelpBox(
-                    "📦 项目模式：令牌存储在项目配置中，可以提交到版本控制。适合团队共享（私有仓库）。\n" +
-                    "📦 Project Mode: Token stored in project settings, can be committed to version control. Suitable for team sharing (private repos).",
-                    MessageType.Info
-                );
-            }
-
-            EditorGUILayout.Space(8);
-
-            // Developer Token Input
-            EditorGUILayout.LabelField("开发者令牌（可选）| Developer Token (Optional)", EditorStyles.miniBoldLabel);
-
-            if (useLocalProp.boolValue)
-            {
-                // Local storage mode - use EditorPrefs
-                string localToken = PlayKitSettings.LocalDeveloperToken;
-
-                EditorGUI.BeginChangeCheck();
-                if (showDeveloperToken)
-                {
-                    string newToken = EditorGUILayout.TextField("令牌 | Token", localToken);
-                    if (newToken != localToken)
-                    {
-                        PlayKitSettings.LocalDeveloperToken = newToken;
-                        // Auto-validate when token changes
-                        if (EditorGUI.EndChangeCheck())
-                        {
-                            ValidateConfiguration();
-                        }
-                    }
-                }
-                else
-                {
-                    string maskedToken = string.IsNullOrEmpty(localToken) ?
-                        "(未设置 Not Set)" : new string('●', 20);
-                    EditorGUILayout.LabelField("令牌 | Token", maskedToken);
-                }
-            }
-            else
-            {
-                // Project storage mode - use ScriptableObject
-                SerializedProperty tokenProp = serializedSettings.FindProperty("developerToken");
-
-                EditorGUI.BeginChangeCheck();
-                if (showDeveloperToken)
-                {
-                    EditorGUILayout.PropertyField(tokenProp, new GUIContent("令牌 | Token"));
-                }
-                else
-                {
-                    string maskedToken = string.IsNullOrEmpty(tokenProp.stringValue) ?
-                        "(未设置 Not Set)" : new string('●', 20);
-                    EditorGUILayout.LabelField("令牌 | Token", maskedToken);
-                }
-
-                // Auto-validate when token changes
-                if (EditorGUI.EndChangeCheck() && !string.IsNullOrWhiteSpace(tokenProp.stringValue))
-                {
-                    ValidateConfiguration();
-                }
-            }
-
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button(
-                showDeveloperToken ? "👁 隐藏令牌 | Hide Token" : "👁 显示令牌 | Show Token",
-                GUILayout.Height(25),
-                GUILayout.Width(200)))
-            {
-                showDeveloperToken = !showDeveloperToken;
-            }
-            GUILayout.FlexibleSpace();
-            EditorGUILayout.EndHorizontal();
-
-            EditorGUILayout.Space(10);
 
             // Ignore Developer Token option
             SerializedProperty ignoreProp = serializedSettings.FindProperty("ignoreDeveloperToken");
             EditorGUILayout.PropertyField(ignoreProp, new GUIContent(
-                "忽略开发者令牌 | Ignore Developer Token",
-                "强制使用玩家认证流程进行测试\nForce player authentication flow for testing"
+                L10n.Get("dev.token.ignore"),
+                L10n.Get("dev.token.ignore.tooltip")
             ));
 
             EditorGUILayout.Space(10);
 
             // Clear Player Token Button
-            if (GUILayout.Button("清除本地玩家令牌 Clear Local Player Token", GUILayout.Height(30)))
+            if (GUILayout.Button(L10n.Get("dev.player_token.clear"), GUILayout.Height(30)))
             {
                 if (EditorUtility.DisplayDialog(
-                    "清除玩家令牌 Clear Player Token",
-                    "确定要清除本地存储的玩家令牌吗？下次运行时需要重新登录。\n" +
-                    "Are you sure you want to clear the local player token? You'll need to login again on next run.",
-                    "确定 Yes",
-                    "取消 Cancel"))
+                    L10n.Get("dev.player_token.clear.title"),
+                    L10n.Get("dev.player_token.clear.confirm"),
+                    L10n.Get("common.yes"),
+                    L10n.Get("common.cancel")))
                 {
                     PlayKit_SDK.Auth.PlayKit_AuthManager.ClearPlayerToken();
                     EditorUtility.DisplayDialog(
-                        "成功 Success",
-                        "玩家令牌已清除。\nPlayer token has been cleared.",
-                        "确定 OK"
+                        L10n.Get("dev.player_token.clear.success.title"),
+                        L10n.Get("dev.player_token.clear.success.message"),
+                        L10n.Get("common.ok")
                     );
                 }
             }
@@ -544,16 +537,16 @@ namespace Developerworks.SDK
 
         private void DrawVersionInfo()
         {
-            GUILayout.Label("版本信息 Version Information", EditorStyles.boldLabel);
+            GUILayout.Label(L10n.Get("about.version.title"), EditorStyles.boldLabel);
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            EditorGUILayout.LabelField("SDK 版本 SDK Version:", PlayKit_SDK.PlayKit_SDK.VERSION);
-            EditorGUILayout.LabelField("Unity 版本 Unity Version:", Application.unityVersion);
+            EditorGUILayout.LabelField(L10n.Get("about.version.sdk"), PlayKit_SDK.PlayKit_SDK.VERSION);
+            EditorGUILayout.LabelField(L10n.Get("about.version.unity"), Application.unityVersion);
 
             EditorGUILayout.Space(5);
 
-            if (GUILayout.Button("检查更新 Check for Updates", GUILayout.Height(30)))
+            if (GUILayout.Button(L10n.Get("about.version.check_updates"), GUILayout.Height(30)))
             {
                 PlayKit_UpdateChecker.CheckForUpdates(true);
             }
@@ -563,27 +556,27 @@ namespace Developerworks.SDK
 
         private void DrawQuickLinks()
         {
-            GUILayout.Label("快速链接 Quick Links", EditorStyles.boldLabel);
+            GUILayout.Label(L10n.Get("about.links.title"), EditorStyles.boldLabel);
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("📖 文档 Documentation", GUILayout.Height(30)))
+            if (GUILayout.Button(L10n.Get("about.links.documentation"), GUILayout.Height(30)))
             {
                 Application.OpenURL("https://docs.playkit.dev");
             }
-            if (GUILayout.Button("💡 示例 Examples", GUILayout.Height(30)))
+            if (GUILayout.Button(L10n.Get("about.links.examples"), GUILayout.Height(30)))
             {
                 OpenExampleScenes();
             }
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("🐛 报告问题 Report Issue", GUILayout.Height(30)))
+            if (GUILayout.Button(L10n.Get("about.links.report_issue"), GUILayout.Height(30)))
             {
                 Application.OpenURL("https://github.com/playkit/unity-sdk/issues");
             }
-            if (GUILayout.Button("🌐 官网 Website", GUILayout.Height(30)))
+            if (GUILayout.Button(L10n.Get("about.links.website"), GUILayout.Height(30)))
             {
                 Application.OpenURL("https://playkit.dev");
             }
@@ -594,14 +587,11 @@ namespace Developerworks.SDK
 
         private void DrawResources()
         {
-            GUILayout.Label("资源与支持 Resources & Support", EditorStyles.boldLabel);
+            GUILayout.Label(L10n.Get("about.resources.title"), EditorStyles.boldLabel);
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            EditorGUILayout.HelpBox(
-                "📧 Email: support@agentlandlab.com",
-                MessageType.Info
-            );
+            EditorGUILayout.HelpBox(L10n.Get("about.resources.email"), MessageType.Info);
 
             // if (GUILayout.Button("加入 Discord 社区 Join Discord Community", GUILayout.Height(30)))
             // {
@@ -617,6 +607,14 @@ namespace Developerworks.SDK
 
         private async void ValidateConfiguration()
         {
+            // Apply any pending changes BEFORE reading values
+            if (serializedSettings.hasModifiedProperties)
+            {
+                serializedSettings.ApplyModifiedProperties();
+                EditorUtility.SetDirty(settings);
+                AssetDatabase.SaveAssets();
+            }
+
             string currentGameId = settings.GameId;
             string currentToken = settings.DeveloperToken;
 
@@ -627,8 +625,6 @@ namespace Developerworks.SDK
                 return;
             }
 
-            lastValidatedGameId = currentGameId;
-            lastValidatedToken = currentToken;
             isValidating = true;
             validationResult = null;
             Repaint();
@@ -636,11 +632,12 @@ namespace Developerworks.SDK
             try
             {
                 string apiUrl = $"https://playkit.agentlandlab.com/api/external/validate-editor-config?gameId={UnityEngine.Networking.UnityWebRequest.EscapeURL(currentGameId)}";
+                bool tokenProvided = !string.IsNullOrWhiteSpace(currentToken);
 
                 using (var webRequest = UnityEngine.Networking.UnityWebRequest.Get(apiUrl))
                 {
                     // Add developer token if provided
-                    if (!string.IsNullOrWhiteSpace(currentToken))
+                    if (tokenProvided)
                     {
                         webRequest.SetRequestHeader("Authorization", $"Bearer {currentToken}");
                     }
@@ -657,6 +654,10 @@ namespace Developerworks.SDK
                     {
                         string jsonResponse = webRequest.downloadHandler.text;
                         validationResult = JsonUtility.FromJson<ValidationResult>(jsonResponse);
+                        if (validationResult != null)
+                        {
+                            validationResult.tokenWasProvided = tokenProvided;
+                        }
                     }
                     else
                     {
@@ -678,6 +679,9 @@ namespace Developerworks.SDK
             }
             finally
             {
+                // Update the last validated values AFTER validation completes
+                lastValidatedGameId = currentGameId;
+                lastValidatedToken = currentToken;
                 isValidating = false;
                 Repaint();
             }
@@ -696,9 +700,9 @@ namespace Developerworks.SDK
             else
             {
                 EditorUtility.DisplayDialog(
-                    "示例 Examples",
-                    "未在 SDK 中找到示例场景。\nNo example scenes found in the SDK.",
-                    "确定 OK"
+                    L10n.Get("about.examples.title"),
+                    L10n.Get("about.examples.not_found"),
+                    L10n.Get("common.ok")
                 );
             }
         }

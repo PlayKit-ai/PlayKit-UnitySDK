@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae5b7fd14fa3fe6469d003aa34738da9, type: 3}
   m_Name: PlayKitSettings
   m_EditorClassIdentifier: 
-  gameId: d4aacdcb-0b94-4957-bf82-4aeec535a8ba
+  gameId: ef6eaf4b-39ae-4c76-bcf6-b07541cf0ccc
   defaultChatModel: claude-3-7-sonnet
   defaultImageModel: flux-1-schnell
-  developerToken: 
+  developerToken: dev-c4aae194-c2e2-456d-93fa-694ee9d9ccb6
   useLocalDeveloperToken: 1
-  ignoreDeveloperToken: 1
+  ignoreDeveloperToken: 0

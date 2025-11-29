@@ -11,7 +11,7 @@ namespace PlayKit_SDK
     /// ScriptableObject that contains a collection of JSON schemas for AI object generation
     /// This allows designers to manage all schemas in one place
     /// </summary>
-    [CreateAssetMenu(fileName = "SchemaLibrary", menuName = "Developerworks SDK/Schema Library")]
+    [CreateAssetMenu(fileName = "SchemaLibrary", menuName = "PlayKit SDK/Schema Library")]
     public class PlayKit_SchemaLibrary : ScriptableObject
     {
         [System.Serializable]

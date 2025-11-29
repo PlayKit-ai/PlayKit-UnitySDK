@@ -6,7 +6,7 @@ namespace PlayKit_SDK
 {
     public class PlayKit_SDK : MonoBehaviour
     {
-        public const string VERSION = "v0.2.0.0-beta";
+        public const string VERSION = "v0.2.0.1-beta";
 
         // Configuration is now loaded from PlayKitSettings ScriptableObject
         // No need to manually place prefabs in scenes - SDK initializes automatically at runtime
@@ -107,16 +107,21 @@ namespace PlayKit_SDK
             if (developerToken == null && !settings.IgnoreDeveloperToken)
             {
                 string settingsToken = settings.DeveloperToken;
+                Debug.Log($"[PlayKit SDK] Developer token from settings: {(string.IsNullOrEmpty(settingsToken) ? "EMPTY" : "***" + settingsToken.Substring(settingsToken.Length > 10 ? settingsToken.Length - 10 : 0))}");
                 if (!string.IsNullOrEmpty(settingsToken))
                 {
                     developerToken = settingsToken;
                     Debug.Log("[PlayKit SDK] Using developer token from settings for development.");
                 }
+                else
+                {
+                    Debug.Log("[PlayKit SDK] No developer token found in settings. Will use player authentication.");
+                }
             }
 
             if (developerToken != null && !settings.IgnoreDeveloperToken)
             {
-                Debug.Log("[PlayKit SDK] You are loading a developer token, this has strict rate limit and should not be used for production...");
+                Debug.Log($"[PlayKit SDK] You are loading a developer token {developerToken}, this has strict rate limit and should not be used for production...");
                 PlayKitAuthManager.Setup(gameId, developerToken);
 
                 // Show developer key warning in non-editor builds
