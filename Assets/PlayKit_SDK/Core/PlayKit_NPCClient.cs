@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using PlayKit_SDK.Provider.AI;
 using PlayKit_SDK.Public;
 using UnityEngine;
 
@@ -137,6 +138,7 @@ namespace PlayKit_SDK
         /// <param name="schemaName">Name of the schema to use</param>
         /// <param name="cancellationToken">Cancellation token (defaults to OnDestroyCancellationToken)</param>
         /// <returns>The structured response as JObject, or null if failed</returns>
+        [System.Obsolete("TalkStructured is deprecated. Use TalkWithActions instead for NPC decision-making with actions.")]
         public async UniTask<Newtonsoft.Json.Linq.JObject> TalkStructured(string message, string schemaName, CancellationToken? cancellationToken = null)
         {
             var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
@@ -218,6 +220,7 @@ namespace PlayKit_SDK
         /// <param name="schemaName">The name of the schema to use</param>
         /// <param name="cancellationToken">Cancellation token (defaults to OnDestroyCancellationToken)</param>
         /// <returns>The structured response deserialized to type T</returns>
+        [System.Obsolete("TalkStructured<T> is deprecated. Use TalkWithActions instead for NPC decision-making with actions.")]
         public async UniTask<T> TalkStructured<T>(string message, string schemaName, CancellationToken? cancellationToken = null)
         {
             var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
@@ -427,6 +430,282 @@ namespace PlayKit_SDK
                 onComplete?.Invoke(null);
             }
         }
+
+        #region NPC Actions (Tool Calling)
+
+        /// <summary>
+        /// Send a message to the NPC with available actions and get a response with potential action calls.
+        /// The conversation history is automatically managed.
+        /// </summary>
+        /// <param name="message">The message to send to the NPC</param>
+        /// <param name="actions">List of actions the NPC can perform</param>
+        /// <param name="cancellationToken">Cancellation token (defaults to OnDestroyCancellationToken)</param>
+        /// <returns>Response containing text and any action calls</returns>
+        public async UniTask<NpcActionResponse> TalkWithActions(
+            string message,
+            List<NpcAction> actions,
+            CancellationToken? cancellationToken = null)
+        {
+            var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
+            _isTalking = true;
+
+            if (_chatClient == null)
+            {
+                Debug.LogError("[NPCClient] Chat client not initialized. Please call DW_SDK.InitializeAsync() first and wait for it to complete.");
+                _isTalking = false;
+                return null;
+            }
+
+            await UniTask.WaitUntil(() => IsReady);
+
+            if (!gameObject.activeInHierarchy)
+            {
+                Debug.LogError("[NPCClient] NPC client is not active");
+                _isTalking = false;
+                return null;
+            }
+
+            if (string.IsNullOrEmpty(message))
+            {
+                _isTalking = false;
+                return null;
+            }
+
+            // Add user message to history
+            _conversationHistory.Add(new DW_ChatMessage
+            {
+                Role = "user",
+                Content = message
+            });
+
+            try
+            {
+                // Convert NpcActions to ChatTools
+                var tools = actions
+                    .Where(a => a != null && a.enabled)
+                    .Select(a => a.ToTool())
+                    .ToList();
+
+                var config = new DW_ChatConfig(_conversationHistory.ToList());
+                var result = await _chatClient.TextGenerationWithToolsAsync(config, tools, "auto", token);
+
+                if (result.Success && result.Response?.Choices?.Count > 0)
+                {
+                    var choice = result.Response.Choices[0];
+                    var response = new NpcActionResponse
+                    {
+                        Text = choice.Message?.Content ?? "",
+                        ActionCalls = new List<NpcActionCall>()
+                    };
+
+                    // Extract tool calls if any
+                    if (choice.Message?.ToolCalls != null)
+                    {
+                        foreach (var toolCall in choice.Message.ToolCalls)
+                        {
+                            response.ActionCalls.Add(new NpcActionCall
+                            {
+                                Id = toolCall.Id,
+                                ActionName = toolCall.Function?.Name ?? "",
+                                Arguments = ParseToolArguments(toolCall.Function?.Arguments)
+                            });
+                        }
+                    }
+
+                    // Add assistant response to history (with tool calls if any)
+                    _conversationHistory.Add(new DW_ChatMessage
+                    {
+                        Role = "assistant",
+                        Content = response.Text,
+                        ToolCalls = choice.Message?.ToolCalls
+                    });
+
+                    _isTalking = false;
+                    return response;
+                }
+                else
+                {
+                    _isTalking = false;
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                _isTalking = false;
+                Debug.LogError($"[NPCClient] Error in TalkWithActions: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Send a message to the NPC with available actions and get a streaming response.
+        /// Text is streamed first, action calls are returned in the onComplete callback.
+        /// </summary>
+        /// <param name="message">The message to send to the NPC</param>
+        /// <param name="actions">List of actions the NPC can perform</param>
+        /// <param name="onChunk">Called for each piece of the text response as it streams in</param>
+        /// <param name="onComplete">Called when complete, contains full text and any action calls</param>
+        /// <param name="cancellationToken">Cancellation token (defaults to OnDestroyCancellationToken)</param>
+        public async UniTask TalkWithActionsStream(
+            string message,
+            List<NpcAction> actions,
+            Action<string> onChunk,
+            Action<NpcActionResponse> onComplete,
+            CancellationToken? cancellationToken = null)
+        {
+            var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
+            _isTalking = true;
+
+            if (_chatClient == null)
+            {
+                Debug.LogError("[NPCClient] Chat client not initialized. Please call DW_SDK.InitializeAsync() first and wait for it to complete.");
+                _isTalking = false;
+                onComplete?.Invoke(null);
+                return;
+            }
+
+            await UniTask.WaitUntil(() => IsReady);
+
+            if (string.IsNullOrEmpty(message))
+            {
+                _isTalking = false;
+                onComplete?.Invoke(null);
+                return;
+            }
+
+            // Add user message to history
+            _conversationHistory.Add(new DW_ChatMessage
+            {
+                Role = "user",
+                Content = message
+            });
+
+            try
+            {
+                // Convert NpcActions to ChatTools
+                var tools = actions
+                    .Where(a => a != null && a.enabled)
+                    .Select(a => a.ToTool())
+                    .ToList();
+
+                var config = new DW_ChatStreamConfig(_conversationHistory.ToList());
+
+                await _chatClient.TextGenerationWithToolsStreamAsync(
+                    config,
+                    tools,
+                    chunk =>
+                    {
+                        onChunk?.Invoke(chunk);
+                    },
+                    completionResponse =>
+                    {
+                        _isTalking = false;
+
+                        if (completionResponse?.Choices?.Count > 0)
+                        {
+                            var choice = completionResponse.Choices[0];
+                            var response = new NpcActionResponse
+                            {
+                                Text = choice.Message?.Content ?? "",
+                                ActionCalls = new List<NpcActionCall>()
+                            };
+
+                            // Extract tool calls if any
+                            if (choice.Message?.ToolCalls != null)
+                            {
+                                foreach (var toolCall in choice.Message.ToolCalls)
+                                {
+                                    response.ActionCalls.Add(new NpcActionCall
+                                    {
+                                        Id = toolCall.Id,
+                                        ActionName = toolCall.Function?.Name ?? "",
+                                        Arguments = ParseToolArguments(toolCall.Function?.Arguments)
+                                    });
+                                }
+                            }
+
+                            // Add assistant response to history
+                            _conversationHistory.Add(new DW_ChatMessage
+                            {
+                                Role = "assistant",
+                                Content = response.Text,
+                                ToolCalls = choice.Message?.ToolCalls
+                            });
+
+                            onComplete?.Invoke(response);
+                        }
+                        else
+                        {
+                            onComplete?.Invoke(null);
+                        }
+                    },
+                    "auto",
+                    token
+                );
+            }
+            catch (Exception ex)
+            {
+                _isTalking = false;
+                Debug.LogError($"[NPCClient] Error in TalkWithActionsStream: {ex.Message}");
+                onComplete?.Invoke(null);
+            }
+        }
+
+        /// <summary>
+        /// Report action results back to the conversation.
+        /// Call this after executing actions to let the NPC know the results.
+        /// </summary>
+        /// <param name="results">Dictionary of action call IDs to their results (as string)</param>
+        public void ReportActionResults(Dictionary<string, string> results)
+        {
+            if (results == null || results.Count == 0) return;
+
+            foreach (var kvp in results)
+            {
+                _conversationHistory.Add(new DW_ChatMessage
+                {
+                    Role = "tool",
+                    ToolCallId = kvp.Key,
+                    Content = kvp.Value
+                });
+            }
+        }
+
+        /// <summary>
+        /// Report a single action result back to the conversation.
+        /// </summary>
+        /// <param name="callId">The action call ID</param>
+        /// <param name="result">The result of the action execution</param>
+        public void ReportActionResult(string callId, string result)
+        {
+            if (string.IsNullOrEmpty(callId)) return;
+
+            _conversationHistory.Add(new DW_ChatMessage
+            {
+                Role = "tool",
+                ToolCallId = callId,
+                Content = result ?? ""
+            });
+        }
+
+        /// <summary>
+        /// Parse tool arguments JSON string to JObject
+        /// </summary>
+        private Newtonsoft.Json.Linq.JObject ParseToolArguments(string arguments)
+        {
+            if (string.IsNullOrEmpty(arguments)) return new Newtonsoft.Json.Linq.JObject();
+
+            try
+            {
+                return Newtonsoft.Json.Linq.JObject.Parse(arguments);
+            }
+            catch
+            {
+                return new Newtonsoft.Json.Linq.JObject();
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// Set the system prompt for the NPC character.
@@ -641,6 +920,7 @@ namespace PlayKit_SDK
         /// <param name="schemaName">Name of the schema to use</param>
         /// <param name="cancellationToken">Cancellation token (defaults to OnDestroyCancellationToken)</param>
         /// <returns>The structured response as JObject, or null if failed</returns>
+        [System.Obsolete("TalkStructuredWithHistory is deprecated. Use TalkWithActions instead for NPC decision-making with actions.")]
         public async UniTask<Newtonsoft.Json.Linq.JObject> TalkStructuredWithHistory(string message, string schemaName, CancellationToken? cancellationToken = null)
         {
             var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
@@ -718,6 +998,7 @@ namespace PlayKit_SDK
         /// <param name="schemaName">The name of the schema to use</param>
         /// <param name="cancellationToken">Cancellation token (defaults to OnDestroyCancellationToken)</param>
         /// <returns>The structured response deserialized to type T</returns>
+        [System.Obsolete("TalkStructuredWithHistory<T> is deprecated. Use TalkWithActions instead for NPC decision-making with actions.")]
         public async UniTask<T> TalkStructuredWithHistory<T>(string message, string schemaName, CancellationToken? cancellationToken = null)
         {
             var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();

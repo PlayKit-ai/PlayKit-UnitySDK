@@ -507,5 +507,76 @@ namespace PlayKit_SDK
                 _ => "❓"
             };
         }
+
+        #region Tool Calling Support
+
+        /// <summary>
+        /// Generate text with tool calling support
+        /// </summary>
+        /// <param name="config">Chat configuration</param>
+        /// <param name="tools">List of tools available for the model to use</param>
+        /// <param name="toolChoice">Tool choice: "auto", "required", "none", or a specific tool</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Chat result including potential tool calls</returns>
+        public async UniTask<Public.DW_AIResult<ChatCompletionResponse>> TextGenerationWithToolsAsync(
+            Public.DW_ChatConfig config,
+            List<ChatTool> tools,
+            object toolChoice = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var response = await _chatService.RequestWithToolsAsync(_model, config, tools, toolChoice, cancellationToken);
+                if (response != null)
+                {
+                    return new Public.DW_AIResult<ChatCompletionResponse>(response);
+                }
+                return new Public.DW_AIResult<ChatCompletionResponse>("Request failed");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[ChatClient] TextGenerationWithToolsAsync error: {ex.Message}");
+                return new Public.DW_AIResult<ChatCompletionResponse>(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Generate text with tool calling support (streaming mode)
+        /// Text chunks are streamed first, tool calls are returned in the onComplete callback
+        /// </summary>
+        /// <param name="config">Chat configuration</param>
+        /// <param name="tools">List of tools available for the model to use</param>
+        /// <param name="onTextChunk">Callback for each text chunk</param>
+        /// <param name="onComplete">Callback when complete, includes tool calls if any</param>
+        /// <param name="toolChoice">Tool choice: "auto", "required", "none", or a specific tool</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        public async UniTask TextGenerationWithToolsStreamAsync(
+            Public.DW_ChatStreamConfig config,
+            List<ChatTool> tools,
+            Action<string> onTextChunk,
+            Action<ChatCompletionResponse> onComplete,
+            object toolChoice = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                await _chatService.RequestWithToolsStreamAsync(
+                    _model,
+                    config,
+                    tools,
+                    toolChoice,
+                    onTextChunk,
+                    onComplete,
+                    cancellationToken
+                );
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[ChatClient] TextGenerationWithToolsStreamAsync error: {ex.Message}");
+                onComplete?.Invoke(null);
+            }
+        }
+
+        #endregion
     }
 }

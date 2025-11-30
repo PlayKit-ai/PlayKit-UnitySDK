@@ -1,15 +1,18 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Cysharp.Threading.Tasks;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
 
 namespace PlayKit_SDK.Provider.AI
 {
     /// <summary>
-    /// Provider for the platform AI object generation endpoint (/ai/{gameId}/v1/generateObject)
-    /// Uses platform-hosted models for structured object generation
+    /// Provider for structured object generation using the /chat endpoint with response_format
+    /// Migrated from the old /generateObject endpoint to use the unified /chat endpoint
     /// </summary>
     internal class AIObjectProvider : IObjectProvider
     {
@@ -22,7 +25,7 @@ namespace PlayKit_SDK.Provider.AI
             _useOversea = useOversea;
         }
 
-        private string GetObjectUrl()
+        private string GetChatUrl()
         {
             if (_authManager == null || string.IsNullOrEmpty(_authManager.gameId))
             {
@@ -30,9 +33,9 @@ namespace PlayKit_SDK.Provider.AI
             }
             if (_useOversea)
             {
-                return $"https://dwoversea.agentlandlab.com/ai/{_authManager.gameId}/v1/generateObject";
+                return $"https://dwoversea.agentlandlab.com/ai/{_authManager.gameId}/v1/chat";
             }
-            return $"https://playkit.agentlandlab.com/ai/{_authManager.gameId}/v1/generateObject";
+            return $"https://playkit.agentlandlab.com/ai/{_authManager.gameId}/v1/chat";
         }
 
         private string GetAuthToken()
@@ -48,7 +51,7 @@ namespace PlayKit_SDK.Provider.AI
             ObjectGenerationRequest request,
             System.Threading.CancellationToken cancellationToken = default)
         {
-            Debug.Log($"[AIObjectProvider] GenerateObjectAsync for schema: {request.SchemaName}");
+            Debug.Log($"[AIObjectProvider] GenerateObjectAsync for schema: {request.SchemaName} (using /chat endpoint)");
 
             // Validate request
             if (string.IsNullOrEmpty(request.Model))
@@ -56,15 +59,66 @@ namespace PlayKit_SDK.Provider.AI
                 throw new ArgumentException("Model is required for object generation");
             }
 
-            if (string.IsNullOrEmpty(request.Prompt))
+            // Build messages array
+            var messages = new List<ChatMessage>();
+
+            // Add system message if provided
+            if (!string.IsNullOrEmpty(request.System))
             {
-                throw new ArgumentException("Prompt is required for object generation");
+                messages.Add(new ChatMessage { Role = "system", Content = request.System });
             }
 
-            var json = JsonConvert.SerializeObject(request, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+            // Add messages from request if provided, otherwise use prompt
+            if (request.Messages != null && request.Messages.Count > 0)
+            {
+                messages.AddRange(request.Messages.Select(m => new ChatMessage
+                {
+                    Role = m.Role,
+                    Content = m.Content
+                }));
+            }
+            else if (!string.IsNullOrEmpty(request.Prompt))
+            {
+                messages.Add(new ChatMessage { Role = "user", Content = request.Prompt });
+            }
+            else
+            {
+                throw new ArgumentException("Either Prompt or Messages is required for object generation");
+            }
+
+            // Build the chat completion request with response_format
+            var chatRequest = new Dictionary<string, object>
+            {
+                ["model"] = request.Model,
+                ["messages"] = messages,
+                ["stream"] = false,
+                ["response_format"] = new Dictionary<string, object>
+                {
+                    ["type"] = "json_schema",
+                    ["json_schema"] = new Dictionary<string, object>
+                    {
+                        ["name"] = request.SchemaName ?? "response",
+                        ["description"] = request.SchemaDescription ?? "",
+                        ["schema"] = request.Schema,
+                        ["strict"] = true
+                    }
+                }
+            };
+
+            if (request.Temperature.HasValue)
+            {
+                chatRequest["temperature"] = request.Temperature.Value;
+            }
+
+            if (request.MaxTokens.HasValue)
+            {
+                chatRequest["max_tokens"] = request.MaxTokens.Value;
+            }
+
+            var json = JsonConvert.SerializeObject(chatRequest, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
             Debug.Log($"[AIObjectProvider] Request JSON: {json}");
 
-            using (var webRequest = new UnityWebRequest(GetObjectUrl(), "POST"))
+            using (var webRequest = new UnityWebRequest(GetChatUrl(), "POST"))
             {
                 webRequest.uploadHandler = new UploadHandlerRaw(new UTF8Encoding().GetBytes(json));
                 webRequest.downloadHandler = new DownloadHandlerBuffer();
@@ -87,45 +141,46 @@ namespace PlayKit_SDK.Provider.AI
                     return null;
                 }
 
-                // Parse response
+                // Parse chat completion response
                 try
                 {
-                    // First parse as generic object response
-                    var genericResponse = JsonConvert.DeserializeObject<ObjectGenerationResponse<object>>(webRequest.downloadHandler.text);
-                    
-                    if (genericResponse == null)
+                    var chatResponse = JsonConvert.DeserializeObject<ChatCompletionResponse>(webRequest.downloadHandler.text);
+
+                    if (chatResponse == null || chatResponse.Choices == null || chatResponse.Choices.Count == 0)
                     {
-                        Debug.LogError("[AIObjectProvider] Failed to parse response as generic object");
+                        Debug.LogError("[AIObjectProvider] No choices in response");
                         return null;
                     }
 
-                    // Then create typed response
-                    var typedResponse = new ObjectGenerationResponse<T>
-                    {
-                        FinishReason = genericResponse.FinishReason,
-                        Usage = genericResponse.Usage,
-                        Model = genericResponse.Model,
-                        Id = genericResponse.Id,
-                        Timestamp = genericResponse.Timestamp
-                    };
+                    var choice = chatResponse.Choices[0];
+                    var content = choice.Message?.Content;
 
-                    // Convert the object to the target type
-                    if (genericResponse.Object != null)
+                    if (string.IsNullOrEmpty(content))
                     {
-                        try
-                        {
-                            string objectJson = JsonConvert.SerializeObject(genericResponse.Object);
-                            typedResponse.Object = JsonConvert.DeserializeObject<T>(objectJson);
-                        }
-                        catch (JsonException ex)
-                        {
-                            Debug.LogError($"[AIObjectProvider] Failed to deserialize object to type {typeof(T).Name}: {ex.Message}");
-                            return null;
-                        }
+                        Debug.LogError("[AIObjectProvider] Empty content in response");
+                        return null;
                     }
 
+                    // Parse the JSON content from the response
+                    var parsedObject = JsonConvert.DeserializeObject<T>(content);
+
+                    var response = new ObjectGenerationResponse<T>
+                    {
+                        Object = parsedObject,
+                        FinishReason = choice.FinishReason,
+                        Model = chatResponse.Model,
+                        Id = chatResponse.Id,
+                        Timestamp = chatResponse.Created.ToString(),
+                        Usage = chatResponse.Usage != null ? new ObjectUsage
+                        {
+                            InputTokens = chatResponse.Usage.PromptTokens,
+                            OutputTokens = chatResponse.Usage.CompletionTokens,
+                            TotalTokens = chatResponse.Usage.TotalTokens
+                        } : null
+                    };
+
                     Debug.Log($"[AIObjectProvider] Successfully generated structured object of type {typeof(T).Name}");
-                    return typedResponse;
+                    return response;
                 }
                 catch (JsonException ex)
                 {
