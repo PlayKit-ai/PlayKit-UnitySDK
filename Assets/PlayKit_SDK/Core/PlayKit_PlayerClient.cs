@@ -26,6 +26,7 @@ namespace PlayKit_SDK
         // Events
         public event Action<PlayerInfo> OnPlayerInfoUpdated;
         public event Action<string> OnPlayerTokenReceived;
+        public event Action<string> OnNicknameChanged;
         public event Action<string> OnError;
 
         // ADDED: Public property to access the result of the last JWT exchange.
@@ -38,8 +39,34 @@ namespace PlayKit_SDK
         {
             [JsonProperty("userId")] public string UserId { get; set; }
             [JsonProperty("credits")] public float Credits { get; set; }
+            /// <summary>
+            /// Player nickname (per-game nickname > first_name > null)
+            /// </summary>
+            [JsonProperty("nickname")] public string Nickname { get; set; }
             // [JsonProperty("tokenType")] public string TokenType { get; set; }
             // [JsonProperty("tokenId")] public string TokenId { get; set; }
+        }
+
+        [Serializable]
+        public class SetNicknameRequest
+        {
+            [JsonProperty("nickname")] public string Nickname { get; set; }
+        }
+
+        [Serializable]
+        public class SetNicknameResponse
+        {
+            [JsonProperty("success")] public bool Success { get; set; }
+            [JsonProperty("nickname")] public string Nickname { get; set; }
+            [JsonProperty("gameId")] public string GameId { get; set; }
+            [JsonProperty("error")] public SetNicknameError Error { get; set; }
+        }
+
+        [Serializable]
+        public class SetNicknameError
+        {
+            [JsonProperty("code")] public string Code { get; set; }
+            [JsonProperty("message")] public string Message { get; set; }
         }
 
         [Serializable]
@@ -175,6 +202,88 @@ namespace PlayKit_SDK
         public bool HasValidPlayerToken() => !string.IsNullOrEmpty(playerToken);
         public PlayerInfo GetCachedPlayerInfo() => cachedPlayerInfo;
         public string GetPlayerToken() => playerToken;
+
+        /// <summary>
+        /// Gets the player's nickname from cached player info
+        /// </summary>
+        /// <returns>The nickname, or null if not set</returns>
+        public string GetNickname() => cachedPlayerInfo?.Nickname;
+
+        /// <summary>
+        /// Sets the player's nickname for the current game.
+        /// Requires a game-specific player token (not a global token).
+        /// </summary>
+        /// <param name="nickname">The nickname to set (1-16 characters, letters/numbers/Chinese/underscores/spaces only)</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>ApiResult with SetNicknameResponse on success</returns>
+        public async UniTask<ApiResult<SetNicknameResponse>> SetNicknameAsync(string nickname, CancellationToken cancellationToken = default)
+        {
+            string authToken = GetAuthToken();
+            if (string.IsNullOrEmpty(authToken))
+            {
+                string error = "No valid auth token available";
+                Debug.LogError(error);
+                OnError?.Invoke(error);
+                return new ApiResult<SetNicknameResponse> { Success = false, Error = error };
+            }
+
+            // Validate nickname locally first
+            if (string.IsNullOrEmpty(nickname))
+            {
+                string error = "Nickname cannot be null or empty";
+                Debug.LogError(error);
+                OnError?.Invoke(error);
+                return new ApiResult<SetNicknameResponse> { Success = false, Error = error };
+            }
+
+            string trimmedNickname = nickname.Trim();
+            if (trimmedNickname.Length == 0)
+            {
+                string error = "Nickname cannot be empty";
+                Debug.LogError(error);
+                OnError?.Invoke(error);
+                return new ApiResult<SetNicknameResponse> { Success = false, Error = error };
+            }
+
+            if (trimmedNickname.Length > 16)
+            {
+                string error = "Nickname must be 16 characters or less";
+                Debug.LogError(error);
+                OnError?.Invoke(error);
+                return new ApiResult<SetNicknameResponse> { Success = false, Error = error };
+            }
+
+            string url = $"{baseUrl}/api/external/set-game-player-nickname";
+            var requestData = new SetNicknameRequest { Nickname = trimmedNickname };
+
+            var result = await PostRequestAsync<SetNicknameRequest, SetNicknameResponse>(url, requestData, cancellationToken, authToken);
+
+            if (result.Success && result.Data != null)
+            {
+                if (result.Data.Success)
+                {
+                    // Update cached player info
+                    if (cachedPlayerInfo != null)
+                    {
+                        cachedPlayerInfo.Nickname = result.Data.Nickname;
+                        OnPlayerInfoUpdated?.Invoke(cachedPlayerInfo);
+                    }
+
+                    Debug.Log($"Nickname set successfully: {result.Data.Nickname}");
+                    OnNicknameChanged?.Invoke(result.Data.Nickname);
+                }
+                else if (result.Data.Error != null)
+                {
+                    string error = result.Data.Error.Message ?? "Failed to set nickname";
+                    Debug.LogError($"Set nickname failed: {result.Data.Error.Code} - {error}");
+                    OnError?.Invoke(error);
+                    result.Success = false;
+                    result.Error = error;
+                }
+            }
+
+            return result;
+        }
 
         
         /// <summary>
