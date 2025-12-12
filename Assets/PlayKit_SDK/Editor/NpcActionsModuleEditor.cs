@@ -292,7 +292,6 @@ namespace PlayKit_SDK.Editor
 
                 var module = (PlayKit_NPCClient_ActionsModule)target;
                 EditorGUILayout.LabelField("Ready:", module.IsReady ? "Yes" : "No");
-                EditorGUILayout.LabelField("Processing:", module.IsProcessing ? "Yes" : "No");
                 EditorGUILayout.LabelField("Enabled Actions:", module.EnabledActions.Count.ToString());
             }
 

@@ -16,5 +16,5 @@ MonoBehaviour:
   defaultChatModel: claude-3-7-sonnet
   defaultImageModel: flux-1-schnell
   developerToken: dev-c4aae194-c2e2-456d-93fa-694ee9d9ccb6
-  useLocalDeveloperToken: 1
+  useLocalDeveloperToken: 0
   ignoreDeveloperToken: 0
