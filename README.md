@@ -1,5 +1,5 @@
-# Developerworks Unity SDK
+# PlayKit Unity SDK
 
-**Made with ❤️ by the Developerworks Team**
+**Made with ❤️ by the Playkit.ai Team**
 
-*Making AI game is hard, so we made PlayKit.ai. It's easy mode.*
+*Making AI game is hard, so we made PlayKit. It's easy mode.*
