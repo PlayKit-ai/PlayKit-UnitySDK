@@ -9,10 +9,13 @@ using PlayKit_SDK.Core;
 
 namespace PlayKit_SDK.Auth
 {
+    /// <summary>
+    /// Manages local token storage for the PlayKit SDK.
+    /// Tokens are stored locally per-game (not shared across games).
+    /// </summary>
     public static class PlayKit_LocalSharedToken
     {
-    private const string TokenFileName = "shared_token.txt";
-    private const string SharedFolderName = "DeveloperWorks_SDK";
+    private const string TokenFileName = "playkit_token.txt";
 
 #if !UNITY_WEBGL
     // base64 转换成真正的 key/iv (仅在非 WebGL 平台使用)
@@ -21,31 +24,20 @@ namespace PlayKit_SDK.Auth
 #endif
 
 #if !UNITY_WEBGL
+    /// <summary>
+    /// Gets the local token file path using Application.persistentDataPath.
+    /// Tokens are stored per-game, not shared across games.
+    /// </summary>
     private static string GetSharedFilePath()
     {
-        string folderPath = "";
-
-#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-        folderPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData); // %AppData%
-#elif UNITY_STANDALONE_OSX || UNITY_EDITOR_OSX
-        folderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "Library/Application Support");
-#else
-        folderPath = Application.persistentDataPath;
-#endif
+        string folderPath = Application.persistentDataPath;
 
         if (string.IsNullOrEmpty(folderPath))
         {
             return null;
         }
 
-        // 使用DeveloperWorks SDK专用的跨游戏共享文件夹
-        string fullPath = Path.Combine(folderPath, SharedFolderName);
-        if (!Directory.Exists(fullPath))
-        {
-            Directory.CreateDirectory(fullPath);
-        }
-
-        return Path.Combine(fullPath, TokenFileName);
+        return Path.Combine(folderPath, TokenFileName);
     }
 #endif
 
@@ -54,22 +46,22 @@ namespace PlayKit_SDK.Auth
         try
         {
 #if UNITY_WEBGL
-            // WebGL：不保存token，只读取
-            Debug.Log("WebGL版本不保存token到localStorage");
-            return;
+            // WebGL: Save token to localStorage
+            PlayKit_WebGLStorage.SetItem("playkit_token", token);
+            Debug.Log("[PlayKit SDK] Token saved to localStorage");
 #else
-            // 其他平台：加密后存储到跨游戏共享位置
+            // Other platforms: Encrypt and store locally
             byte[] encrypted = EncryptStringToBytes_Aes(token, AesKey, AesIV);
             var path = GetSharedFilePath();
             if (string.IsNullOrEmpty(path)) return;
 
             File.WriteAllBytes(path, encrypted);
-            Debug.Log($"Token saved (encrypted) to shared location: {Path.GetDirectoryName(path)}");
+            Debug.Log($"[PlayKit SDK] Token saved (encrypted) to: {path}");
 #endif
         }
         catch (Exception e)
         {
-            Debug.LogError("Failed to save token: " + e.Message);
+            Debug.LogError("[PlayKit SDK] Failed to save token: " + e.Message);
         }
     }
 
@@ -78,19 +70,19 @@ namespace PlayKit_SDK.Auth
         try
         {
 #if UNITY_WEBGL
-            // WebGL：从localStorage读取，不解密
-            if (DW_WebGLStorage.HasKey("shared_token"))
+            // WebGL: Load token from localStorage
+            if (PlayKit_WebGLStorage.HasKey("playkit_token"))
             {
-                string token = DW_WebGLStorage.GetItem("shared_token");
+                string token = PlayKit_WebGLStorage.GetItem("playkit_token");
                 return token;
             }
             else
             {
-                Debug.LogWarning("Token not found in localStorage.");
+                Debug.LogWarning("[PlayKit SDK] Token not found in localStorage.");
                 return null;
             }
 #else
-            // 其他平台：读取并解密
+            // Other platforms: Read and decrypt
             string path = GetSharedFilePath();
             if (string.IsNullOrEmpty(path)) return null;
 
@@ -98,19 +90,18 @@ namespace PlayKit_SDK.Auth
             {
                 byte[] encrypted = File.ReadAllBytes(path);
                 var token = DecryptStringFromBytes_Aes(encrypted, AesKey, AesIV);
-                Debug.Log($"Token loaded from shared location: {Path.GetDirectoryName(path)}");
+                Debug.Log($"[PlayKit SDK] Token loaded from: {path}");
                 return token;
             }
             else
             {
-                // Debug.LogWarning($"Token file not found at shared location: {path}");
                 return null;
             }
 #endif
         }
         catch (Exception e)
         {
-            Debug.LogError("Failed to load token: " + e.Message);
+            Debug.LogError("[PlayKit SDK] Failed to load token: " + e.Message);
             return null;
         }
     }
@@ -120,20 +111,20 @@ namespace PlayKit_SDK.Auth
         try
         {
 #if UNITY_WEBGL
-            DW_WebGLStorage.RemoveItem("shared_token");
-            Debug.Log("Token erased from localStorage.");
+            PlayKit_WebGLStorage.RemoveItem("playkit_token");
+            Debug.Log("[PlayKit SDK] Token erased from localStorage.");
 #else
             string path = GetSharedFilePath();
             if (File.Exists(path))
             {
                 File.Delete(path);
-                Debug.Log("Token erased.");
+                Debug.Log("[PlayKit SDK] Token erased.");
             }
 #endif
         }
         catch (Exception e)
         {
-            Debug.LogError("Failed to erase token: " + e.Message);
+            Debug.LogError("[PlayKit SDK] Failed to erase token: " + e.Message);
         }
     }
 

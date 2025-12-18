@@ -2,7 +2,7 @@ using System;
 using System.Text;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Developerworks.SDK;
+using PlayKit_SDK;
 using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -10,7 +10,7 @@ using UnityEngine.Networking;
 namespace PlayKit_SDK.Provider.AI
 {
     /// <summary>
-    /// Provider for the platform audio transcription endpoint (/ai/{gameId}/v2/audio/transcriptions)
+    /// Provider for the platform audio transcription endpoint (/ai/{gameId}/v1/audio/transcriptions)
     /// </summary>
     internal class AITranscriptionProvider : ITranscriptionProvider
     {
@@ -29,7 +29,7 @@ namespace PlayKit_SDK.Provider.AI
             {
                 throw new InvalidOperationException("GameId is not configured in PlayKitSettings.");
             }
-            return $"{settings.AIBaseUrl}/v2/audio/transcriptions";
+            return $"{settings.AIBaseUrl}/v1/audio/transcriptions";
         }
 
         private string GetAuthToken()

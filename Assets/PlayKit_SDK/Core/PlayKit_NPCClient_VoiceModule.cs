@@ -8,7 +8,7 @@ namespace PlayKit_SDK
     /// <summary>
     /// Voice input module for NPC Client
     /// Provides speech-to-text capabilities for NPC conversations
-    /// Automatically integrates with DW_NPCClient on the same GameObject
+    /// Automatically integrates with PlayKit_NPCClient on the same GameObject
     /// </summary>
     public class PlayKit_NPCClient_VoiceModule : MonoBehaviour
     {
@@ -19,7 +19,7 @@ namespace PlayKit_SDK
         [SerializeField] private string defaultLanguage = "zh";
 
         [Header("Microphone Recording (Optional) 麦克风录制（可选）")]
-        [Tooltip("Optional: Attach a DW_MicrophoneRecorder for integrated recording functionality 可选：附加DW_MicrophoneRecorder组件以集成录制功能")]
+        [Tooltip("Optional: Attach a PlayKit_MicrophoneRecorder for integrated recording functionality 可选：附加PlayKit_MicrophoneRecorder组件以集成录制功能")]
         [SerializeField] private PlayKit_MicrophoneRecorder microphoneRecorder;
 
         [Header("Debug Options 调试选项")]
@@ -59,7 +59,7 @@ namespace PlayKit_SDK
             _npcClient = GetComponent<PlayKit_NPCClient>();
             if (_npcClient == null)
             {
-                Debug.LogError("[VoiceModule] No DW_NPCClient found on this GameObject! Voice module requires DW_NPCClient component.");
+                Debug.LogError("[VoiceModule] No PlayKit_NPCClient found on this GameObject! Voice module requires PlayKit_NPCClient component.");
                 return;
             }
 
@@ -208,14 +208,14 @@ namespace PlayKit_SDK
         /// <param name="language">Optional language code (defaults to module's defaultLanguage)</param>
         /// <param name="cancellationToken">Optional cancellation token</param>
         /// <returns>Full transcription result with metadata</returns>
-        public async UniTask<Public.DW_TranscriptionResult> GetFullTranscription(
+        public async UniTask<Public.PlayKit_TranscriptionResult> GetFullTranscription(
             AudioClip audioClip,
             string language = null,
             CancellationToken? cancellationToken = null)
         {
             if (!ValidateReadyState(audioClip))
             {
-                return new Public.DW_TranscriptionResult("Voice module not ready or audio clip is null");
+                return new Public.PlayKit_TranscriptionResult("Voice module not ready or audio clip is null");
             }
 
             var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
@@ -328,7 +328,7 @@ namespace PlayKit_SDK
         /// <summary>
         /// Get or create a microphone recorder component
         /// </summary>
-        /// <returns>The DW_MicrophoneRecorder instance</returns>
+        /// <returns>The PlayKit_MicrophoneRecorder instance</returns>
         public PlayKit_MicrophoneRecorder GetOrCreateRecorder()
         {
             if (microphoneRecorder == null)
@@ -337,7 +337,7 @@ namespace PlayKit_SDK
                 if (microphoneRecorder == null)
                 {
                     microphoneRecorder = gameObject.AddComponent<PlayKit_MicrophoneRecorder>();
-                    Debug.Log("[VoiceModule] Created new DW_MicrophoneRecorder component");
+                    Debug.Log("[VoiceModule] Created new PlayKit_MicrophoneRecorder component");
                 }
             }
             return microphoneRecorder;
@@ -521,7 +521,7 @@ namespace PlayKit_SDK
 
             if (microphoneRecorder == null)
             {
-                Debug.LogError("[VoiceModule] No microphone recorder configured! Please assign a DW_MicrophoneRecorder component or call GetOrCreateRecorder().");
+                Debug.LogError("[VoiceModule] No microphone recorder configured! Please assign a PlayKit_MicrophoneRecorder component or call GetOrCreateRecorder().");
                 return false;
             }
 

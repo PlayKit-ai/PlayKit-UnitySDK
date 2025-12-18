@@ -24,10 +24,10 @@ namespace PlayKit_SDK.Example
         }
         async void Start()
         {
-            /* 初始化 Developerworks SDK。
+            /* 初始化 PlayKit SDK。
              * 这是使用SDK任何功能之前都必须调用的第一步，这会开始读取本地的玩家信息，如果未登录则自动打开登录窗口。
              * 如果传入您的开发者密钥（Developer Key），则会跳过任何鉴权。
-             * Initialize Developerworks SDK.
+             * Initialize PlayKit SDK.
              * This must be called before everything, and it will start to read local player information
              * and if there is not, it will automatically start up the login modal.
              * If you pass in your developer key, the sdk skips player validation.

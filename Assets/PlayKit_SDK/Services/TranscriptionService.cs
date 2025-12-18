@@ -23,7 +23,7 @@ namespace PlayKit_SDK.Services
         /// <summary>
         /// Transcribe audio data (raw bytes) to text
         /// </summary>
-        public async UniTask<Public.DW_TranscriptionResult> TranscribeAsync(
+        public async UniTask<Public.PlayKit_TranscriptionResult> TranscribeAsync(
             string model,
             byte[] audioData,
             string language = null,
@@ -33,12 +33,12 @@ namespace PlayKit_SDK.Services
         {
             if (string.IsNullOrEmpty(model))
             {
-                return new Public.DW_TranscriptionResult("Model name cannot be empty");
+                return new Public.PlayKit_TranscriptionResult("Model name cannot be empty");
             }
 
             if (audioData == null || audioData.Length == 0)
             {
-                return new Public.DW_TranscriptionResult("Audio data cannot be empty");
+                return new Public.PlayKit_TranscriptionResult("Audio data cannot be empty");
             }
 
             // Convert audio bytes to base64
@@ -59,10 +59,10 @@ namespace PlayKit_SDK.Services
 
                 if (response == null || string.IsNullOrEmpty(response.Text))
                 {
-                    return new Public.DW_TranscriptionResult("Failed to get valid transcription from API");
+                    return new Public.PlayKit_TranscriptionResult("Failed to get valid transcription from API");
                 }
 
-                return new Public.DW_TranscriptionResult(
+                return new Public.PlayKit_TranscriptionResult(
                     text: response.Text,
                     language: response.Language,
                     durationInSeconds: response.DurationInSeconds,
@@ -72,14 +72,14 @@ namespace PlayKit_SDK.Services
             catch (Exception ex)
             {
                 Debug.LogError($"[TranscriptionService] Transcription failed: {ex.Message}");
-                return new Public.DW_TranscriptionResult($"Transcription failed: {ex.Message}");
+                return new Public.PlayKit_TranscriptionResult($"Transcription failed: {ex.Message}");
             }
         }
 
         /// <summary>
         /// Transcribe Unity AudioClip to text
         /// </summary>
-        public async UniTask<Public.DW_TranscriptionResult> TranscribeAudioClipAsync(
+        public async UniTask<Public.PlayKit_TranscriptionResult> TranscribeAudioClipAsync(
             string model,
             AudioClip audioClip,
             string language = null,
@@ -89,7 +89,7 @@ namespace PlayKit_SDK.Services
         {
             if (audioClip == null)
             {
-                return new Public.DW_TranscriptionResult("AudioClip cannot be null");
+                return new Public.PlayKit_TranscriptionResult("AudioClip cannot be null");
             }
 
             // Convert AudioClip to WAV bytes
@@ -101,7 +101,7 @@ namespace PlayKit_SDK.Services
             catch (Exception ex)
             {
                 Debug.LogError($"[TranscriptionService] Failed to convert AudioClip to WAV: {ex.Message}");
-                return new Public.DW_TranscriptionResult($"Audio conversion failed: {ex.Message}");
+                return new Public.PlayKit_TranscriptionResult($"Audio conversion failed: {ex.Message}");
             }
 
             return await TranscribeAsync(model, wavData, language, prompt, temperature, cancellationToken);
@@ -156,17 +156,17 @@ namespace PlayKit_SDK.Services
         /// <summary>
         /// Convert internal segments to public API segments
         /// </summary>
-        private Public.DW_TranscriptionSegment[] ConvertSegments(TranscriptionSegment[] segments)
+        private Public.PlayKit_TranscriptionSegment[] ConvertSegments(TranscriptionSegment[] segments)
         {
             if (segments == null || segments.Length == 0)
             {
                 return null;
             }
 
-            var result = new Public.DW_TranscriptionSegment[segments.Length];
+            var result = new Public.PlayKit_TranscriptionSegment[segments.Length];
             for (int i = 0; i < segments.Length; i++)
             {
-                result[i] = new Public.DW_TranscriptionSegment
+                result[i] = new Public.PlayKit_TranscriptionSegment
                 {
                     Start = segments[i].Start,
                     End = segments[i].End,

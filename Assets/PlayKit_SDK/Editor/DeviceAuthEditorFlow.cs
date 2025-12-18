@@ -2,7 +2,7 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using Developerworks.SDK;
+using PlayKit_SDK;
 using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;

@@ -3,13 +3,13 @@ using PlayKit_SDK.Provider.AI;
 
 namespace PlayKit_SDK.Public
 {
-    public class DW_AIResult<T> { public bool Success { get; } public T Response { get; } public string ErrorMessage { get; } public DW_AIResult(T data) { Success = true; Response = data; } public DW_AIResult(string errorMessage) { Success = false; Response = default; ErrorMessage = errorMessage; } }
+    public class PlayKit_AIResult<T> { public bool Success { get; } public T Response { get; } public string ErrorMessage { get; } public PlayKit_AIResult(T data) { Success = true; Response = data; } public PlayKit_AIResult(string errorMessage) { Success = false; Response = default; ErrorMessage = errorMessage; } }
 
     /// <summary>
     /// Chat message for conversations.
     /// ToolCallId and ToolCalls are optional fields used for tool calling.
     /// </summary>
-    public class DW_ChatMessage
+    public class PlayKit_ChatMessage
     {
         public string Role;
         public string Content;
@@ -23,22 +23,22 @@ namespace PlayKit_SDK.Public
         public List<ChatToolCall> ToolCalls;
     }
 
-    public abstract class DW_ChatConfigBase { public List<DW_ChatMessage> Messages { get; set; } = new List<DW_ChatMessage>(); public float Temperature { get; set; } = 0.7f; protected DW_ChatConfigBase(List<DW_ChatMessage> messages) { Messages = messages; } protected DW_ChatConfigBase(string userMessage) { Messages.Add(new DW_ChatMessage { Role = "user", Content = userMessage }); } }
-    public class DW_ChatConfig : DW_ChatConfigBase { public DW_ChatConfig(string userMessage) : base(userMessage) { } public DW_ChatConfig(List<DW_ChatMessage> messages) : base(messages) { } }
-    public class DW_ChatStreamConfig : DW_ChatConfigBase { public DW_ChatStreamConfig(string userMessage) : base(userMessage) { } public DW_ChatStreamConfig(List<DW_ChatMessage> messages) : base(messages) { } }
+    public abstract class PlayKit_ChatConfigBase { public List<PlayKit_ChatMessage> Messages { get; set; } = new List<PlayKit_ChatMessage>(); public float Temperature { get; set; } = 0.7f; protected PlayKit_ChatConfigBase(List<PlayKit_ChatMessage> messages) { Messages = messages; } protected PlayKit_ChatConfigBase(string userMessage) { Messages.Add(new PlayKit_ChatMessage { Role = "user", Content = userMessage }); } }
+    public class PlayKit_ChatConfig : PlayKit_ChatConfigBase { public PlayKit_ChatConfig(string userMessage) : base(userMessage) { } public PlayKit_ChatConfig(List<PlayKit_ChatMessage> messages) : base(messages) { } }
+    public class PlayKit_ChatStreamConfig : PlayKit_ChatConfigBase { public PlayKit_ChatStreamConfig(string userMessage) : base(userMessage) { } public PlayKit_ChatStreamConfig(List<PlayKit_ChatMessage> messages) : base(messages) { } }
 
     // Audio Transcription
     [System.Serializable]
-    public class DW_TranscriptionResult
+    public class PlayKit_TranscriptionResult
     {
         public bool Success { get; }
         public string Text { get; }
         public string Language { get; }
         public float? DurationInSeconds { get; }
-        public DW_TranscriptionSegment[] Segments { get; }
+        public PlayKit_TranscriptionSegment[] Segments { get; }
         public string Error { get; }
 
-        public DW_TranscriptionResult(string text, string language = null, float? durationInSeconds = null, DW_TranscriptionSegment[] segments = null)
+        public PlayKit_TranscriptionResult(string text, string language = null, float? durationInSeconds = null, PlayKit_TranscriptionSegment[] segments = null)
         {
             Success = true;
             Text = text;
@@ -47,7 +47,7 @@ namespace PlayKit_SDK.Public
             Segments = segments;
         }
 
-        public DW_TranscriptionResult(string errorMessage)
+        public PlayKit_TranscriptionResult(string errorMessage)
         {
             Success = false;
             Error = errorMessage;
@@ -55,7 +55,7 @@ namespace PlayKit_SDK.Public
     }
 
     [System.Serializable]
-    public class DW_TranscriptionSegment
+    public class PlayKit_TranscriptionSegment
     {
         public float Start;
         public float End;

@@ -14,8 +14,9 @@ namespace PlayKit_SDK.Editor
     [InitializeOnLoad]
     public static class PlayKit_UpdateChecker
     {
-        private const string VERSION_API_URL = "https://playkit.agentlandlab.com/api/sdk/version/unity";
-        private const string DOWNLOAD_URL = "https://playkit.agentlandlab.com";
+        // New versions API endpoint (returns latest version info with changelog)
+        private const string VERSION_API_URL = "https://playkit.ai/api/sdk/versions/unity?latest=true";
+        private const string DOWNLOAD_URL = "https://playkit.ai/dashboard";
         private const string LAST_CHECK_KEY = "PlayKit_SDK_LastUpdateCheck";
         private const string SKIP_VERSION_KEY = "PlayKit_SDK_SkipVersion";
 
@@ -110,23 +111,27 @@ namespace PlayKit_SDK.Editor
                     {
                         // New version available
                         string message = $"A new version of PlayKit Unity SDK is available!\n" +
-                                       $"{currentVersion} -> {latestVersion}\n";
+                                       $"{currentVersion} -> {latestVersion}";
 
-                        if (!string.IsNullOrEmpty(response.name))
+                        // Add channel info if not stable
+                        if (!string.IsNullOrEmpty(response.channel) && response.channel != "stable")
                         {
-                            message += $"Release Name: {response.name}\n";
+                            message += $" ({response.channel})";
+                        }
+                        message += "\n";
+
+                        // Add changelog if available
+                        if (!string.IsNullOrEmpty(response.changelog))
+                        {
+                            message += $"\n{response.changelog}\n";
                         }
 
-                        // if (!string.IsNullOrEmpty(response.publishedAt))
-                        // {
-                        //     message += $"Published: {response.publishedAt}\n";
-                        // }
-
-                        if (!string.IsNullOrEmpty(response.body))
+                        // Add minimum Unity version requirement if available
+                        if (!string.IsNullOrEmpty(response.minEngineVersion))
                         {
-                            message += $"\n{response.body}\n";
+                            message += $"\nMinimum Unity Version: {response.minEngineVersion}\n";
                         }
-                        
+
                         int option = EditorUtility.DisplayDialogComplex(
                             L10n.Get("update.available.title"),
                             message,
@@ -138,13 +143,17 @@ namespace PlayKit_SDK.Editor
                         switch (option)
                         {
                             case 0: // Download Now
-                                Application.OpenURL(DOWNLOAD_URL);
+                                // Use downloadUrl from response if available, otherwise use default
+                                string downloadUrl = !string.IsNullOrEmpty(response.downloadUrl)
+                                    ? response.downloadUrl
+                                    : DOWNLOAD_URL;
+                                Application.OpenURL(downloadUrl);
                                 break;
                             case 1: // Skip This Version
                                 EditorPrefs.SetString(SKIP_VERSION_KEY, latestVersion);
                                 break;
                             case 2: // Remind Me Later
-                                // Do nothing, will check again tomorrow
+                                // Do nothing, will check again later
                                 break;
                         }
                     }
@@ -168,7 +177,7 @@ namespace PlayKit_SDK.Editor
                             L10n.Get("common.ok")
                         );
                     }
-                    Debug.LogError($"[Developerworks SDK] Update check failed: {ex.Message}");
+                    Debug.LogError($"[PlayKit SDK] Update check failed: {ex.Message}");
                 }
             }
         }
@@ -241,9 +250,12 @@ namespace PlayKit_SDK.Editor
         private class VersionResponse
         {
             public string version;
+            public string channel;
+            public string releaseTag;
+            public string downloadUrl;
+            public string changelog;
+            public string minEngineVersion;
             public string publishedAt;
-            public string name;
-            public string body;
         }
     }
 }

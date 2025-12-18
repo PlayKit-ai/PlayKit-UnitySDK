@@ -11,7 +11,7 @@ namespace PlayKit_SDK
 {
     /// <summary>
     /// A simplified NPC chat client that automatically manages conversation history.
-    /// This is a "sugar" wrapper around DW_AIChatClient for easier usage.
+    /// This is a "sugar" wrapper around PlayKit_AIChatClient for easier usage.
     ///
     /// Key Features:
     /// - Call Talk() for all interactions - actions are handled automatically
@@ -29,7 +29,7 @@ namespace PlayKit_SDK
         public string CharacterDesign => characterDesign;
 
         private PlayKit_AIChatClient _chatClient;
-        private List<DW_ChatMessage> _conversationHistory;
+        private List<PlayKit_ChatMessage> _conversationHistory;
         private string _currentPrompt;
         private bool _isTalking;
         private bool _isReady;
@@ -60,7 +60,7 @@ namespace PlayKit_SDK
 
         private void Start()
         {
-            _conversationHistory = new List<DW_ChatMessage>();
+            _conversationHistory = new List<PlayKit_ChatMessage>();
             Initialize().Forget();
         }
 
@@ -105,7 +105,7 @@ namespace PlayKit_SDK
 
             if (_chatClient == null)
             {
-                Debug.LogError("[NPCClient] Chat client not initialized. Please call DW_SDK.InitializeAsync() first.");
+                Debug.LogError("[NPCClient] Chat client not initialized. Please call PlayKit_SDK.InitializeAsync() first.");
                 _isTalking = false;
                 return null;
             }
@@ -152,7 +152,7 @@ namespace PlayKit_SDK
 
             if (_chatClient == null)
             {
-                Debug.LogError("[NPCClient] Chat client not initialized. Please call DW_SDK.InitializeAsync() first.");
+                Debug.LogError("[NPCClient] Chat client not initialized. Please call PlayKit_SDK.InitializeAsync() first.");
                 _isTalking = false;
                 onChunk?.Invoke(null);
                 onComplete?.Invoke(null);
@@ -190,7 +190,7 @@ namespace PlayKit_SDK
         private async UniTask<string> TalkSimpleInternal(string message, CancellationToken token)
         {
             // Add user message to history
-            _conversationHistory.Add(new DW_ChatMessage
+            _conversationHistory.Add(new PlayKit_ChatMessage
             {
                 Role = "user",
                 Content = message
@@ -198,12 +198,12 @@ namespace PlayKit_SDK
 
             try
             {
-                var config = new DW_ChatConfig(_conversationHistory.ToList());
+                var config = new PlayKit_ChatConfig(_conversationHistory.ToList());
                 var result = await _chatClient.TextGenerationAsync(config, token);
 
                 if (result.Success && !string.IsNullOrEmpty(result.Response))
                 {
-                    _conversationHistory.Add(new DW_ChatMessage
+                    _conversationHistory.Add(new PlayKit_ChatMessage
                     {
                         Role = "assistant",
                         Content = result.Response
@@ -231,7 +231,7 @@ namespace PlayKit_SDK
         private async UniTask<string> TalkWithActionsInternal(string message, CancellationToken token)
         {
             // Add user message to history
-            _conversationHistory.Add(new DW_ChatMessage
+            _conversationHistory.Add(new PlayKit_ChatMessage
             {
                 Role = "user",
                 Content = message
@@ -246,7 +246,7 @@ namespace PlayKit_SDK
                     .Select(a => a.ToTool())
                     .ToList();
 
-                var config = new DW_ChatConfig(_conversationHistory.ToList());
+                var config = new PlayKit_ChatConfig(_conversationHistory.ToList());
                 var result = await _chatClient.TextGenerationWithToolsAsync(config, tools, "auto", token);
 
                 if (result.Success && result.Response?.Choices?.Count > 0)
@@ -255,7 +255,7 @@ namespace PlayKit_SDK
                     var responseText = choice.Message?.Content ?? "";
 
                     // Add assistant response to history
-                    _conversationHistory.Add(new DW_ChatMessage
+                    _conversationHistory.Add(new PlayKit_ChatMessage
                     {
                         Role = "assistant",
                         Content = responseText,
@@ -291,7 +291,7 @@ namespace PlayKit_SDK
         private async UniTask TalkSimpleStreamInternal(string message, Action<string> onChunk, Action<string> onComplete, CancellationToken token)
         {
             // Add user message to history
-            _conversationHistory.Add(new DW_ChatMessage
+            _conversationHistory.Add(new PlayKit_ChatMessage
             {
                 Role = "user",
                 Content = message
@@ -299,7 +299,7 @@ namespace PlayKit_SDK
 
             try
             {
-                var config = new DW_ChatStreamConfig(_conversationHistory.ToList());
+                var config = new PlayKit_ChatStreamConfig(_conversationHistory.ToList());
 
                 await _chatClient.TextChatStreamAsync(config,
                     chunk => onChunk?.Invoke(chunk),
@@ -308,7 +308,7 @@ namespace PlayKit_SDK
                         _isTalking = false;
                         if (!string.IsNullOrEmpty(completeResponse))
                         {
-                            _conversationHistory.Add(new DW_ChatMessage
+                            _conversationHistory.Add(new PlayKit_ChatMessage
                             {
                                 Role = "assistant",
                                 Content = completeResponse
@@ -334,7 +334,7 @@ namespace PlayKit_SDK
         private async UniTask TalkWithActionsStreamInternal(string message, Action<string> onChunk, Action<string> onComplete, CancellationToken token)
         {
             // Add user message to history
-            _conversationHistory.Add(new DW_ChatMessage
+            _conversationHistory.Add(new PlayKit_ChatMessage
             {
                 Role = "user",
                 Content = message
@@ -348,7 +348,7 @@ namespace PlayKit_SDK
                     .Select(a => a.ToTool())
                     .ToList();
 
-                var config = new DW_ChatStreamConfig(_conversationHistory.ToList());
+                var config = new PlayKit_ChatStreamConfig(_conversationHistory.ToList());
 
                 await _chatClient.TextGenerationWithToolsStreamAsync(
                     config,
@@ -364,7 +364,7 @@ namespace PlayKit_SDK
                             var responseText = choice.Message?.Content ?? "";
 
                             // Add assistant response to history
-                            _conversationHistory.Add(new DW_ChatMessage
+                            _conversationHistory.Add(new PlayKit_ChatMessage
                             {
                                 Role = "assistant",
                                 Content = responseText,
@@ -433,7 +433,7 @@ namespace PlayKit_SDK
 
             foreach (var kvp in results)
             {
-                _conversationHistory.Add(new DW_ChatMessage
+                _conversationHistory.Add(new PlayKit_ChatMessage
                 {
                     Role = "tool",
                     ToolCallId = kvp.Key,
@@ -451,7 +451,7 @@ namespace PlayKit_SDK
         {
             if (string.IsNullOrEmpty(callId)) return;
 
-            _conversationHistory.Add(new DW_ChatMessage
+            _conversationHistory.Add(new PlayKit_ChatMessage
             {
                 Role = "tool",
                 ToolCallId = callId,
@@ -483,7 +483,7 @@ namespace PlayKit_SDK
             // Add new system message if we have a prompt
             if (!string.IsNullOrEmpty(_currentPrompt))
             {
-                _conversationHistory.Insert(0, new DW_ChatMessage
+                _conversationHistory.Insert(0, new PlayKit_ChatMessage
                 {
                     Role = "system",
                     Content = _currentPrompt
@@ -575,7 +575,7 @@ namespace PlayKit_SDK
 
             if (!string.IsNullOrEmpty(_currentPrompt))
             {
-                _conversationHistory.Add(new DW_ChatMessage
+                _conversationHistory.Add(new PlayKit_ChatMessage
                 {
                     Role = "system",
                     Content = _currentPrompt
@@ -586,7 +586,7 @@ namespace PlayKit_SDK
         /// <summary>
         /// Get the current conversation history
         /// </summary>
-        public DW_ChatMessage[] GetHistory() => _conversationHistory.ToArray();
+        public PlayKit_ChatMessage[] GetHistory() => _conversationHistory.ToArray();
 
         /// <summary>
         /// Get the number of messages in the conversation history
@@ -604,7 +604,7 @@ namespace PlayKit_SDK
                 return;
             }
 
-            _conversationHistory.Add(new DW_ChatMessage
+            _conversationHistory.Add(new PlayKit_ChatMessage
             {
                 Role = role,
                 Content = content
@@ -651,6 +651,6 @@ namespace PlayKit_SDK
     public class ConversationSaveData
     {
         public string Prompt;
-        public DW_ChatMessage[] History;
+        public PlayKit_ChatMessage[] History;
     }
 }

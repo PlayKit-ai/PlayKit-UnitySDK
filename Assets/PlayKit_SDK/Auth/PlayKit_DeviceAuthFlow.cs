@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using Developerworks.SDK;
+using PlayKit_SDK;
 using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;

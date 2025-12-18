@@ -7,16 +7,16 @@ namespace PlayKit_SDK.Core
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
         [DllImport("__Internal")]
-        private static extern void DW_SetLocalStorage(string key, string value);
+        private static extern void PlayKit_SetLocalStorage(string key, string value);
 
         [DllImport("__Internal")]
-        private static extern string DW_GetLocalStorage(string key);
+        private static extern string PlayKit_GetLocalStorage(string key);
 
         [DllImport("__Internal")]
-        private static extern void DW_RemoveLocalStorage(string key);
+        private static extern void PlayKit_RemoveLocalStorage(string key);
 
         [DllImport("__Internal")]
-        private static extern bool DW_HasLocalStorageKey(string key);
+        private static extern bool PlayKit_HasLocalStorageKey(string key);
 #endif
 
         /// <summary>
@@ -25,7 +25,7 @@ namespace PlayKit_SDK.Core
         public static void SetItem(string key, string value)
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
-            DW_SetLocalStorage(key, value);
+            PlayKit_SetLocalStorage(key, value);
 #else
             // 非WebGL平台使用PlayerPrefs作为备用
             PlayerPrefs.SetString(key, value);
@@ -39,7 +39,7 @@ namespace PlayKit_SDK.Core
         public static string GetItem(string key, string defaultValue = null)
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
-            string value = DW_GetLocalStorage(key);
+            string value = PlayKit_GetLocalStorage(key);
             return string.IsNullOrEmpty(value) ? defaultValue : value;
 #else
             // 非WebGL平台使用PlayerPrefs作为备用
@@ -53,7 +53,7 @@ namespace PlayKit_SDK.Core
         public static void RemoveItem(string key)
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
-            DW_RemoveLocalStorage(key);
+            PlayKit_RemoveLocalStorage(key);
 #else
             // 非WebGL平台使用PlayerPrefs作为备用
             PlayerPrefs.DeleteKey(key);
@@ -66,7 +66,7 @@ namespace PlayKit_SDK.Core
         public static bool HasKey(string key)
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
-            return DW_HasLocalStorageKey(key);
+            return PlayKit_HasLocalStorageKey(key);
 #else
             // 非WebGL平台使用PlayerPrefs作为备用
             return PlayerPrefs.HasKey(key);

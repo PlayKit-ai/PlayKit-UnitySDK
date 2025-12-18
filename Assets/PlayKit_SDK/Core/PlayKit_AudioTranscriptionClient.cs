@@ -32,7 +32,7 @@ namespace PlayKit_SDK
         /// <param name="prompt">Optional prompt to guide transcription</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Transcription result with text and optional metadata</returns>
-        public async UniTask<Public.DW_TranscriptionResult> TranscribeAsync(
+        public async UniTask<Public.PlayKit_TranscriptionResult> TranscribeAsync(
             byte[] audioData,
             string language = null,
             string prompt = null,
@@ -40,8 +40,8 @@ namespace PlayKit_SDK
         {
             if (audioData == null || audioData.Length == 0)
             {
-                Debug.LogError("[DW_AudioTranscriptionClient] Audio data cannot be null or empty");
-                return new Public.DW_TranscriptionResult("Audio data cannot be null or empty");
+                Debug.LogError("[PlayKit_AudioTranscriptionClient] Audio data cannot be null or empty");
+                return new Public.PlayKit_TranscriptionResult("Audio data cannot be null or empty");
             }
 
             return await _service.TranscribeAsync(
@@ -62,7 +62,7 @@ namespace PlayKit_SDK
         /// <param name="prompt">Optional prompt to guide transcription</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Transcription result with text and optional metadata</returns>
-        public async UniTask<Public.DW_TranscriptionResult> TranscribeAudioClipAsync(
+        public async UniTask<Public.PlayKit_TranscriptionResult> TranscribeAudioClipAsync(
             AudioClip audioClip,
             string language = null,
             string prompt = null,
@@ -70,8 +70,8 @@ namespace PlayKit_SDK
         {
             if (audioClip == null)
             {
-                Debug.LogError("[DW_AudioTranscriptionClient] AudioClip cannot be null");
-                return new Public.DW_TranscriptionResult("AudioClip cannot be null");
+                Debug.LogError("[PlayKit_AudioTranscriptionClient] AudioClip cannot be null");
+                return new Public.PlayKit_TranscriptionResult("AudioClip cannot be null");
             }
 
             return await _service.TranscribeAudioClipAsync(

@@ -3,7 +3,7 @@ using System;
 namespace PlayKit_SDK
 {
     /// <summary>
-    /// Base exception class for all Developerworks SDK exceptions
+    /// Base exception class for all PlayKit SDK exceptions
     /// </summary>
     public class PlayKitException : Exception
     {

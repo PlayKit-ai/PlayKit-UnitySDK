@@ -87,7 +87,7 @@ namespace PlayKit_SDK
             if (_isInitialized) return true;
 
             // Load settings from PlayKitSettings ScriptableObject
-            var settings = Developerworks.SDK.PlayKitSettings.Instance;
+            var settings = PlayKitSettings.Instance;
             if (settings == null)
             {
                 Debug.LogError("[PlayKit SDK] PlayKitSettings not found. Please configure the SDK via Tools > PlayKit SDK > Settings");
@@ -138,7 +138,7 @@ namespace PlayKit_SDK
 
             if (!authSuccess)
             {
-                Debug.LogError("[Developerworks SDK] SDK Authentication Failed. Cannot proceed.");
+                Debug.LogError("[PlayKit SDK] SDK Authentication Failed. Cannot proceed.");
                 return false;
             }
 
@@ -147,7 +147,7 @@ namespace PlayKit_SDK
             _objectProvider = new Provider.AI.AIObjectProvider(PlayKitAuthManager);
             _transcriptionProvider = new Provider.AI.AITranscriptionProvider(PlayKitAuthManager);
             _isInitialized = true;
-            Debug.Log("[Developerworks SDK] Developerworks_SDK Initialized Successfully");
+            Debug.Log("[PlayKit SDK] PlayKit_SDK Initialized Successfully");
             return true;
         }
 
@@ -168,12 +168,12 @@ namespace PlayKit_SDK
                 }
                 else
                 {
-                    Debug.LogWarning("[Developerworks SDK] DeveloperKeyWarning prefab not found in Resources.");
+                    Debug.LogWarning("[PlayKit SDK] DeveloperKeyWarning prefab not found in Resources.");
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[Developerworks SDK] Failed to show developer key warning: {ex.Message}");
+                Debug.LogWarning($"[PlayKit SDK] Failed to show developer key warning: {ex.Message}");
             }
         }
 
@@ -186,7 +186,7 @@ namespace PlayKit_SDK
         {
             if (!_isInitialized || PlayKitAuthManager == null)
             {
-                Debug.LogWarning("SDK not initialized. Please call DW_SDK.InitializeAsync() first.");
+                Debug.LogWarning("SDK not initialized. Please call PlayKit_SDK.InitializeAsync() first.");
                 return null;
             }
 
@@ -221,7 +221,7 @@ namespace PlayKit_SDK
                 }
 
                 // Load default model from settings if not specified
-                string model = modelName ?? Developerworks.SDK.PlayKitSettings.Instance?.DefaultChatModel;
+                string model = modelName ?? PlayKitSettings.Instance?.DefaultChatModel;
                 var chatService = new Services.ChatService(_chatProvider);
                 return new PlayKit_AIChatClient(model, chatService, _objectProvider);
             }
@@ -243,7 +243,7 @@ namespace PlayKit_SDK
                 }
 
                 // Load default model from settings if not specified
-                string model = modelName ?? Developerworks.SDK.PlayKitSettings.Instance?.DefaultImageModel;
+                string model = modelName ?? PlayKitSettings.Instance?.DefaultImageModel;
                 if (string.IsNullOrEmpty(model))
                 {
                     Debug.LogError("[PlayKit SDK] No image model specified. Please set Default Image Model in Tools > PlayKit SDK > Settings or provide a model name.");

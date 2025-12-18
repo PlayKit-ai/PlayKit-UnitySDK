@@ -47,14 +47,14 @@ namespace PlayKit_SDK
             _schemaLibrary = Resources.Load<PlayKit_SchemaLibrary>("SchemaLibrary");
             if (_schemaLibrary == null)
             {
-                Debug.LogWarning("[DW_AIChatClient] No default SchemaLibrary found at Resources/SchemaLibrary. You can create one or set a custom library with SetSchemaLibrary()");
+                Debug.LogWarning("[PlayKit_AIChatClient] No default SchemaLibrary found at Resources/SchemaLibrary. You can create one or set a custom library with SetSchemaLibrary()");
             }
         }
 
         /// <summary>
         /// Generate text using chat completion
         /// </summary>
-        public async UniTask<Public.DW_AIResult<string>> TextGenerationAsync(Public.DW_ChatConfig config, CancellationToken cancellationToken = default)
+        public async UniTask<Public.PlayKit_AIResult<string>> TextGenerationAsync(Public.PlayKit_ChatConfig config, CancellationToken cancellationToken = default)
         {
             return await _chatService.RequestAsync(_model, config, cancellationToken);
         }
@@ -62,7 +62,7 @@ namespace PlayKit_SDK
         /// <summary>
         /// Generate text using streaming chat completion
         /// </summary>
-        public async UniTask TextChatStreamAsync(Public.DW_ChatStreamConfig config, Action<string> onNewChunk, Action<string> onConcluded, CancellationToken cancellationToken = default)
+        public async UniTask TextChatStreamAsync(Public.PlayKit_ChatStreamConfig config, Action<string> onNewChunk, Action<string> onConcluded, CancellationToken cancellationToken = default)
         {
             await _chatService.RequestStreamAsync(_model, config, onNewChunk, onConcluded, cancellationToken);
         }
@@ -86,39 +86,39 @@ namespace PlayKit_SDK
         {
             if (_schemaLibrary == null)
             {
-                Debug.LogError("[DW_AIChatClient] No schema library available. Please set one with SetSchemaLibrary() or create Resources/SchemaLibrary");
+                Debug.LogError("[PlayKit_AIChatClient] No schema library available. Please set one with SetSchemaLibrary() or create Resources/SchemaLibrary");
                 return null;
             }
 
             if (string.IsNullOrEmpty(schemaName))
             {
-                Debug.LogError("[DW_AIChatClient] Schema name cannot be empty");
+                Debug.LogError("[PlayKit_AIChatClient] Schema name cannot be empty");
                 return null;
             }
 
             if (string.IsNullOrEmpty(prompt))
             {
-                Debug.LogError("[DW_AIChatClient] Prompt cannot be empty");
+                Debug.LogError("[PlayKit_AIChatClient] Prompt cannot be empty");
                 return null;
             }
 
             var schemaEntry = _schemaLibrary.FindSchema(schemaName);
             if (schemaEntry == null)
             {
-                Debug.LogError($"[DW_AIChatClient] Schema '{schemaName}' not found in library");
+                Debug.LogError($"[PlayKit_AIChatClient] Schema '{schemaName}' not found in library");
                 return null;
             }
 
             if (!schemaEntry.IsValid())
             {
-                Debug.LogError($"[DW_AIChatClient] Schema '{schemaName}' is invalid");
+                Debug.LogError($"[PlayKit_AIChatClient] Schema '{schemaName}' is invalid");
                 return null;
             }
 
             var parsedSchema = schemaEntry.GetParsedSchema();
             if (parsedSchema == null)
             {
-                Debug.LogError($"[DW_AIChatClient] Failed to parse schema '{schemaName}'");
+                Debug.LogError($"[PlayKit_AIChatClient] Failed to parse schema '{schemaName}'");
                 return null;
             }
 
@@ -155,13 +155,13 @@ namespace PlayKit_SDK
                 }
                 else
                 {
-                    Debug.LogWarning($"[DW_AIChatClient] No object returned for schema '{schemaName}'");
+                    Debug.LogWarning($"[PlayKit_AIChatClient] No object returned for schema '{schemaName}'");
                     return null;
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[DW_AIChatClient] Structured generation failed: {ex.Message}");
+                Debug.LogError($"[PlayKit_AIChatClient] Structured generation failed: {ex.Message}");
                 return null;
             }
         }
@@ -197,7 +197,7 @@ namespace PlayKit_SDK
             }
             catch (JsonException ex)
             {
-                Debug.LogError($"[DW_AIChatClient] Failed to deserialize to type {typeof(T).Name}: {ex.Message}");
+                Debug.LogError($"[PlayKit_AIChatClient] Failed to deserialize to type {typeof(T).Name}: {ex.Message}");
                 return default;
             }
         }
@@ -212,46 +212,46 @@ namespace PlayKit_SDK
         /// <returns>Generated object as JObject, or null if failed</returns>
         public async UniTask<JObject> GenerateStructuredAsync(
             string schemaName,
-            List<Public.DW_ChatMessage> messages,
+            List<Public.PlayKit_ChatMessage> messages,
             float? temperature = null,
             int? maxTokens = null,
             CancellationToken cancellationToken = default)
         {
             if (_schemaLibrary == null)
             {
-                Debug.LogError("[DW_AIChatClient] No schema library available. Please set one with SetSchemaLibrary() or create Resources/SchemaLibrary");
+                Debug.LogError("[PlayKit_AIChatClient] No schema library available. Please set one with SetSchemaLibrary() or create Resources/SchemaLibrary");
                 return null;
             }
 
             if (string.IsNullOrEmpty(schemaName))
             {
-                Debug.LogError("[DW_AIChatClient] Schema name cannot be empty");
+                Debug.LogError("[PlayKit_AIChatClient] Schema name cannot be empty");
                 return null;
             }
 
             if (messages == null || messages.Count == 0)
             {
-                Debug.LogError("[DW_AIChatClient] Messages cannot be null or empty");
+                Debug.LogError("[PlayKit_AIChatClient] Messages cannot be null or empty");
                 return null;
             }
 
             var schemaEntry = _schemaLibrary.FindSchema(schemaName);
             if (schemaEntry == null)
             {
-                Debug.LogError($"[DW_AIChatClient] Schema '{schemaName}' not found in library");
+                Debug.LogError($"[PlayKit_AIChatClient] Schema '{schemaName}' not found in library");
                 return null;
             }
 
             if (!schemaEntry.IsValid())
             {
-                Debug.LogError($"[DW_AIChatClient] Schema '{schemaName}' is invalid");
+                Debug.LogError($"[PlayKit_AIChatClient] Schema '{schemaName}' is invalid");
                 return null;
             }
 
             var parsedSchema = schemaEntry.GetParsedSchema();
             if (parsedSchema == null)
             {
-                Debug.LogError($"[DW_AIChatClient] Failed to parse schema '{schemaName}'");
+                Debug.LogError($"[PlayKit_AIChatClient] Failed to parse schema '{schemaName}'");
                 return null;
             }
 
@@ -287,13 +287,13 @@ namespace PlayKit_SDK
                 }
                 else
                 {
-                    Debug.LogWarning($"[DW_AIChatClient] No object returned for schema '{schemaName}' with messages");
+                    Debug.LogWarning($"[PlayKit_AIChatClient] No object returned for schema '{schemaName}' with messages");
                     return null;
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[DW_AIChatClient] Structured generation with messages failed: {ex.Message}");
+                Debug.LogError($"[PlayKit_AIChatClient] Structured generation with messages failed: {ex.Message}");
                 return null;
             }
         }
@@ -309,7 +309,7 @@ namespace PlayKit_SDK
         /// <returns>Generated object deserialized to type T, or default(T) if failed</returns>
         public async UniTask<T> GenerateStructuredAsync<T>(
             string schemaName,
-            List<Public.DW_ChatMessage> messages,
+            List<Public.PlayKit_ChatMessage> messages,
             float? temperature = null,
             int? maxTokens = null,
             CancellationToken cancellationToken = default)
@@ -327,7 +327,7 @@ namespace PlayKit_SDK
             }
             catch (JsonException ex)
             {
-                Debug.LogError($"[DW_AIChatClient] Failed to deserialize to type {typeof(T).Name}: {ex.Message}");
+                Debug.LogError($"[PlayKit_AIChatClient] Failed to deserialize to type {typeof(T).Name}: {ex.Message}");
                 return default;
             }
         }
@@ -353,13 +353,13 @@ namespace PlayKit_SDK
         {
             if (string.IsNullOrEmpty(schemaJson))
             {
-                Debug.LogError("[DW_AIChatClient] Schema JSON cannot be empty");
+                Debug.LogError("[PlayKit_AIChatClient] Schema JSON cannot be empty");
                 return null;
             }
 
             if (string.IsNullOrEmpty(prompt))
             {
-                Debug.LogError("[DW_AIChatClient] Prompt cannot be empty");
+                Debug.LogError("[PlayKit_AIChatClient] Prompt cannot be empty");
                 return null;
             }
 
@@ -370,7 +370,7 @@ namespace PlayKit_SDK
             }
             catch (JsonException ex)
             {
-                Debug.LogError($"[DW_AIChatClient] Invalid schema JSON: {ex.Message}");
+                Debug.LogError($"[PlayKit_AIChatClient] Invalid schema JSON: {ex.Message}");
                 return null;
             }
 
@@ -404,13 +404,13 @@ namespace PlayKit_SDK
                 }
                 else
                 {
-                    Debug.LogWarning($"[DW_AIChatClient] No object returned for direct schema");
+                    Debug.LogWarning($"[PlayKit_AIChatClient] No object returned for direct schema");
                     return null;
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[DW_AIChatClient] Structured generation failed: {ex.Message}");
+                Debug.LogError($"[PlayKit_AIChatClient] Structured generation failed: {ex.Message}");
                 return null;
             }
         }
@@ -449,7 +449,7 @@ namespace PlayKit_SDK
         /// </summary>
         /// <param name="messages">List of chat messages to print</param>
         /// <param name="title">Optional title for the chat log</param>
-        public static void PrintPrettyChatMessages(List<Public.DW_ChatMessage> messages, string title = "Chat Messages")
+        public static void PrintPrettyChatMessages(List<Public.PlayKit_ChatMessage> messages, string title = "Chat Messages")
         {
             if (messages == null || messages.Count == 0)
             {
@@ -486,9 +486,9 @@ namespace PlayKit_SDK
         /// </summary>
         /// <param name="messages">Array of chat messages to print</param>
         /// <param name="title">Optional title for the chat log</param>
-        public static void PrintPrettyChatMessages(Public.DW_ChatMessage[] messages, string title = "Chat Messages")
+        public static void PrintPrettyChatMessages(Public.PlayKit_ChatMessage[] messages, string title = "Chat Messages")
         {
-            PrintPrettyChatMessages(messages?.ToList() ?? new List<Public.DW_ChatMessage>(), title);
+            PrintPrettyChatMessages(messages?.ToList() ?? new List<Public.PlayKit_ChatMessage>(), title);
         }
 
         /// <summary>
@@ -518,8 +518,8 @@ namespace PlayKit_SDK
         /// <param name="toolChoice">Tool choice: "auto", "required", "none", or a specific tool</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Chat result including potential tool calls</returns>
-        public async UniTask<Public.DW_AIResult<ChatCompletionResponse>> TextGenerationWithToolsAsync(
-            Public.DW_ChatConfig config,
+        public async UniTask<Public.PlayKit_AIResult<ChatCompletionResponse>> TextGenerationWithToolsAsync(
+            Public.PlayKit_ChatConfig config,
             List<ChatTool> tools,
             object toolChoice = null,
             CancellationToken cancellationToken = default)
@@ -529,14 +529,14 @@ namespace PlayKit_SDK
                 var response = await _chatService.RequestWithToolsAsync(_model, config, tools, toolChoice, cancellationToken);
                 if (response != null)
                 {
-                    return new Public.DW_AIResult<ChatCompletionResponse>(response);
+                    return new Public.PlayKit_AIResult<ChatCompletionResponse>(response);
                 }
-                return new Public.DW_AIResult<ChatCompletionResponse>("Request failed");
+                return new Public.PlayKit_AIResult<ChatCompletionResponse>("Request failed");
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[ChatClient] TextGenerationWithToolsAsync error: {ex.Message}");
-                return new Public.DW_AIResult<ChatCompletionResponse>(ex.Message);
+                return new Public.PlayKit_AIResult<ChatCompletionResponse>(ex.Message);
             }
         }
 
@@ -551,7 +551,7 @@ namespace PlayKit_SDK
         /// <param name="toolChoice">Tool choice: "auto", "required", "none", or a specific tool</param>
         /// <param name="cancellationToken">Cancellation token</param>
         public async UniTask TextGenerationWithToolsStreamAsync(
-            Public.DW_ChatStreamConfig config,
+            Public.PlayKit_ChatStreamConfig config,
             List<ChatTool> tools,
             Action<string> onTextChunk,
             Action<ChatCompletionResponse> onComplete,

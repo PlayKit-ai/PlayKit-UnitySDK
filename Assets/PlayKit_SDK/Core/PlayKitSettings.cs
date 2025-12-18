@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Developerworks.SDK
+namespace PlayKit_SDK
 {
     /// <summary>
     /// ScriptableObject that stores PlayKit SDK configuration.
@@ -10,7 +10,7 @@ namespace Developerworks.SDK
     public class PlayKitSettings : ScriptableObject
     {
         private const string SETTINGS_PATH = "PlayKitSettings";
-        private const string SETTINGS_FULL_PATH = "Assets/Developerworks_SDK/Resources/PlayKitSettings.asset";
+        private const string SETTINGS_FULL_PATH = "Assets/PlayKit_SDK/Resources/PlayKitSettings.asset";
 
         [Header("Game Configuration")]
         [Tooltip("Your Game ID from the PlayKit dashboard")]
@@ -53,7 +53,7 @@ namespace Developerworks.SDK
                         _instance = CreateInstance<PlayKitSettings>();
 
                         // Ensure Resources folder exists
-                        string resourcesPath = "Assets/Developerworks_SDK/Resources";
+                        string resourcesPath = "Assets/PlayKit_SDK/Resources";
                         if (!UnityEditor.AssetDatabase.IsValidFolder(resourcesPath))
                         {
                             string[] folders = resourcesPath.Split('/');
@@ -198,7 +198,7 @@ namespace Developerworks.SDK
         /// </summary>
         public static void OpenSettingsWindow()
         {
-            var windowType = System.Type.GetType("Developerworks.SDK.PlayKitSettingsWindow, Developerworks_SDK.Editor");
+            var windowType = System.Type.GetType("PlayKit_SDK.PlayKitSettingsWindow, PlayKit_SDK.Editor");
             if (windowType != null)
             {
                 var window = UnityEditor.EditorWindow.GetWindow(windowType, false, "PlayKit SDK Settings");

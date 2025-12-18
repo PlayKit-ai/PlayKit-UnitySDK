@@ -30,7 +30,7 @@ namespace PlayKit_SDK
         /// <param name="size">Image size (e.g., "1024x1024", "1792x1024", "1024x1792")</param>
         /// <param name="seed">Optional seed for reproducible results</param>
         /// <returns>Generated image with metadata, or null if generation failed</returns>
-        public async UniTask<DW_GeneratedImage> GenerateImageAsync(
+        public async UniTask<PlayKit_GeneratedImage> GenerateImageAsync(
             string prompt,
             string size = "1024x1024",
             int? seed = null,
@@ -47,7 +47,7 @@ namespace PlayKit_SDK
         /// <param name="size">Image size (e.g., "1024x1024", "1792x1024", "1024x1792")</param>
         /// <param name="seed">Optional seed for reproducible results</param>
         /// <returns>Generated image as base64 string, or null if generation failed</returns>
-        [System.Obsolete("Use GenerateImageAsync() which returns DW_GeneratedImage with metadata. This method is kept for backward compatibility.")]
+        [System.Obsolete("Use GenerateImageAsync() which returns PlayKit_GeneratedImage with metadata. This method is kept for backward compatibility.")]
         public async UniTask<string> GenerateImageBase64Async(
             string prompt,
             string size = "1024x1024",
@@ -67,7 +67,7 @@ namespace PlayKit_SDK
         /// <param name="aspectRatio">Aspect ratio (e.g., "16:9", "1:1", "9:16") - alternative to size</param>
         /// <param name="seed">Optional seed for reproducible results</param>
         /// <returns>List of generated images with metadata</returns>
-        public async UniTask<List<DW_GeneratedImage>> GenerateImagesAsync(
+        public async UniTask<List<PlayKit_GeneratedImage>> GenerateImagesAsync(
             string prompt,
             int count = 1,
             string size = "1024x1024",
@@ -77,13 +77,13 @@ namespace PlayKit_SDK
         {
             if (string.IsNullOrEmpty(prompt))
             {
-                Debug.LogError("[DW_AIImageClient] Prompt cannot be empty");
+                Debug.LogError("[PlayKit_AIImageClient] Prompt cannot be empty");
                 return null;
             }
 
             if (count < 1 || count > 10)
             {
-                Debug.LogError("[DW_AIImageClient] Count must be between 1 and 10");
+                Debug.LogError("[PlayKit_AIImageClient] Count must be between 1 and 10");
                 return null;
             }
 
@@ -102,14 +102,14 @@ namespace PlayKit_SDK
                 
                 if (response?.Data == null)
                 {
-                    Debug.LogError("[DW_AIImageClient] Image generation failed - no response data");
+                    Debug.LogError("[PlayKit_AIImageClient] Image generation failed - no response data");
                     return null;
                 }
 
-                var results = new List<DW_GeneratedImage>();
+                var results = new List<PlayKit_GeneratedImage>();
                 foreach (var imageData in response.Data)
                 {
-                    results.Add(new DW_GeneratedImage
+                    results.Add(new PlayKit_GeneratedImage
                     {
                         ImageBase64 = imageData.B64Json,
                         RevisedPrompt = imageData.RevisedPrompt,
@@ -118,19 +118,19 @@ namespace PlayKit_SDK
                     });
                 }
 
-                Debug.Log($"[DW_AIImageClient] Successfully generated {results.Count} images");
+                Debug.Log($"[PlayKit_AIImageClient] Successfully generated {results.Count} images");
                 return results;
             }
             catch (PlayKitImageSizeValidationException ex)
             {
                 // Log a concise error message for size validation
-                // Debug.LogError($"[DW_AIImageClient] Size validation failed ({ex.ErrorCode}): {ex.Message}");
+                // Debug.LogError($"[PlayKit_AIImageClient] Size validation failed ({ex.ErrorCode}): {ex.Message}");
                 throw; // Re-throw for caller to handle
             }
             catch (PlayKitApiErrorException ex)
             {
                 // Log API errors concisely
-                // Debug.LogError($"[DW_AIImageClient] API error ({ex.ErrorCode}): {ex.Message}");
+                // Debug.LogError($"[PlayKit_AIImageClient] API error ({ex.ErrorCode}): {ex.Message}");
                 throw; // Re-throw for caller to handle
             }
             catch (PlayKitException)
@@ -140,7 +140,7 @@ namespace PlayKit_SDK
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[DW_AIImageClient] Unexpected error: {ex.Message}");
+                Debug.LogError($"[PlayKit_AIImageClient] Unexpected error: {ex.Message}");
                 throw new PlayKitException("Unexpected error during image generation", ex);
             }
         }
@@ -151,7 +151,7 @@ namespace PlayKit_SDK
         /// <param name="prompt">Text description of the desired images</param>
         /// <param name="options">Advanced generation options</param>
         /// <returns>List of generated images with metadata</returns>
-        public async UniTask<List<DW_GeneratedImage>> GenerateImagesAsync(string prompt, DW_ImageGenerationOptions options, CancellationToken cancellationToken = default)
+        public async UniTask<List<PlayKit_GeneratedImage>> GenerateImagesAsync(string prompt, PlayKit_ImageGenerationOptions options, CancellationToken cancellationToken = default)
         {
             if (options == null)
             {
@@ -174,14 +174,14 @@ namespace PlayKit_SDK
 
                 if (response?.Data == null)
                 {
-                    Debug.LogError("[DW_AIImageClient] Image generation failed - no response data");
+                    Debug.LogError("[PlayKit_AIImageClient] Image generation failed - no response data");
                     return null;
                 }
 
-                var results = new List<DW_GeneratedImage>();
+                var results = new List<PlayKit_GeneratedImage>();
                 foreach (var imageData in response.Data)
                 {
-                    results.Add(new DW_GeneratedImage
+                    results.Add(new PlayKit_GeneratedImage
                     {
                         ImageBase64 = imageData.B64Json,
                         RevisedPrompt = imageData.RevisedPrompt,
@@ -195,13 +195,13 @@ namespace PlayKit_SDK
             catch (PlayKitImageSizeValidationException ex)
             {
                 // Log a concise error message for size validation
-                Debug.LogError($"[DW_AIImageClient] Size validation failed ({ex.ErrorCode}): {ex.Message}");
+                Debug.LogError($"[PlayKit_AIImageClient] Size validation failed ({ex.ErrorCode}): {ex.Message}");
                 throw; // Re-throw for caller to handle
             }
             catch (PlayKitApiErrorException ex)
             {
                 // Log API errors concisely
-                Debug.LogError($"[DW_AIImageClient] API error ({ex.ErrorCode}): {ex.Message}");
+                Debug.LogError($"[PlayKit_AIImageClient] API error ({ex.ErrorCode}): {ex.Message}");
                 throw; // Re-throw for caller to handle
             }
             catch (PlayKitException)
@@ -211,7 +211,7 @@ namespace PlayKit_SDK
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[DW_AIImageClient] Unexpected error: {ex.Message}");
+                Debug.LogError($"[PlayKit_AIImageClient] Unexpected error: {ex.Message}");
                 throw new PlayKitException("Unexpected error during image generation", ex);
             }
         }
@@ -225,7 +225,7 @@ namespace PlayKit_SDK
         {
             if (string.IsNullOrEmpty(base64Data))
             {
-                Debug.LogError("[DW_AIImageClient] Base64 data is null or empty");
+                Debug.LogError("[PlayKit_AIImageClient] Base64 data is null or empty");
                 return null;
             }
 
@@ -240,13 +240,13 @@ namespace PlayKit_SDK
                 }
                 else
                 {
-                    Debug.LogError("[DW_AIImageClient] Failed to load image data into texture");
+                    Debug.LogError("[PlayKit_AIImageClient] Failed to load image data into texture");
                     return null;
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[DW_AIImageClient] Failed to convert base64 to texture: {ex.Message}");
+                Debug.LogError($"[PlayKit_AIImageClient] Failed to convert base64 to texture: {ex.Message}");
                 return null;
             }
         }
@@ -260,7 +260,7 @@ namespace PlayKit_SDK
         {
             if (texture == null)
             {
-                Debug.LogError("[DW_AIImageClient] Input Texture2D is null.");
+                Debug.LogError("[PlayKit_AIImageClient] Input Texture2D is null.");
                 return null;
             }
     
@@ -272,7 +272,7 @@ namespace PlayKit_SDK
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[DW_AIImageClient] Failed to convert Texture2D to Sprite: {ex.Message}");
+                Debug.LogError($"[PlayKit_AIImageClient] Failed to convert Texture2D to Sprite: {ex.Message}");
                 return null;
             }
         }
@@ -282,7 +282,7 @@ namespace PlayKit_SDK
     /// Represents a generated image with metadata
     /// </summary>
     [System.Serializable]
-    public class DW_GeneratedImage
+    public class PlayKit_GeneratedImage
     {
         /// <summary>
         /// Base64 encoded image data
@@ -327,7 +327,7 @@ namespace PlayKit_SDK
     /// Advanced options for image generation
     /// </summary>
     [System.Serializable]
-    public class DW_ImageGenerationOptions
+    public class PlayKit_ImageGenerationOptions
     {
         /// <summary>
         /// Number of images to generate (1-10)

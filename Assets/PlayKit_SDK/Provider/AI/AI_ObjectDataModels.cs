@@ -20,7 +20,7 @@ namespace PlayKit_SDK.Provider.AI
         public string Prompt { get; set; }
 
         [JsonProperty("messages")]
-        public List<DW_ChatMessage> Messages { get; set; }
+        public List<PlayKit_ChatMessage> Messages { get; set; }
         
         [JsonProperty("schema")]
         public object Schema { get; set; }

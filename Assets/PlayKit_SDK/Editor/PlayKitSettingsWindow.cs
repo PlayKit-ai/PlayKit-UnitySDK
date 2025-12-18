@@ -10,7 +10,7 @@ using PlayKit.SDK.Editor;
 using UnityEngine.Networking;
 using L10n = PlayKit.SDK.Editor.L10n;
 
-namespace Developerworks.SDK
+namespace PlayKit_SDK
 {
     /// <summary>
     /// Editor window for configuring PlayKit SDK settings.
@@ -1083,7 +1083,7 @@ namespace Developerworks.SDK
 
         private void OpenExampleScenes()
         {
-            string examplePath = "Assets/Developerworks_SDK/Example";
+            string examplePath = "Assets/PlayKit_SDK/Example";
             UnityEngine.Object exampleFolder = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(examplePath);
             if (exampleFolder != null)
             {

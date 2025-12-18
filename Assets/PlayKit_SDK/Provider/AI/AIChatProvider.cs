@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 using Cysharp.Threading.Tasks;
-using Developerworks.SDK;
+using PlayKit_SDK;
 using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;

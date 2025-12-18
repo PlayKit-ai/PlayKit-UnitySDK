@@ -8,8 +8,8 @@ namespace PlayKit_SDK.Auth
     public class PlayKit_AuthManager : MonoBehaviour
     {
         // CHANGED: Keys are now more specific to "PlayerToken"
-        private const string PlayerTokenKey = "DW_SDK_PlayerToken";
-        private const string TokenExpiryKey = "DW_SDK_TokenExpiry";
+        private const string PlayerTokenKey = "PlayKit_SDK_PlayerToken";
+        private const string TokenExpiryKey = "PlayKit_SDK_TokenExpiry";
         private string _gameId;
         public string gameId { get=>_gameId; }
         public string AuthToken { get; private set; }
@@ -31,7 +31,7 @@ namespace PlayKit_SDK.Auth
         public void Setup(string publishableKey, string developerToken = null)
         {
             _gameId = publishableKey;
-            Debug.Log("[Developerworks SDK] Initializing authentication with the following game id: "+_gameId);
+            Debug.Log("[PlayKit SDK] Initializing authentication with the following game id: "+_gameId);
             if (!string.IsNullOrEmpty(developerToken))
             {
                 AuthToken = developerToken;
@@ -51,7 +51,7 @@ namespace PlayKit_SDK.Auth
             // If using a developer token, authentication is always considered successful.
             if (IsDeveloperToken)
             {
-                Debug.Log("[Developerworks SDK] Using developer token. Authentication successful.");
+                Debug.Log("[PlayKit SDK] Using developer token. Authentication successful.");
                 standaloneLoadingObject.gameObject.SetActive(false);
 
                 return true;
@@ -62,7 +62,7 @@ namespace PlayKit_SDK.Auth
 
             if (await IsTokenValidWithAPICheck())
             {
-                Debug.Log("[Developerworks SDK] Valid shared token found, loaded and verified.");
+                Debug.Log("[PlayKit SDK] Valid shared token found, loaded and verified.");
                 standaloneLoadingObject.gameObject.SetActive(false);
 
                 // Also save it as Player Token for consistency
@@ -77,12 +77,12 @@ namespace PlayKit_SDK.Auth
             {
                 standaloneLoadingObject.gameObject.SetActive(false);
 
-                Debug.Log("[Developerworks SDK] Existing valid player token found and verified.");
+                Debug.Log("[PlayKit SDK] Existing valid player token found and verified.");
                 return true;
             }
 
             // Step 3: No valid tokens found, initiate login process
-            Debug.Log("[Developerworks SDK] No valid player or shared token found. Initiating login process.");
+            Debug.Log("[PlayKit SDK] No valid player or shared token found. Initiating login process.");
             standaloneLoadingObject.gameObject.SetActive(false);
 
             return await ShowLoginWebAsync();
@@ -93,7 +93,7 @@ namespace PlayKit_SDK.Auth
             var loginWebPrefab = Resources.Load<GameObject>("LoginWeb");
             if (loginWebPrefab == null)
             {
-                Debug.LogError("[Developerworks SDK] LoginWeb prefab not found in Resources folder!");
+                Debug.LogError("[PlayKit SDK] LoginWeb prefab not found in Resources folder!");
                 return false;
             }
 
@@ -101,7 +101,7 @@ namespace PlayKit_SDK.Auth
             var authFlowManager = loginWebInstance.GetComponent<PlayKit_AuthFlowManager>();
             if (authFlowManager == null)
             {
-                Debug.LogError("[Developerworks SDK] AuthFlowManager component not found on the LoginWeb prefab!");
+                Debug.LogError("[PlayKit SDK] AuthFlowManager component not found on the LoginWeb prefab!");
                 GameObject.Destroy(loginWebInstance);
                 return false;
             }
@@ -124,7 +124,7 @@ namespace PlayKit_SDK.Auth
                 return IsTokenValid();
             }
 
-            Debug.LogError("[Developerworks SDK] Login flow did not complete successfully.");
+            Debug.LogError("[PlayKit SDK] Login flow did not complete successfully.");
             return false;
         }
 
@@ -145,7 +145,7 @@ namespace PlayKit_SDK.Auth
             if (!string.IsNullOrEmpty(sharedToken))
             {
                 AuthToken = sharedToken;
-                Debug.Log("[Developerworks SDK] Loaded token from shared storage.");
+                Debug.Log("[PlayKit SDK] Loaded token from shared storage.");
             }
         }
 
@@ -158,7 +158,7 @@ namespace PlayKit_SDK.Auth
                 // Set a far future expiry since we don't know the actual expiry
                 PlayerPrefs.SetString(TokenExpiryKey, DateTime.MaxValue.ToUniversalTime().Ticks.ToString());
                 PlayerPrefs.Save();
-                Debug.Log("[Developerworks SDK] Shared token saved as player token.");
+                Debug.Log("[PlayKit SDK] Shared token saved as player token.");
             }
         }
 
@@ -181,7 +181,7 @@ namespace PlayKit_SDK.Auth
             {
                  if (DateTime.UtcNow.Ticks > expiryTicks)
                  {
-                    Debug.Log("[Developerworks SDK] Player token has expired.");
+                    Debug.Log("[PlayKit SDK] Player token has expired.");
                     ClearPlayerToken(); // Clean up expired token
                     return false;
                  }
@@ -216,7 +216,7 @@ namespace PlayKit_SDK.Auth
             {
                 if (DateTime.UtcNow.Ticks > expiryTicks)
                 {
-                    Debug.Log("[Developerworks SDK] Player token has expired based on stored expiry.");
+                    Debug.Log("[PlayKit SDK] Player token has expired based on stored expiry.");
                     ClearPlayerToken(); // Clean up expired token
                     return false;
                 }
@@ -224,7 +224,7 @@ namespace PlayKit_SDK.Auth
             else
             {
                 // If expiry date is not a valid long, treat it as invalid.
-                Debug.Log("[Developerworks SDK] Invalid expiry date format.");
+                Debug.Log("[PlayKit SDK] Invalid expiry date format.");
                 ClearPlayerToken();
                 return false;
             }
@@ -241,29 +241,29 @@ namespace PlayKit_SDK.Auth
 
                 try
                 {
-                    Debug.Log("[Developerworks SDK] Verifying token with player-info API...");
+                    Debug.Log("[PlayKit SDK] Verifying token with player-info API...");
                     var result = await PlayerClient.GetPlayerInfoAsync();
 
                     if (!result.Success)
                     {
-                        Debug.LogWarning($"[Developerworks SDK] Token verification failed: {result.Error}");
+                        Debug.LogWarning($"[PlayKit SDK] Token verification failed: {result.Error}");
                         ClearPlayerToken(); // Clear invalid token
                         return false;
                     }
 
-                    Debug.Log($"[Developerworks SDK] Token verified successfully. User ID: {result.Data.UserId}");
+                    Debug.Log($"[PlayKit SDK] Token verified successfully. User ID: {result.Data.UserId}");
                     return true;
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[Developerworks SDK] Error verifying token: {e.Message}");
+                    Debug.LogError($"[PlayKit SDK] Error verifying token: {e.Message}");
                     // Don't clear token on network error - might be temporary
                     return false;
                 }
             }
             else
             {
-                Debug.LogWarning("[Developerworks SDK] PlayerClient not available for token verification.");
+                Debug.LogWarning("[PlayKit SDK] PlayerClient not available for token verification.");
                 // If we can't verify with API, trust the expiry check
                 return true;
             }
@@ -286,7 +286,7 @@ namespace PlayKit_SDK.Auth
             // Also save to shared token storage
             PlayKit_LocalSharedToken.SaveToken(token);
             
-            Debug.Log("[Developerworks SDK] New player token saved successfully (both local and shared).");
+            Debug.Log("[PlayKit SDK] New player token saved successfully (both local and shared).");
         }
         
         public static void ClearPlayerToken()
@@ -329,7 +329,7 @@ namespace PlayKit_SDK.Auth
             if (PlayerClient != null && !string.IsNullOrEmpty(token))
             {
                 PlayerClient.SetPlayerToken(token);
-                Debug.Log($"[DW_AuthManager] Player token loaded from storage and set in PlayerClient");
+                Debug.Log($"[PlayKit_AuthManager] Player token loaded from storage and set in PlayerClient");
             }
         }
     }

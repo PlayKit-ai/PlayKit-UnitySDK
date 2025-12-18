@@ -1,4 +1,4 @@
-// Developerworks_SDK/Services/ChatService.cs
+// PlayKit_SDK/Services/ChatService.cs
 
 using System;
 using System.Collections.Generic;
@@ -18,17 +18,17 @@ namespace PlayKit_SDK.Services
         {
             _chatProvider = chatProvider;
         }
-        public async UniTask<Public.DW_AIResult<string>> RequestAsync(string model, Public.DW_ChatConfig config, CancellationToken cancellationToken = default)
+        public async UniTask<Public.PlayKit_AIResult<string>> RequestAsync(string model, Public.PlayKit_ChatConfig config, CancellationToken cancellationToken = default)
         {
             var internalMessages = config.Messages.Select(m => new ChatMessage { Role = m.Role, Content = m.Content }).ToList();
             var request = new ChatCompletionRequest { Model = model, Messages = internalMessages, Temperature = config.Temperature, Stream = false };
             var response = await _chatProvider.ChatCompletionAsync(request, cancellationToken);
-            if (response == null || response.Choices == null || response.Choices.Count == 0) return new Public.DW_AIResult<string>("Failed to get a valid response from AI.");
-            return new Public.DW_AIResult<string>(data: response.Choices[0].Message.Content);
+            if (response == null || response.Choices == null || response.Choices.Count == 0) return new Public.PlayKit_AIResult<string>("Failed to get a valid response from AI.");
+            return new Public.PlayKit_AIResult<string>(data: response.Choices[0].Message.Content);
         }
 
         // MODIFIED: Method signature changed to accept Action<string> for onConcluded.
-        public async UniTask RequestStreamAsync(string model, Public.DW_ChatStreamConfig config, Action<string> onNewChunk, Action<string> onConcluded, CancellationToken cancellationToken = default)
+        public async UniTask RequestStreamAsync(string model, Public.PlayKit_ChatStreamConfig config, Action<string> onNewChunk, Action<string> onConcluded, CancellationToken cancellationToken = default)
         {
             var internalMessages = config.Messages.Select(m => new ChatMessage { Role = m.Role, Content = m.Content }).ToList();
             var request = new ChatCompletionRequest { Model = model, Messages = internalMessages, Temperature = config.Temperature, Stream = true };
@@ -88,7 +88,7 @@ namespace PlayKit_SDK.Services
         /// </summary>
         public async UniTask<ChatCompletionResponse> RequestWithToolsAsync(
             string model,
-            Public.DW_ChatConfig config,
+            Public.PlayKit_ChatConfig config,
             List<ChatTool> tools,
             object toolChoice,
             CancellationToken cancellationToken = default)
@@ -120,7 +120,7 @@ namespace PlayKit_SDK.Services
         /// </summary>
         public async UniTask RequestWithToolsStreamAsync(
             string model,
-            Public.DW_ChatStreamConfig config,
+            Public.PlayKit_ChatStreamConfig config,
             List<ChatTool> tools,
             object toolChoice,
             Action<string> onTextChunk,

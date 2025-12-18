@@ -37,7 +37,7 @@ public class Demo_ExampleGameManager : MonoBehaviour
 
     }
     
-    List<DW_ChatMessage> _selfManagedHistory = new List<DW_ChatMessage>();
+    List<PlayKit_ChatMessage> _selfManagedHistory = new List<PlayKit_ChatMessage>();
 
 
     async UniTask StandardImageGen()
@@ -50,34 +50,34 @@ public class Demo_ExampleGameManager : MonoBehaviour
     {
         //你需要自行管理AI的历史信息，自行创建一个历史记录，自行操作其中的内容
         //是否支持设置多个system信息，不同的模型行为各不相同，但TextGeneration提供较高的自由度，所以并不在这里做任何限制
-        _selfManagedHistory.Add(new DW_ChatMessage()
+        _selfManagedHistory.Add(new PlayKit_ChatMessage()
         {
             Role = "system",
             Content = "你扮演《底特律变人》的康纳"
         });
-        _selfManagedHistory.Add(new DW_ChatMessage()
+        _selfManagedHistory.Add(new PlayKit_ChatMessage()
         {
             Role = "user",
             Content = "你的工作是什么"
         });
         var chat = PlayKit_SDK.PlayKit_SDK.Factory.CreateChatClient();//新建一个对话客户端
-        var result = await chat.TextGenerationAsync(new DW_ChatConfig(_selfManagedHistory));//对话
-        _selfManagedHistory.Add(new DW_ChatMessage()
+        var result = await chat.TextGenerationAsync(new PlayKit_ChatConfig(_selfManagedHistory));//对话
+        _selfManagedHistory.Add(new PlayKit_ChatMessage()
         {
             Role = "assistant",
             Content = result.Response
         });
-        _selfManagedHistory.Add(new DW_ChatMessage()
+        _selfManagedHistory.Add(new PlayKit_ChatMessage()
         {
             Role = "user",
             Content = "你喜欢你的工作吗"
         });
-        _selfManagedHistory.Add(new DW_ChatMessage()
+        _selfManagedHistory.Add(new PlayKit_ChatMessage()
         {
             Role = "system",
             Content = "你扮演一个普通人"
         });
-        result = await chat.TextGenerationAsync(new DW_ChatConfig(_selfManagedHistory));//对话
+        result = await chat.TextGenerationAsync(new PlayKit_ChatConfig(_selfManagedHistory));//对话
         Debug.Log(result.Response);
         
     }
@@ -105,17 +105,17 @@ public class Demo_ExampleGameManager : MonoBehaviour
     {
 
         var chat = PlayKit_SDK.PlayKit_SDK.Factory.CreateChatClient();
-        _selfManagedHistory.Add(new DW_ChatMessage()
+        _selfManagedHistory.Add(new PlayKit_ChatMessage()
         {
             Role = "system",
             Content = "一千零一夜的故事是什么？"
         });
-        _selfManagedHistory.Add(new DW_ChatMessage()
+        _selfManagedHistory.Add(new PlayKit_ChatMessage()
         {
             Role = "user",
             Content = "你的工作是什么"
         });
-        await chat.TextChatStreamAsync(new DW_ChatStreamConfig(_selfManagedHistory), 
+        await chat.TextChatStreamAsync(new PlayKit_ChatStreamConfig(_selfManagedHistory), 
             (s) => {
                 var original = _text.text;
                 _text.text = original + s;

@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 using Cysharp.Threading.Tasks;
-using Developerworks.SDK;
+using PlayKit_SDK;
 using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -9,7 +9,7 @@ using UnityEngine.Networking;
 namespace PlayKit_SDK.Provider.AI
 {
     /// <summary>
-    /// Provider for the platform AI image endpoint (/ai/{gameId}/v2/image)
+    /// Provider for the platform AI image endpoint (/ai/{gameId}/v1/image)
     /// Uses platform-hosted image models with game-based routing
     /// </summary>
     internal class AIImageProvider : IImageProvider
@@ -29,7 +29,7 @@ namespace PlayKit_SDK.Provider.AI
             {
                 throw new InvalidOperationException("GameId is not configured in PlayKitSettings.");
             }
-            return $"{settings.AIBaseUrl}/v2/image";
+            return $"{settings.AIBaseUrl}/v1/image";
         }
 
         private string GetAuthToken()
