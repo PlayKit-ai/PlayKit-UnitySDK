@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using Cysharp.Threading.Tasks;
+using Developerworks.SDK;
 using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -8,30 +9,27 @@ using UnityEngine.Networking;
 namespace PlayKit_SDK.Provider.AI
 {
     /// <summary>
-    /// Provider for the platform AI endpoint (/ai/{gameId}/v1/chat)
+    /// Provider for the platform AI endpoint (/ai/{gameId}/v2/chat)
     /// Uses platform-hosted AI models with game-based routing
     /// </summary>
     internal class AIChatProvider : IChatProvider
     {
         private readonly Auth.PlayKit_AuthManager _authManager;
-        private readonly bool _useOversea;
 
-        public AIChatProvider(Auth.PlayKit_AuthManager authManager,bool useOversea = false)
+        public AIChatProvider(Auth.PlayKit_AuthManager authManager, bool useOversea = false)
         {
             _authManager = authManager;
-            _useOversea = useOversea;
+            // Note: useOversea parameter is deprecated, use PlayKitSettings.CustomBaseUrl instead
         }
 
         private string GetChatUrl()
         {
-            if (_authManager == null || string.IsNullOrEmpty(_authManager.gameId))
+            var settings = PlayKitSettings.Instance;
+            if (settings == null || string.IsNullOrEmpty(settings.GameId))
             {
-                throw new InvalidOperationException("PublishableKey (GameId) is not available from AuthManager.");
+                throw new InvalidOperationException("GameId is not configured in PlayKitSettings.");
             }
-            if(_useOversea){
-                return $"https://dwoversea.agentlandlab.com/ai/{_authManager.gameId}/v1/chat";
-            }
-            return $"https://playkit.agentlandlab.com/ai/{_authManager.gameId}/v1/chat";
+            return $"{settings.AIBaseUrl}/v2/chat";
         }
 
         private string GetAuthToken()

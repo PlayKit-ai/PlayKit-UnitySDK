@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Cysharp.Threading.Tasks;
+using Developerworks.SDK;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
@@ -11,31 +12,26 @@ using UnityEngine.Networking;
 namespace PlayKit_SDK.Provider.AI
 {
     /// <summary>
-    /// Provider for structured object generation using the /chat endpoint with response_format
-    /// Migrated from the old /generateObject endpoint to use the unified /chat endpoint
+    /// Provider for structured object generation using the v2 /chat endpoint with native schema support
     /// </summary>
     internal class AIObjectProvider : IObjectProvider
     {
         private readonly Auth.PlayKit_AuthManager _authManager;
-        private readonly bool _useOversea = false;
 
         public AIObjectProvider(Auth.PlayKit_AuthManager authManager, bool useOversea = false)
         {
             _authManager = authManager;
-            _useOversea = useOversea;
+            // Note: useOversea parameter is deprecated, use PlayKitSettings.CustomBaseUrl instead
         }
 
         private string GetChatUrl()
         {
-            if (_authManager == null || string.IsNullOrEmpty(_authManager.gameId))
+            var settings = PlayKitSettings.Instance;
+            if (settings == null || string.IsNullOrEmpty(settings.GameId))
             {
-                throw new InvalidOperationException("PublishableKey (GameId) is not available from AuthManager.");
+                throw new InvalidOperationException("GameId is not configured in PlayKitSettings.");
             }
-            if (_useOversea)
-            {
-                return $"https://dwoversea.agentlandlab.com/ai/{_authManager.gameId}/v1/chat";
-            }
-            return $"https://playkit.agentlandlab.com/ai/{_authManager.gameId}/v1/chat";
+            return $"{settings.AIBaseUrl}/v2/chat";
         }
 
         private string GetAuthToken()
@@ -86,23 +82,17 @@ namespace PlayKit_SDK.Provider.AI
                 throw new ArgumentException("Either Prompt or Messages is required for object generation");
             }
 
-            // Build the chat completion request with response_format
+            // Build the v2 chat completion request with native schema support
             var chatRequest = new Dictionary<string, object>
             {
                 ["model"] = request.Model,
                 ["messages"] = messages,
                 ["stream"] = false,
-                ["response_format"] = new Dictionary<string, object>
-                {
-                    ["type"] = "json_schema",
-                    ["json_schema"] = new Dictionary<string, object>
-                    {
-                        ["name"] = request.SchemaName ?? "response",
-                        ["description"] = request.SchemaDescription ?? "",
-                        ["schema"] = request.Schema,
-                        ["strict"] = true
-                    }
-                }
+                // v2 native schema parameters
+                ["schema"] = request.Schema,
+                ["schemaName"] = request.SchemaName ?? "response",
+                ["schemaDescription"] = request.SchemaDescription ?? "",
+                ["output"] = request.Output ?? "object"  // object, array, enum, no-schema
             };
 
             if (request.Temperature.HasValue)

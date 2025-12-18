@@ -1,17 +1,15 @@
 using System;
-using System.Collections;
-using System.Text;
 using Cysharp.Threading.Tasks;
-using Newtonsoft.Json;
+using Developerworks.SDK;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.Networking;
 using UnityEngine.UI;
+
 namespace PlayKit_SDK.Auth
 {
     /// <summary>
-    /// Manages the headless authentication flow by directly calling the backend API.
-    /// This component now also drives the UI flow based on serialized fields.
+    /// Manages the authentication flow using Device Authorization.
+    /// Replaces the previous OTP (send-code/verify-code) authentication method.
     /// </summary>
     public class PlayKit_AuthFlowManager : MonoBehaviour
     {
@@ -20,49 +18,74 @@ namespace PlayKit_SDK.Auth
 
         // --- Serialized Fields for UI ---
         [Header("Core UI")]
-        [Tooltip("The modal GameObject shown during loading.")]
+        [Tooltip("The modal GameObject shown during loading/waiting.")]
         [SerializeField] private GameObject loadingModal;
-        
-        [Tooltip("A UI Text element to display error messages to the user.")]
-        [SerializeField] private Text errorText; // Use TextMeshProUGUI if you prefer
 
-        [Header("UI Panels")]
-        [Tooltip("The panel containing the identifier input and send button.")]
-        [SerializeField] private GameObject identifierPanel;
-        [Tooltip("The panel containing the code input and verify button.")]
-        [SerializeField] private GameObject verificationPanel;
+        [Tooltip("A UI Text element to display status and error messages.")]
+        [SerializeField] private Text statusText;
 
-        [SerializeField] private GameObject backBtn;
+        [Header("Device Auth UI")]
+        [Tooltip("The main panel containing the login button.")]
+        [SerializeField] private GameObject loginPanel;
 
-        [Header("UI Interactables")]
-        [Tooltip("Input field for the user's email or phone number.")]
-        [SerializeField] private InputField identifierInput; 
-        [Tooltip("Input field for the 6-digit verification code.")]
-        [SerializeField] private InputField codeInput; 
-        [Tooltip("The button that triggers sending the verification code.")]
-        [SerializeField] private Button sendCodeButton;
-        [Tooltip("The button that submits the verification code.")]
-        [SerializeField] private Button verifyButton;
-        [Tooltip("Dropdown to select authentication type ('Email' or 'Phone').")]
-        [SerializeField] private Toggle emailToggle,phoneToggle;
-        [Tooltip("Icon that indicate identifier type")]
-        [SerializeField] private Sprite emailIcon,phoneIcon;
-        [SerializeField] private Image identifierIconDisplay;
-        [SerializeField] private Text placeholderText;
+        [Tooltip("Button to start the Device Auth flow.")]
+        [SerializeField] private Button loginButton;
+
+        [Tooltip("Button to cancel the auth flow.")]
+        [SerializeField] private Button cancelButton;
+
+        [Tooltip("Main dialogue container.")]
         [SerializeField] private GameObject dialogue;
 
-        [Header("API Configuration")] [Tooltip("The base URL of your backend authentication API.")]
-        private string apiBaseUrl = "https://playkit.agentlandlab.com";
+        // BaseUrl is now retrieved from PlayKitSettings
+        private string ApiBaseUrl => PlayKitSettings.Instance?.BaseUrl ?? "https://playkit.ai";
 
         // --- Public Properties ---
         public PlayKit_AuthManager AuthManager { get; set; }
 
         // --- Private State ---
-        private string _currentSessionId;
+        private PlayKit_DeviceAuthFlow _deviceAuthFlow;
+        private bool _isAuthInProgress = false;
 
         private async void Start()
         {
             // Ensure EventSystem exists for UI interaction
+            EnsureEventSystem();
+
+            // Get or create Device Auth Flow component
+            _deviceAuthFlow = GetComponent<PlayKit_DeviceAuthFlow>();
+            if (_deviceAuthFlow == null)
+            {
+                _deviceAuthFlow = gameObject.AddComponent<PlayKit_DeviceAuthFlow>();
+            }
+
+            // Setup event handlers
+            _deviceAuthFlow.OnStatusChanged += OnDeviceAuthStatusChanged;
+            _deviceAuthFlow.OnAuthSuccess += OnDeviceAuthSuccess;
+            _deviceAuthFlow.OnAuthError += OnDeviceAuthError;
+            _deviceAuthFlow.OnCancelled += OnDeviceAuthCancelled;
+
+            // Setup UI
+            SetupUI();
+
+            // Show login panel
+            if (dialogue != null) dialogue.SetActive(true);
+            ShowLoginPanel();
+        }
+
+        private void OnDestroy()
+        {
+            if (_deviceAuthFlow != null)
+            {
+                _deviceAuthFlow.OnStatusChanged -= OnDeviceAuthStatusChanged;
+                _deviceAuthFlow.OnAuthSuccess -= OnDeviceAuthSuccess;
+                _deviceAuthFlow.OnAuthError -= OnDeviceAuthError;
+                _deviceAuthFlow.OnCancelled -= OnDeviceAuthCancelled;
+            }
+        }
+
+        private void EnsureEventSystem()
+        {
             if (EventSystem.current == null)
             {
                 GameObject eventSystem = new GameObject("EventSystem");
@@ -87,351 +110,187 @@ namespace PlayKit_SDK.Auth
                 }
 #endif
             }
-
-            // Setup the initial UI state
-            identifierPanel.SetActive(true);
-            verificationPanel.SetActive(false);
-            backBtn.SetActive(false);
-            if (errorText != null) errorText.text = "";
-            emailToggle.onValueChanged.AddListener((s)=>OnDropDownChanged(s));
-
-            OnDropDownChanged(emailToggle.isOn);
-            // Add listeners to the buttons
-            sendCodeButton.onClick.AddListener(OnSendCodeClicked);
-            verifyButton.onClick.AddListener(OnVerifyClicked);
-
-            dialogue.SetActive(false);
-            
-            // Set default auth type based on user's region
-            await SetDefaultAuthTypeByRegion();
         }
 
-        public void ShowIdentifierModal()
+        private void SetupUI()
         {
-            identifierPanel.SetActive(true);
-            verificationPanel.SetActive(false);
-            backBtn.SetActive(false);
+            if (loginButton != null)
+            {
+                loginButton.onClick.AddListener(OnLoginButtonClicked);
+            }
+
+            if (cancelButton != null)
+            {
+                cancelButton.onClick.AddListener(OnCancelButtonClicked);
+                cancelButton.gameObject.SetActive(false);
+            }
+
+            if (statusText != null)
+            {
+                statusText.text = "Click 'Login' to authenticate";
+            }
         }
-        private void OnDropDownChanged(bool useEmail)
+
+        private void ShowLoginPanel()
         {
-            identifierIconDisplay.sprite = useEmail ? emailIcon : phoneIcon;
-            placeholderText.text = "Enter your " + (useEmail ? "email address" : "phone number (+86 Only)");
-        }
-
-
-        /// <summary>
-        /// Method called when the 'Send Code' button is clicked.
-        /// </summary>
-        private async void OnSendCodeClicked()
-        {
-            if (errorText != null) errorText.text = ""; // Clear previous errors
-            
-            string identifier = identifierInput.text;
-            // Get type from dropdown. Assumes options are "Email" and "Phone".
-            string type = emailToggle.isOn ? "email" : "phone";
-            sendCodeButton.interactable = false;
-
-            ShowLoadingModal();
-            bool requestSent = await SendVerificationCodeInternal(identifier, type);
-
+            if (loginPanel != null) loginPanel.SetActive(true);
+            if (loginButton != null) loginButton.gameObject.SetActive(true);
+            if (cancelButton != null) cancelButton.gameObject.SetActive(false);
             HideLoadingModal();
-            if (requestSent)
-            {
-                // Switch to the verification panel
-                identifierPanel.SetActive(false);
-                verificationPanel.SetActive(true);
-                backBtn.SetActive(true);
-                sendCodeButton.interactable = true;
-            }
         }
 
-        /// <summary>
-        /// Method called when the 'Verify' button is clicked.
-        /// </summary>
-        private async void OnVerifyClicked()
+        private void ShowWaitingState()
         {
-            if (errorText != null) errorText.text = ""; // Clear previous errors
-
-            string code = codeInput.text;
-            await SubmitVerificationCodeInternal(code);
-            // After this, the parent AuthManager will check IsSuccess and handle the result.
-        }
-
-        #region Internal API Logic
-        
-        private async UniTask<bool> SendVerificationCodeInternal(string identifier, string type)
-        {
-            if (string.IsNullOrEmpty(identifier) || (type != "email" && type != "phone"))
-            {
-                Debug.LogError("[DW Auth] Invalid identifier or type provided.");
-                if (errorText != null) errorText.text = "Please enter a valid email or phone number.";
-                return false;
-            }
-
+            if (loginButton != null) loginButton.gameObject.SetActive(false);
+            if (cancelButton != null) cancelButton.gameObject.SetActive(true);
             ShowLoadingModal();
+        }
 
-            var requestPayload = new SendCodeRequest { identifier = identifier, type = type };
-            string jsonPayload = JsonConvert.SerializeObject(requestPayload);
-            string endpoint = $"{apiBaseUrl}/api/auth/send-code";
+        #region Button Handlers
 
-            using (var webRequest = new UnityWebRequest(endpoint, "POST"))
+        private async void OnLoginButtonClicked()
+        {
+            if (_isAuthInProgress) return;
+
+            _isAuthInProgress = true;
+            ShowWaitingState();
+            UpdateStatus("Starting authentication...");
+
+            try
             {
-                byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
-                webRequest.uploadHandler = new UploadHandlerRaw(bodyRaw);
-                webRequest.downloadHandler = new DownloadHandlerBuffer();
-                webRequest.SetRequestHeader("Content-Type", "application/json");
-
-                try
+                var gameId = PlayKitSettings.Instance?.GameId;
+                if (string.IsNullOrEmpty(gameId))
                 {
-                    await webRequest.SendWebRequest().ToUniTask(cancellationToken: this.destroyCancellationToken);
-                }
-                catch (Exception ex) when (!(ex is OperationCanceledException))
-                {
-                    sendCodeButton.interactable = true;
-                    Debug.LogError($"[DW Auth] API request to send code failed: {ex.Message}");
-                    if (errorText != null) errorText.text = "Network error. Please try again.";
-                    HideLoadingModal();
-                    return false;
+                    OnDeviceAuthError("Game ID not configured");
+                    return;
                 }
 
-                if (webRequest.result != UnityWebRequest.Result.Success)
-                {
-                    sendCodeButton.interactable = true;
+                var result = await _deviceAuthFlow.StartAuthFlowAsync(
+                    gameId,
+                    "player:play",
+                    this.GetCancellationTokenOnDestroy()
+                );
 
-                    Debug.LogError($"[DW Auth] Send Code API Error: {webRequest.responseCode} - {webRequest.error}\n{webRequest.downloadHandler.text}");
-                    if (errorText != null) errorText.text = "Failed to send code. Please check your input and try again.";
-                    HideLoadingModal();
-                    return false;
-                }
-
-                var response = JsonConvert.DeserializeObject<SendCodeResponse>(webRequest.downloadHandler.text);
-                if (response == null || !response.success || string.IsNullOrEmpty(response.sessionId))
-                {
-                    sendCodeButton.interactable = true;
-                    Debug.LogError("[DW Auth] Failed to get a valid session ID from the server.");
-                    if (errorText != null) errorText.text = "An unexpected error occurred. Please try again later.";
-                    HideLoadingModal();
-                    return false;
-                }
-
-                _currentSessionId = response.sessionId;
-                Debug.Log($"[DW Auth] Verification code sent. Session ID: {_currentSessionId}");
-                HideLoadingModal();
-                return true;
+                // Result is handled in OnDeviceAuthSuccess or OnDeviceAuthError
+            }
+            catch (OperationCanceledException)
+            {
+                OnDeviceAuthCancelled();
+            }
+            catch (Exception ex)
+            {
+                OnDeviceAuthError($"Authentication failed: {ex.Message}");
             }
         }
-        
-        private async UniTask SubmitVerificationCodeInternal(string code)
+
+        private void OnCancelButtonClicked()
         {
-            if (string.IsNullOrEmpty(_currentSessionId))
-            {
-                Debug.LogError("[DW Auth] Cannot verify code, no session ID is available. Please request a code first.");
-                if (errorText != null) errorText.text = "Session expired. Please request a new code.";
-                IsSuccess = false;
-                return;
-            }
-             if (string.IsNullOrEmpty(code) || code.Length < 6)
-            {
-                if (errorText != null) errorText.text = "Please enter a valid 6-digit code.";
-                IsSuccess = false;
-                return;
-            }
-
-            ShowLoadingModal();
-
-            var requestPayload = new VerifyCodeRequest { sessionId = _currentSessionId, code = code };
-            string jsonPayload = JsonConvert.SerializeObject(requestPayload);
-            string endpoint = $"{apiBaseUrl}/api/auth/verify-code";
-            
-            string clerkJwt = null;
-
-            using (var webRequest = new UnityWebRequest(endpoint, "POST"))
-            {
-                byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonPayload);
-                webRequest.uploadHandler = new UploadHandlerRaw(bodyRaw);
-                webRequest.downloadHandler = new DownloadHandlerBuffer();
-                webRequest.SetRequestHeader("Content-Type", "application/json");
-
-                try
-                {
-                    await webRequest.SendWebRequest().ToUniTask(cancellationToken: this.destroyCancellationToken);
-                }
-                catch (Exception ex) when (!(ex is OperationCanceledException))
-                {
-                    Debug.LogError($"[DW Auth] API request to verify code failed: {ex.Message}");
-                    if (errorText != null) errorText.text = "Network error. Please try again.";
-                    IsSuccess = false;
-                    HideLoadingModal();
-                    return;
-                }
-
-                if (webRequest.result != UnityWebRequest.Result.Success)
-                {
-                    Debug.LogError($"[DW Auth] Verify Code API Error: {webRequest.responseCode} - {webRequest.error}\n{webRequest.downloadHandler.text}");
-                    if (errorText != null) errorText.text = "Invalid verification code.";
-                    IsSuccess = false;
-                    HideLoadingModal();
-                    return;
-                }
-                
-                var response = JsonConvert.DeserializeObject<VerifyCodeResponse>(webRequest.downloadHandler.text);
-                if (response == null || !response.success || string.IsNullOrEmpty(response.globalToken))
-                {
-                    Debug.LogError("[DW Auth] Verification failed or did not return a valid token.");
-                    if (errorText != null) errorText.text = "Verification failed. Please try again.";
-                    IsSuccess = false;
-                    HideLoadingModal();
-                    return;
-                }
-
-                clerkJwt = response.globalToken;
-            }
-
-            if (!string.IsNullOrEmpty(clerkJwt))
-            {
-                IsSuccess = await ExchangeClerkTokenForPlayerToken(clerkJwt);
-            }
-            else
-            {
-                IsSuccess = false;
-            }
-            
-            HideLoadingModal();
+            _deviceAuthFlow?.CancelFlow();
         }
 
         #endregion
 
-        #region Private Helper Methods
-        
-        private async UniTask SetDefaultAuthTypeByRegion()
+        #region Device Auth Event Handlers
+
+        private void OnDeviceAuthStatusChanged(DeviceAuthStatus status)
         {
-            ShowLoadingModal();
-            Reachability reachability = null;
-            using (var webRequest = new UnityWebRequest($"{apiBaseUrl}/api/reachability", "GET"))
+            switch (status)
             {
-                webRequest.downloadHandler = new DownloadHandlerBuffer();
-                webRequest.SetRequestHeader("Content-Type", "application/json");
-        
-                try 
-                { 
-                    await webRequest.SendWebRequest().ToUniTask(cancellationToken: destroyCancellationToken); 
-                }
-                catch (Exception ex) when (!(ex is OperationCanceledException)) 
-                { 
-                    Debug.LogError($"[DW Auth] Reachability API request failed: {ex.Message}"); 
-                }
-        
-                if (webRequest.result == UnityWebRequest.Result.Success) 
-                { 
-                    reachability = JsonConvert.DeserializeObject<Reachability>(webRequest.downloadHandler.text);
-                }
-                else
-                {
-                    Debug.LogError($"[DW Auth] Reachability API Error: {webRequest.responseCode} - {webRequest.error}\n{webRequest.downloadHandler.text}"); 
-                }
+                case DeviceAuthStatus.Initiating:
+                    UpdateStatus("Initializing...");
+                    break;
+                case DeviceAuthStatus.WaitingForBrowser:
+                    UpdateStatus("Please complete authorization in your browser...");
+                    break;
+                case DeviceAuthStatus.Polling:
+                    UpdateStatus("Waiting for authorization...");
+                    break;
+                case DeviceAuthStatus.Authorized:
+                    UpdateStatus("Authorization successful!");
+                    break;
+                case DeviceAuthStatus.Denied:
+                    UpdateStatus("Authorization denied.");
+                    break;
+                case DeviceAuthStatus.Expired:
+                    UpdateStatus("Session expired. Please try again.");
+                    break;
+                case DeviceAuthStatus.Error:
+                    UpdateStatus("An error occurred.");
+                    break;
             }
-
-            if (reachability != null && reachability.Region == "CN")
-            {
-                phoneToggle.isOn = true;
-            }
-            dialogue.SetActive(true);
-
-            HideLoadingModal();
         }
-        
-        private async UniTask<bool> ExchangeClerkTokenForPlayerToken(string clerkJwt)
+
+        private async void OnDeviceAuthSuccess(DeviceAuthResult result)
         {
-            if (AuthManager == null)
-            {
-                Debug.LogError("[DW Auth] AuthManager reference not set!");
-                return false;
-            }
-            
-            var playerClient = AuthManager.PlayerClient;
-            if (playerClient == null)
-            {
-                Debug.LogError("[DW Auth] PlayerClient not available from AuthManager!");
-                return false;
-            }
+            Debug.Log("[PlayKit Auth] Device auth successful, saving token...");
+            UpdateStatus("Saving credentials...");
 
-            (bool success, string error) exchangeResult = await playerClient.InitializeAsync(clerkJwt, this.GetCancellationTokenOnDestroy());
-
-            if (exchangeResult.success)
+            try
             {
-                string playerToken = playerClient.GetPlayerToken();
-                string expiresAt = playerClient.LastExchangeResponse.ExpiresAt;
+                // Save the access token as player token
+                PlayKit_AuthManager.SavePlayerToken(result.AccessToken, null);
 
-                PlayKit_AuthManager.SavePlayerToken(playerToken, expiresAt);
-                // Also save to shared token storage for cross-app usage
-                PlayKit_LocalSharedToken.SaveToken(playerToken);
-                Debug.Log("[DW Auth] JWT exchanged for Player Token and saved successfully (both local and shared).");
-                return true;
+                // Also save to shared token storage
+                PlayKit_LocalSharedToken.SaveToken(result.AccessToken);
+
+                Debug.Log("[PlayKit Auth] Token saved successfully.");
+                UpdateStatus("Login successful!");
+
+                IsSuccess = true;
             }
-            else
+            catch (Exception ex)
             {
-                Debug.LogError($"[DW Auth] Failed to exchange JWT for a Player Token. Reason: {exchangeResult.error}");
-                if (errorText != null) errorText.text = "Final authentication step failed.";
-                return false;
+                Debug.LogError($"[PlayKit Auth] Failed to save token: {ex.Message}");
+                UpdateStatus("Failed to save credentials.");
+                IsSuccess = false;
+            }
+            finally
+            {
+                _isAuthInProgress = false;
+                HideLoadingModal();
+            }
+        }
+
+        private void OnDeviceAuthError(string error)
+        {
+            Debug.LogError($"[PlayKit Auth] Device auth error: {error}");
+            UpdateStatus($"Error: {error}");
+
+            _isAuthInProgress = false;
+            IsSuccess = false;
+            ShowLoginPanel();
+        }
+
+        private void OnDeviceAuthCancelled()
+        {
+            Debug.Log("[PlayKit Auth] Device auth cancelled by user.");
+            UpdateStatus("Authentication cancelled.");
+
+            _isAuthInProgress = false;
+            IsSuccess = false;
+            ShowLoginPanel();
+        }
+
+        #endregion
+
+        #region UI Helpers
+
+        private void UpdateStatus(string message)
+        {
+            if (statusText != null)
+            {
+                statusText.text = message;
             }
         }
 
         private void ShowLoadingModal()
         {
             if (loadingModal != null) loadingModal.SetActive(true);
-            
         }
 
         private void HideLoadingModal()
         {
             if (loadingModal != null) loadingModal.SetActive(false);
-            
-        }
-
-
-        
-        #endregion
-
-        #region JSON Data Structures
-
-        [System.Serializable]
-        private class Reachability
-        {
-            [JsonProperty("country")] // Match the JSON property name
-            public string Country;
-            [JsonProperty("region")]
-            public string Region;
-            [JsonProperty("city")]
-            public string City;
-        }
-
-        [System.Serializable]
-        private class SendCodeRequest
-        {
-            public string identifier;
-            public string type;
-        }
-
-        [System.Serializable]
-        private class SendCodeResponse
-        {
-            public bool success;
-            public string sessionId;
-        }
-
-        [System.Serializable]
-        private class VerifyCodeRequest
-        {
-            public string sessionId;
-            public string code;
-        }
-
-        [System.Serializable]
-        private class VerifyCodeResponse
-        {
-            public bool success;
-            public string userId;
-            public string globalToken;
         }
 
         #endregion

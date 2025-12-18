@@ -17,21 +17,19 @@ namespace Developerworks.SDK
         [SerializeField] private string gameId = "";
 
         [Header("AI Model Defaults")]
-        [Tooltip("Default chat model (e.g., 'gpt-4o-mini'). Leave empty to use server default.")]
-        [SerializeField] private string defaultChatModel = "";
+        [Tooltip("Default chat model. Leave empty to use server default.")]
+        [SerializeField] private string defaultChatModel = "chat-default";
 
         [Tooltip("Default image generation model. Leave empty to use server default.")]
-        [SerializeField] private string defaultImageModel = "";
+        [SerializeField] private string defaultImageModel = "image-default";
 
         [Header("Development Options")]
-        [Tooltip("Developer token for testing (optional). Stored in project settings, can be committed to version control.")]
-        [SerializeField] private string developerToken = "";
-
-        [Tooltip("Use local developer token from EditorPrefs instead of project settings (not tracked by version control)")]
-        [SerializeField] private bool useLocalDeveloperToken = false;
-
         [Tooltip("When enabled, ignores developer tokens and forces player authentication flow")]
         [SerializeField] private bool ignoreDeveloperToken = false;
+
+        [Header("Advanced Settings")]
+        [Tooltip("Override the default API base URL. Leave empty to use default (https://playkit.ai).")]
+        [SerializeField] private string customBaseUrl = "";
 
         // Singleton instance
         private static PlayKitSettings _instance;
@@ -87,27 +85,66 @@ namespace Developerworks.SDK
             }
         }
 
+        // Constants
+        private const string DEFAULT_BASE_URL = "https://playkit.ai";
+
         // Public properties
-        public string GameId => gameId;
+        public string GameId
+        {
+            get => gameId;
+#if UNITY_EDITOR
+            set
+            {
+                gameId = value;
+                UnityEditor.EditorUtility.SetDirty(this);
+            }
+#endif
+        }
+
         public string DefaultChatModel => defaultChatModel;
         public string DefaultImageModel => defaultImageModel;
-        public bool UseLocalDeveloperToken => useLocalDeveloperToken;
         public bool IgnoreDeveloperToken => ignoreDeveloperToken;
+        public string CustomBaseUrl => customBaseUrl;
 
         /// <summary>
-        /// Gets the developer token - either from project settings or EditorPrefs based on useLocalDeveloperToken flag.
+        /// Gets the effective base URL for API calls.
+        /// Returns custom URL if set, otherwise returns the default (https://playkit.ai).
+        /// </summary>
+        public string BaseUrl
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(customBaseUrl))
+                    return customBaseUrl.TrimEnd('/');
+                return DEFAULT_BASE_URL;
+            }
+        }
+
+        /// <summary>
+        /// Gets the base URL for AI API endpoints.
+        /// Format: {BaseUrl}/ai/{GameId}
+        /// </summary>
+        public string AIBaseUrl => $"{BaseUrl}/ai/{GameId}";
+
+        /// <summary>
+        /// Gets the base URL for Auth API endpoints.
+        /// Format: {BaseUrl}/api
+        /// </summary>
+        public string AuthBaseUrl => $"{BaseUrl}/api";
+
+        /// <summary>
+        /// Gets the developer token from local storage (EditorPrefs).
+        /// Tokens are always stored locally and never committed to version control.
         /// </summary>
         public string DeveloperToken
         {
             get
             {
 #if UNITY_EDITOR
-                if (useLocalDeveloperToken)
-                {
-                    return UnityEditor.EditorPrefs.GetString("PlayKit_LocalDeveloperToken", "");
-                }
+                return UnityEditor.EditorPrefs.GetString("PlayKit_LocalDeveloperToken", "");
+#else
+                return "";
 #endif
-                return developerToken;
             }
         }
 
@@ -119,7 +156,7 @@ namespace Developerworks.SDK
         {
             if (string.IsNullOrWhiteSpace(gameId))
             {
-                errorMessage = "Game ID is required. Please configure it in Tools > PlayKit SDK > Settings";
+                errorMessage = "Game ID is required. Please select a game in Tools > PlayKit SDK > Settings";
                 return false;
             }
 
@@ -138,7 +175,6 @@ namespace Developerworks.SDK
             {
                 if (string.IsNullOrEmpty(value))
                 {
-                    // Delete the key when setting to empty to ensure clean state
                     UnityEditor.EditorPrefs.DeleteKey("PlayKit_LocalDeveloperToken");
                 }
                 else
@@ -158,8 +194,8 @@ namespace Developerworks.SDK
 
         /// <summary>
         /// Opens the PlayKit SDK settings window.
+        /// Note: The MenuItem is defined in PlayKitSettingsWindow.cs to avoid duplicate entries.
         /// </summary>
-        [UnityEditor.MenuItem("PlayKit SDK/Settings", priority = 0)]
         public static void OpenSettingsWindow()
         {
             var windowType = System.Type.GetType("Developerworks.SDK.PlayKitSettingsWindow, Developerworks_SDK.Editor");

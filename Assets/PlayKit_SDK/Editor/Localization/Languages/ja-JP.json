@@ -26,11 +26,16 @@
   "config.validation.no_token": "ℹ️ 開発者トークンが提供されていません。プレイヤー認証を使用します。",
 
   "config.models.title": "AI モデルのデフォルト",
-  "config.models.info": "デフォルトの AI モデルを設定します。Don't Leave it Empty.",
+  "config.models.info": "ゲームのデフォルト AI モデルを設定します。",
   "config.models.chat.label": "デフォルトチャットモデル",
-  "config.models.chat.tooltip": "例：gpt-4o-mini",
+  "config.models.chat.tooltip": "デフォルトのチャットモデルを選択",
   "config.models.image.label": "デフォルト画像モデル",
-  "config.models.image.tooltip": "例：dall-e-3",
+  "config.models.image.tooltip": "デフォルトの画像生成モデルを選択",
+  "config.models.loading": "利用可能なモデルを読み込み中...",
+  "config.models.load_error": "モデルの読み込みに失敗しました",
+  "config.models.refresh": "モデルを更新",
+  "config.models.select_game_first": "利用可能なモデルを読み込むには、まずゲームを選択してください。",
+  "config.models.none_available": "利用可能なモデルがありません",
 
   "dev.tools.title": "開発者ツール",
   "dev.storage.title": "開発者トークンの保存方法",
@@ -82,5 +87,36 @@
   "update.no_updates.title": "利用可能な更新はありません",
   "update.no_updates.message": "最新バージョン ({0}) を使用しています。",
 
-  "language.selector.title": "言語"
+  "language.selector.title": "言語",
+
+  "config.basic.title": "基本設定",
+  "config.basic.language": "言語",
+
+  "config.advanced.title": "高度な設定",
+  "config.advanced.info": "これらの設定は、理解している場合のみ変更してください。",
+  "config.advanced.custom_url.label": "カスタム Base URL",
+  "config.advanced.custom_url.tooltip": "デフォルトの API ベース URL をオーバーライドします。デフォルト (https://playkit.ai) を使用するには空白のままにしてください。",
+  "config.advanced.effective_url": "有効な URL：",
+
+  "config.auth.title": "開発者認証",
+  "config.auth.logged_in": "ログインしています。下のゲームを選択して開発を始めてください。",
+  "config.auth.not_logged_in": "ゲームにアクセスして開発を始めるにはログインしてください。",
+  "config.auth.logout": "ログアウト",
+  "config.auth.logout_title": "ログアウト",
+  "config.auth.logout_confirm": "ログアウトしてもよろしいですか？ゲームにアクセスするには再度ログインが必要です。",
+
+  "config.game.select": "ゲームを選択",
+  "config.game.id_label": "ゲーム ID：",
+  "config.game.description": "説明：",
+  "config.game.loading": "ゲームリストを読み込み中...",
+  "config.game.no_games": "ゲームが見つかりません。まず https://playkit.ai/dashboard でゲームを作成してください。",
+  "config.game.refresh": "更新",
+  "config.game.retry": "再試行",
+
+  "dev.device_auth.login": "ログイン",
+  "dev.device_auth.authenticating": "認証中...",
+  "dev.device_auth.cancel": "キャンセル",
+  "dev.device_auth.starting": "認証を開始しています...",
+  "dev.device_auth.success": "認証に成功しました！",
+  "dev.device_auth.cancelled": "認証がキャンセルされました。"
 }

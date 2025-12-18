@@ -2,6 +2,7 @@ using System;
 using System.Text;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Developerworks.SDK;
 using Newtonsoft.Json;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -10,10 +11,9 @@ namespace PlayKit_SDK
 {
     public class PlayKit_PlayerClient : MonoBehaviour
     {
-        
-        
-        // Settings can be passed via constructor if needed
-        private string baseUrl = "https://playkit.agentlandlab.com";
+        // BaseUrl is now retrieved from PlayKitSettings
+        private string BaseUrl => PlayKitSettings.Instance?.BaseUrl ?? "https://playkit.ai";
+
         private int timeoutSeconds = 30;
         private int maxRetryCount = 3;
         private float retryDelaySeconds = 3.0f;
@@ -143,7 +143,7 @@ namespace PlayKit_SDK
                 return (new ApiResult<JWTExchangeResponse> { Success = false, Error = error }, error);
             }
     
-            string url = $"{baseUrl}/api/external/exchange-jwt";
+            string url = $"{BaseUrl}/api/external/exchange-jwt";
     
             // The JWT is now passed as an auth token for the header.
             // We send an empty object as the body, as our endpoint no longer reads it.
@@ -186,7 +186,7 @@ namespace PlayKit_SDK
                 return new ApiResult<PlayerInfo> { Success = false, Error = error };
             }
             
-            string url = $"{baseUrl}/api/external/player-info";
+            string url = $"{BaseUrl}/api/external/player-info";
             var result = await GetRequestAsync<PlayerInfo>(url, authToken, cancellationToken);
             
             if (result.Success)
@@ -253,7 +253,7 @@ namespace PlayKit_SDK
                 return new ApiResult<SetNicknameResponse> { Success = false, Error = error };
             }
 
-            string url = $"{baseUrl}/api/external/set-game-player-nickname";
+            string url = $"{BaseUrl}/api/external/set-game-player-nickname";
             var requestData = new SetNicknameRequest { Nickname = trimmedNickname };
 
             var result = await PostRequestAsync<SetNicknameRequest, SetNicknameResponse>(url, requestData, cancellationToken, authToken);

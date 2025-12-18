@@ -12,9 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae5b7fd14fa3fe6469d003aa34738da9, type: 3}
   m_Name: PlayKitSettings
   m_EditorClassIdentifier: 
-  gameId: ef6eaf4b-39ae-4c76-bcf6-b07541cf0ccc
-  defaultChatModel: claude-3-7-sonnet
-  defaultImageModel: flux-1-schnell
-  developerToken: dev-c4aae194-c2e2-456d-93fa-694ee9d9ccb6
-  useLocalDeveloperToken: 0
+  gameId: 4f25f1c4-a9b4-41ef-9fa8-c6e9e874d7eb
+  defaultChatModel: chat-model
+  defaultImageModel: image-default
   ignoreDeveloperToken: 0
+  customBaseUrl: https://lab-dev.playkit.ai
