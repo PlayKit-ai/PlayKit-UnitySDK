@@ -14,7 +14,7 @@ namespace PlayKit.SDK.Editor
     public static class EditorLocalization
     {
         private const string LANGUAGE_PREF_KEY = "PlayKit_EditorLanguage";
-        private const string LANGUAGES_FOLDER = "Assets/PlayKit_SDK/Editor/Localization/Languages";
+        private static string languagesFolder = null;
 
         // Supported languages
         public static readonly Dictionary<string, string> SupportedLanguages = new Dictionary<string, string>
@@ -35,7 +35,80 @@ namespace PlayKit.SDK.Editor
 
         static EditorLocalization()
         {
+            // Try immediate initialization
             Initialize();
+
+            // Also register for delayed initialization in case AssetDatabase wasn't ready
+            EditorApplication.delayCall += DelayedInitialize;
+        }
+
+        private static void DelayedInitialize()
+        {
+            EditorApplication.delayCall -= DelayedInitialize;
+
+            // Re-initialize if no translations were loaded
+            if (translations.Count == 0)
+            {
+                languagesFolder = null; // Reset cached folder
+                isInitialized = false;
+                Initialize();
+            }
+        }
+
+        /// <summary>
+        /// Find the Languages folder dynamically based on the script location
+        /// </summary>
+        private static string GetLanguagesFolder()
+        {
+            if (languagesFolder != null)
+                return languagesFolder;
+
+            // Try to find this script's location using GUID (may not work during early initialization)
+            try
+            {
+                var guids = AssetDatabase.FindAssets("EditorLocalization t:MonoScript");
+                foreach (var guid in guids)
+                {
+                    var path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (path.EndsWith("EditorLocalization.cs"))
+                    {
+                        // Go up one level from the script location to get the Localization folder
+                        // Then add Languages subfolder
+                        var localizationDir = Path.GetDirectoryName(path);
+                        // Unity uses forward slashes
+                        languagesFolder = Path.Combine(localizationDir, "Languages").Replace("\\", "/");
+                        if (Directory.Exists(languagesFolder))
+                        {
+                            return languagesFolder;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // AssetDatabase may not be ready during early initialization
+            }
+
+            // Fallback: try common paths
+            string[] possiblePaths = new[]
+            {
+                "Assets/PlayKit_SDK/Editor/Localization/Languages",
+                "Assets/SDKs/Unity/Editor/Localization/Languages",
+                "Packages/com.playkit.sdk/Editor/Localization/Languages"
+            };
+
+            foreach (var path in possiblePaths)
+            {
+                if (Directory.Exists(path))
+                {
+                    languagesFolder = path;
+                    return languagesFolder;
+                }
+            }
+
+            // Last resort: use known path without checking
+            languagesFolder = "Assets/PlayKit_SDK/Editor/Localization/Languages";
+            return languagesFolder;
         }
 
         /// <summary>
@@ -43,7 +116,11 @@ namespace PlayKit.SDK.Editor
         /// </summary>
         public static void Initialize()
         {
-            if (isInitialized) return;
+            if (isInitialized && translations.Count > 0) return;
+
+            // Reset state for re-initialization
+            isInitialized = false;
+            languagesFolder = null;
 
             // Try to load saved language preference
             string savedLanguage = EditorPrefs.GetString(LANGUAGE_PREF_KEY, "");
@@ -60,7 +137,9 @@ namespace PlayKit.SDK.Editor
             }
 
             LoadLanguage(currentLanguage);
-            isInitialized = true;
+
+            // Only mark as initialized if we actually loaded translations
+            isInitialized = translations.Count > 0;
         }
 
         /// <summary>
@@ -93,7 +172,12 @@ namespace PlayKit.SDK.Editor
         {
             translations.Clear();
 
-            string filePath = Path.Combine(LANGUAGES_FOLDER, $"{languageCode}.json");
+            string folder = GetLanguagesFolder();
+            // Ensure forward slashes for Unity path consistency
+            string filePath = Path.Combine(folder, $"{languageCode}.json").Replace("\\", "/");
+
+            // Debug: log the path being tried
+            Debug.Log($"[PlayKit SDK] Trying to load language from: {filePath} (exists: {File.Exists(filePath)})");
 
             if (!File.Exists(filePath))
             {
@@ -101,15 +185,16 @@ namespace PlayKit.SDK.Editor
 
                 if (languageCode != "en-US")
                 {
-                    filePath = Path.Combine(LANGUAGES_FOLDER, "en-US.json");
+                    filePath = Path.Combine(folder, "en-US.json").Replace("\\", "/");
                     if (!File.Exists(filePath))
                     {
-                        Debug.LogError($"[PlayKit SDK] Fallback language file not found: {filePath}");
+                        Debug.LogError($"[PlayKit SDK] Fallback language file not found: {filePath}. Languages folder: {folder}");
                         return;
                     }
                 }
                 else
                 {
+                    Debug.LogError($"[PlayKit SDK] en-US language file not found. Languages folder: {folder}");
                     return;
                 }
             }
@@ -121,7 +206,14 @@ namespace PlayKit.SDK.Editor
                 // Simple JSON parsing for key-value pairs
                 ParseJsonTranslations(jsonContent);
 
-                Debug.Log($"[PlayKit SDK] Loaded {translations.Count} translations for language: {languageCode}");
+                if (translations.Count > 0)
+                {
+                    Debug.Log($"[PlayKit SDK] Loaded {translations.Count} translations for language: {languageCode}");
+                }
+                else
+                {
+                    Debug.LogWarning($"[PlayKit SDK] Parsed 0 translations from: {filePath}");
+                }
             }
             catch (Exception ex)
             {
@@ -235,6 +327,17 @@ namespace PlayKit.SDK.Editor
         public static Dictionary<string, string> GetAvailableLanguages()
         {
             return new Dictionary<string, string>(SupportedLanguages);
+        }
+
+        /// <summary>
+        /// Reload the localization system (useful after SDK is moved)
+        /// </summary>
+        public static void Reload()
+        {
+            isInitialized = false;
+            languagesFolder = null;
+            translations.Clear();
+            Initialize();
         }
     }
 

@@ -27,6 +27,7 @@ namespace PlayKit_SDK
         public event Action<PlayerInfo> OnPlayerInfoUpdated;
         public event Action<string> OnPlayerTokenReceived;
         public event Action<string> OnNicknameChanged;
+        public event Action<RefreshDailyCreditsResponse> OnDailyCreditsRefreshed;
         public event Action<string> OnError;
 
         // ADDED: Public property to access the result of the last JWT exchange.
@@ -91,7 +92,20 @@ namespace PlayKit_SDK
         {
             [JsonProperty("error")] public string Error { get; set; }
         }
-        
+
+        [Serializable]
+        public class RefreshDailyCreditsResponse
+        {
+            [JsonProperty("success")] public bool Success { get; set; }
+            [JsonProperty("refreshed")] public bool Refreshed { get; set; }
+            [JsonProperty("message")] public string Message { get; set; }
+            [JsonProperty("balanceBefore")] public float BalanceBefore { get; set; }
+            [JsonProperty("balanceAfter")] public float BalanceAfter { get; set; }
+            [JsonProperty("amountAdded")] public float AmountAdded { get; set; }
+            [JsonProperty("dailyGiftThreshold")] public float DailyGiftThreshold { get; set; }
+            [JsonProperty("dailyGiftAmount")] public float DailyGiftAmount { get; set; }
+        }
+
         public class ApiResult<T>
         {
             public bool Success { get; set; }
@@ -99,7 +113,7 @@ namespace PlayKit_SDK
             public string Error { get; set; }
             public int StatusCode { get; set; }
         }
-        
+
         #endregion
 
 
@@ -294,10 +308,57 @@ namespace PlayKit_SDK
         {
             playerToken = token;
             Debug.Log($"Player token set: {token.Substring(0, Math.Min(20, token.Length))}...");
-                
+
             // When a token is set, we can immediately try to fetch player info
             GetPlayerInfoAsync().Forget();
         }
+
+        /// <summary>
+        /// Refresh daily credits for the current player.
+        /// Grants $0.50 USD when balance is below $0.50 USD, once per day.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>ApiResult with RefreshDailyCreditsResponse on success</returns>
+        public async UniTask<ApiResult<RefreshDailyCreditsResponse>> RefreshDailyCreditsAsync(CancellationToken cancellationToken = default)
+        {
+            string authToken = GetAuthToken();
+            if (string.IsNullOrEmpty(authToken))
+            {
+                string error = "No valid auth token available";
+                Debug.LogError(error);
+                OnError?.Invoke(error);
+                return new ApiResult<RefreshDailyCreditsResponse> { Success = false, Error = error };
+            }
+
+            string url = $"{BaseUrl}/api/external/refresh-daily-credits";
+            var result = await PostRequestAsync<object, RefreshDailyCreditsResponse>(url, new object(), cancellationToken, authToken);
+
+            if (result.Success && result.Data != null)
+            {
+                if (result.Data.Success)
+                {
+                    // Update cached player info if credits were added
+                    if (result.Data.Refreshed && cachedPlayerInfo != null)
+                    {
+                        cachedPlayerInfo.Credits = result.Data.BalanceAfter;
+                        OnPlayerInfoUpdated?.Invoke(cachedPlayerInfo);
+                    }
+
+                    Debug.Log($"Daily credits refresh: {result.Data.Message}");
+                    OnDailyCreditsRefreshed?.Invoke(result.Data);
+                }
+                else
+                {
+                    string error = result.Data.Message ?? "Failed to refresh daily credits";
+                    Debug.LogWarning(error);
+                    // Still invoke the event as the response was valid
+                    OnDailyCreditsRefreshed?.Invoke(result.Data);
+                }
+            }
+
+            return result;
+        }
+
         // ... Other public and private methods remain the same ...
         // For brevity, the unchanged helper methods (PostRequestAsync, GetRequestAsync, etc.) are omitted,
         // but they should be included in your final file. They are identical to your provided code.

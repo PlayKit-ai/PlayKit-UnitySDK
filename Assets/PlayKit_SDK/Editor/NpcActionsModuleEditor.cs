@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEditorInternal;
 using PlayKit_SDK;
 using PlayKit_SDK.Public;
+using L = PlayKit.SDK.Editor.EditorLocalization;
 using System.Collections.Generic;
 
 namespace PlayKit_SDK.Editor
@@ -37,7 +38,7 @@ namespace PlayKit_SDK.Editor
 
             actionsList.drawHeaderCallback = rect =>
             {
-                EditorGUI.LabelField(rect, "NPC Actions", EditorStyles.boldLabel);
+                EditorGUI.LabelField(rect, L.Get("npc.actions.section.actions"), EditorStyles.boldLabel);
             };
 
             actionsList.elementHeightCallback = index =>
@@ -130,12 +131,12 @@ namespace PlayKit_SDK.Editor
 
             // Action Name
             var nameRect = new Rect(containerRect.x + indent, y, width, EditorGUIUtility.singleLineHeight);
-            EditorGUI.PropertyField(nameRect, actionProp.FindPropertyRelative("actionName"), new GUIContent("Action Name"));
+            EditorGUI.PropertyField(nameRect, actionProp.FindPropertyRelative("actionName"), new GUIContent(L.Get("npc.actions.action.name")));
             y += EditorGUIUtility.singleLineHeight + 2;
 
             // Description (TextArea)
             var descLabel = new Rect(containerRect.x + indent, y, width, EditorGUIUtility.singleLineHeight);
-            EditorGUI.LabelField(descLabel, "Description");
+            EditorGUI.LabelField(descLabel, L.Get("npc.actions.action.description"));
             y += EditorGUIUtility.singleLineHeight;
 
             var descRect = new Rect(containerRect.x + indent, y, width, EditorGUIUtility.singleLineHeight * 2);
@@ -155,7 +156,7 @@ namespace PlayKit_SDK.Editor
             var paramsFoldoutRect = new Rect(containerRect.x + indent, y, width, EditorGUIUtility.singleLineHeight);
             var paramsProp = actionProp.FindPropertyRelative("parameters");
             paramsFoldouts[index] = EditorGUI.Foldout(paramsFoldoutRect, paramsFoldouts[index],
-                $"Parameters ({paramsProp.arraySize})", true);
+                $"{L.Get("npc.actions.action.params")} ({paramsProp.arraySize})", true);
             y += EditorGUIUtility.singleLineHeight + 2;
 
             if (paramsFoldouts[index])
@@ -165,7 +166,7 @@ namespace PlayKit_SDK.Editor
 
             // Callback event
             var callbackRect = new Rect(containerRect.x + indent, y, width, EditorGUI.GetPropertyHeight(onTriggeredProp));
-            EditorGUI.PropertyField(callbackRect, onTriggeredProp, new GUIContent("On Action Triggered"));
+            EditorGUI.PropertyField(callbackRect, onTriggeredProp, new GUIContent(L.Get("npc.actions.action.callback")));
         }
 
         private float DrawParameters(float x, float y, float width, SerializedProperty paramsProp)
@@ -200,7 +201,7 @@ namespace PlayKit_SDK.Editor
 
                 // Description
                 var descRect = new Rect(x + paramIndent + 5, paramY, paramWidth, EditorGUIUtility.singleLineHeight);
-                EditorGUI.PropertyField(descRect, param.FindPropertyRelative("description"), new GUIContent("Desc"));
+                EditorGUI.PropertyField(descRect, param.FindPropertyRelative("description"), new GUIContent(L.Get("npc.actions.param.description")));
                 paramY += EditorGUIUtility.singleLineHeight + 2;
 
                 // Enum options (only for StringEnum type)
@@ -212,7 +213,7 @@ namespace PlayKit_SDK.Editor
 
                     // Display as comma-separated string for easier editing
                     string enumStr = string.Join(", ", GetStringArray(enumProp));
-                    var newEnumStr = EditorGUI.TextField(enumRect, "Options", enumStr);
+                    var newEnumStr = EditorGUI.TextField(enumRect, L.Get("npc.actions.param.options"), enumStr);
                     if (newEnumStr != enumStr)
                     {
                         SetStringArray(enumProp, newEnumStr.Split(new[] { ',', ';' }, System.StringSplitOptions.RemoveEmptyEntries));
@@ -232,7 +233,7 @@ namespace PlayKit_SDK.Editor
 
             // Add parameter button
             var addRect = new Rect(x + paramIndent, y, width - paramIndent, EditorGUIUtility.singleLineHeight);
-            if (GUI.Button(addRect, "+ Add Parameter"))
+            if (GUI.Button(addRect, L.Get("npc.actions.param.add")))
             {
                 paramsProp.InsertArrayElementAtIndex(paramsProp.arraySize);
                 var newParam = paramsProp.GetArrayElementAtIndex(paramsProp.arraySize - 1);
@@ -271,14 +272,14 @@ namespace PlayKit_SDK.Editor
 
             // Header
             EditorGUILayout.Space(5);
-            EditorGUILayout.LabelField("NPC Actions Module", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox("Configure actions that this NPC can perform. Each action will be converted to an AI tool call.", MessageType.Info);
+            EditorGUILayout.LabelField(L.Get("npc.actions.editor.title"), EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(L.Get("npc.actions.editor.info"), MessageType.Info);
             EditorGUILayout.Space(5);
 
             // Debug options
-            EditorGUILayout.LabelField("Debug Options", EditorStyles.boldLabel);
-            EditorGUILayout.PropertyField(logActionCallsProperty);
-            EditorGUILayout.PropertyField(autoReportSuccessProperty);
+            EditorGUILayout.LabelField(L.Get("npc.actions.section.debug"), EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(logActionCallsProperty, new GUIContent(L.Get("npc.actions.log_calls")));
+            EditorGUILayout.PropertyField(autoReportSuccessProperty, new GUIContent(L.Get("npc.actions.auto_report")));
             EditorGUILayout.Space(10);
 
             // Actions list
@@ -288,11 +289,11 @@ namespace PlayKit_SDK.Editor
             if (Application.isPlaying)
             {
                 EditorGUILayout.Space(10);
-                EditorGUILayout.LabelField("Runtime Status", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField(L.Get("npc.section.runtime"), EditorStyles.boldLabel);
 
                 var module = (PlayKit_NPCClient_ActionsModule)target;
-                EditorGUILayout.LabelField("Ready:", module.IsReady ? "Yes" : "No");
-                EditorGUILayout.LabelField("Enabled Actions:", module.EnabledActions.Count.ToString());
+                EditorGUILayout.LabelField(L.Get("npc.actions.runtime.ready"), module.IsReady ? L.Get("common.yes") : L.Get("common.no"));
+                EditorGUILayout.LabelField(L.Get("npc.actions.runtime.enabled_count"), module.EnabledActions.Count.ToString());
             }
 
             serializedObject.ApplyModifiedProperties();

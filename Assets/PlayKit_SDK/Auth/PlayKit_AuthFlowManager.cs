@@ -230,9 +230,6 @@ namespace PlayKit_SDK.Auth
                 // Save the access token as player token
                 PlayKit_AuthManager.SavePlayerToken(result.AccessToken, null);
 
-                // Also save to shared token storage
-                PlayKit_LocalSharedToken.SaveToken(result.AccessToken);
-
                 Debug.Log("[PlayKit Auth] Token saved successfully.");
                 UpdateStatus("Login successful!");
 

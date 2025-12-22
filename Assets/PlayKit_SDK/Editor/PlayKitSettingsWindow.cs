@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using PlayKit_SDK.Editor;
+using PlayKit_SDK.Auth;
 using UnityEngine;
 using UnityEditor;
 using System.Linq;
@@ -621,7 +622,7 @@ namespace PlayKit_SDK
                     L10n.Get("common.yes"),
                     L10n.Get("common.cancel")))
                 {
-                    PlayKit_SDK.Auth.PlayKit_AuthManager.ClearPlayerToken();
+                    PlayKit_AuthManager.ClearPlayerToken();
                     EditorUtility.DisplayDialog(
                         L10n.Get("dev.player_token.clear.success.title"),
                         L10n.Get("dev.player_token.clear.success.message"),
@@ -692,7 +693,7 @@ namespace PlayKit_SDK
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            EditorGUILayout.LabelField(L10n.Get("about.version.sdk"), PlayKit_SDK.PlayKit_SDK.VERSION);
+            EditorGUILayout.LabelField(L10n.Get("about.version.sdk"), global::PlayKit_SDK.PlayKit_SDK.VERSION);
             EditorGUILayout.LabelField(L10n.Get("about.version.unity"), Application.unityVersion);
 
             EditorGUILayout.Space(5);
@@ -780,7 +781,7 @@ namespace PlayKit_SDK
             Repaint();
         }
 
-        private void HandleDeviceAuthSuccess(DeviceAuthResult result)
+        private void HandleDeviceAuthSuccess(Editor.DeviceAuthResult result)
         {
             PlayKitSettings.LocalDeveloperToken = result.AccessToken;
 

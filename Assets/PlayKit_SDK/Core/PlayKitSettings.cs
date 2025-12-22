@@ -10,7 +10,7 @@ namespace PlayKit_SDK
     public class PlayKitSettings : ScriptableObject
     {
         private const string SETTINGS_PATH = "PlayKitSettings";
-        private const string SETTINGS_FULL_PATH = "Assets/PlayKit_SDK/Resources/PlayKitSettings.asset";
+        private const string SETTINGS_FULL_PATH = "Assets/Resources/PlayKitSettings.asset";
 
         [Header("Game Configuration")]
         [Tooltip("Your Game ID from the PlayKit dashboard")]
@@ -30,6 +30,19 @@ namespace PlayKit_SDK
         [Header("Advanced Settings")]
         [Tooltip("Override the default API base URL. Leave empty to use default (https://playkit.ai).")]
         [SerializeField] private string customBaseUrl = "";
+
+        [Header("AI Context Manager Settings")]
+        [Tooltip("Enable automatic conversation compaction for NPCs when idle")]
+        [SerializeField] private bool enableAutoCompact = true;
+
+        [Tooltip("Time in seconds since last NPC conversation before triggering auto-compact")]
+        [SerializeField] private float autoCompactTimeoutSeconds = 300f;
+
+        [Tooltip("Minimum number of messages before considering compaction")]
+        [SerializeField] private int autoCompactMinMessages = 10;
+
+        [Tooltip("Model used for conversation compaction and reply predictions")]
+        [SerializeField] private string fastModel = "default-chat-fast";
 
         // Singleton instance
         private static PlayKitSettings _instance;
@@ -53,7 +66,7 @@ namespace PlayKit_SDK
                         _instance = CreateInstance<PlayKitSettings>();
 
                         // Ensure Resources folder exists
-                        string resourcesPath = "Assets/PlayKit_SDK/Resources";
+                        string resourcesPath = "Assets/Resources";
                         if (!UnityEditor.AssetDatabase.IsValidFolder(resourcesPath))
                         {
                             string[] folders = resourcesPath.Split('/');
@@ -105,6 +118,12 @@ namespace PlayKit_SDK
         public string DefaultImageModel => defaultImageModel;
         public bool IgnoreDeveloperToken => ignoreDeveloperToken;
         public string CustomBaseUrl => customBaseUrl;
+
+        // AI Context Manager Settings
+        public bool EnableAutoCompact => enableAutoCompact;
+        public float AutoCompactTimeoutSeconds => autoCompactTimeoutSeconds;
+        public int AutoCompactMinMessages => autoCompactMinMessages;
+        public string FastModel => fastModel;
 
         /// <summary>
         /// Gets the effective base URL for API calls.

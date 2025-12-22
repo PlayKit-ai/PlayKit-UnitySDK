@@ -6,7 +6,7 @@ namespace PlayKit_SDK
 {
     public class PlayKit_SDK : MonoBehaviour
     {
-        public const string VERSION = "v0.2.0.1-beta";
+        public const string VERSION = "v0.2.1.0-canary";
 
         // Configuration is now loaded from PlayKitSettings ScriptableObject
         // No need to manually place prefabs in scenes - SDK initializes automatically at runtime
@@ -34,6 +34,10 @@ namespace PlayKit_SDK
             // Create SDK GameObject automatically
             GameObject sdkObject = new GameObject("PlayKit_SDK");
             Instance = sdkObject.AddComponent<PlayKit_SDK>();
+
+            // Add AIContextManager component
+            sdkObject.AddComponent<AIContextManager>();
+
             DontDestroyOnLoad(sdkObject);
 
             Debug.Log("[PlayKit SDK] SDK instance created automatically. Configure via Tools > PlayKit SDK > Settings");
@@ -58,6 +62,12 @@ namespace PlayKit_SDK
             if (authManager == null)
             {
                 authManager = gameObject.AddComponent<Auth.PlayKit_AuthManager>();
+            }
+
+            // Create AIContextManager component if not exists (for backward compatibility with scene prefabs)
+            if (GetComponent<AIContextManager>() == null)
+            {
+                gameObject.AddComponent<AIContextManager>();
             }
         }
 

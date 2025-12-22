@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Cysharp.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.Events;
@@ -8,6 +9,144 @@ using PlayKit_SDK.Provider.AI;
 
 namespace PlayKit_SDK.Public
 {
+    /// <summary>
+    /// Interface for implementing NPC action handlers (sync version).
+    /// ActionsModule auto-discovers handlers on same GameObject and children.
+    ///
+    /// Recommended: Inherit from NpcActionHandlerBase for Inspector support.
+    /// Only implement this interface directly if you need custom serialization.
+    /// </summary>
+    public interface INpcActionHandler
+    {
+        /// <summary>
+        /// List of action definitions this handler can process.
+        /// </summary>
+        List<NpcAction> ActionDefinitions { get; }
+
+        /// <summary>
+        /// Execute the action synchronously.
+        /// Use args.ActionName to determine which action was triggered.
+        /// </summary>
+        /// <param name="args">Action call arguments from AI</param>
+        /// <returns>Result string to report back to NPC, or null for auto "success"</returns>
+        string Execute(NpcActionCallArgs args);
+    }
+
+    /// <summary>
+    /// Async version of INpcActionHandler for actions that need async operations.
+    /// Use this when your action involves API calls, loading assets, or other async work.
+    ///
+    /// Recommended: Inherit from NpcActionHandlerAsyncBase for Inspector support.
+    /// Only implement this interface directly if you need custom serialization.
+    /// </summary>
+    public interface INpcActionHandlerAsync
+    {
+        /// <summary>
+        /// List of action definitions this handler can process.
+        /// </summary>
+        List<NpcAction> ActionDefinitions { get; }
+
+        /// <summary>
+        /// Execute the action asynchronously.
+        /// Use args.ActionName to determine which action was triggered.
+        /// </summary>
+        /// <param name="args">Action call arguments from AI</param>
+        /// <returns>Result string to report back to NPC, or null for auto "success"</returns>
+        UniTask<string> ExecuteAsync(NpcActionCallArgs args);
+    }
+
+    /// <summary>
+    /// Abstract base class for sync action handlers.
+    /// Inherit from this class for quick setup with Inspector support.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// public class ShopActionHandler : NpcActionHandlerBase
+    /// {
+    ///     protected override void Reset()
+    ///     {
+    ///         base.Reset();
+    ///         _actionDefinitions = new List&lt;NpcAction&gt;
+    ///         {
+    ///             new NpcAction("openShop", "打开商店"),
+    ///             new NpcAction("buyItem", "购买物品").AddStringParam("itemId", "物品ID")
+    ///         };
+    ///     }
+    ///
+    ///     public override string Execute(NpcActionCallArgs args)
+    ///     {
+    ///         switch (args.ActionName)
+    ///         {
+    ///             case "openShop": return "商店已打开";
+    ///             case "buyItem": return Buy(args.GetString("itemId"));
+    ///             default: return null;
+    ///         }
+    ///     }
+    /// }
+    /// </code>
+    /// </example>
+    public abstract class NpcActionHandlerBase : MonoBehaviour, INpcActionHandler
+    {
+        [SerializeField]
+        [Tooltip("List of actions this handler can process")]
+        protected List<NpcAction> _actionDefinitions = new List<NpcAction>();
+
+        public List<NpcAction> ActionDefinitions => _actionDefinitions;
+
+        public abstract string Execute(NpcActionCallArgs args);
+
+        protected virtual void Reset()
+        {
+            // Override in subclass to set default actions
+        }
+    }
+
+    /// <summary>
+    /// Abstract base class for async action handlers.
+    /// Inherit from this class for quick setup with Inspector support.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// public class DataActionHandler : NpcActionHandlerAsyncBase
+    /// {
+    ///     protected override void Reset()
+    ///     {
+    ///         base.Reset();
+    ///         _actionDefinitions = new List&lt;NpcAction&gt;
+    ///         {
+    ///             new NpcAction("fetchData", "获取数据").AddStringParam("dataId", "数据ID")
+    ///         };
+    ///     }
+    ///
+    ///     public override async UniTask&lt;string&gt; ExecuteAsync(NpcActionCallArgs args)
+    ///     {
+    ///         switch (args.ActionName)
+    ///         {
+    ///             case "fetchData":
+    ///                 var data = await FetchData(args.GetString("dataId"));
+    ///                 return $"获取成功: {data}";
+    ///             default: return null;
+    ///         }
+    ///     }
+    /// }
+    /// </code>
+    /// </example>
+    public abstract class NpcActionHandlerAsyncBase : MonoBehaviour, INpcActionHandlerAsync
+    {
+        [SerializeField]
+        [Tooltip("List of actions this handler can process")]
+        protected List<NpcAction> _actionDefinitions = new List<NpcAction>();
+
+        public List<NpcAction> ActionDefinitions => _actionDefinitions;
+
+        public abstract UniTask<string> ExecuteAsync(NpcActionCallArgs args);
+
+        protected virtual void Reset()
+        {
+            // Override in subclass to set default actions
+        }
+    }
+
     /// <summary>
     /// Action parameter type enumeration
     /// </summary>

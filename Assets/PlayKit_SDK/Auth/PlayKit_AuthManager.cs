@@ -56,21 +56,7 @@ namespace PlayKit_SDK.Auth
 
                 return true;
             }
-            // Step 1: Try loading Shared Token if Player Token not found
-
-            LoadSharedToken();
-
-            if (await IsTokenValidWithAPICheck())
-            {
-                Debug.Log("[PlayKit SDK] Valid shared token found, loaded and verified.");
-                standaloneLoadingObject.gameObject.SetActive(false);
-
-                // Also save it as Player Token for consistency
-                // SavePlayerTokenFromShared();
-                return true;
-            }
-
-            // Step 2: Try loading Player Token from PlayerPrefs
+            // Step 1: Try loading Player Token from PlayerPrefs
             LoadPlayerToken();
 
             if (await IsTokenValidWithAPICheck())
@@ -81,8 +67,8 @@ namespace PlayKit_SDK.Auth
                 return true;
             }
 
-            // Step 3: No valid tokens found, initiate login process
-            Debug.Log("[PlayKit SDK] No valid player or shared token found. Initiating login process.");
+            // Step 2: No valid tokens found, initiate login process
+            Debug.Log("[PlayKit SDK] No valid player token found. Initiating login process.");
             standaloneLoadingObject.gameObject.SetActive(false);
 
             return await ShowLoginWebAsync();
@@ -134,32 +120,6 @@ namespace PlayKit_SDK.Auth
             if (IsDeveloperToken) return;
 
             AuthToken = PlayerPrefs.GetString(PlayerTokenKey, null);
-        }
-
-        private void LoadSharedToken()
-        {
-            // Do not overwrite a developer token or existing valid token.
-            if (IsDeveloperToken || !string.IsNullOrEmpty(AuthToken)) return;
-
-            string sharedToken = PlayKit_LocalSharedToken.LoadToken();
-            if (!string.IsNullOrEmpty(sharedToken))
-            {
-                AuthToken = sharedToken;
-                Debug.Log("[PlayKit SDK] Loaded token from shared storage.");
-            }
-        }
-
-        private void SavePlayerTokenFromShared()
-        {
-            // Save the shared token as Player Token with a far future expiry
-            if (!string.IsNullOrEmpty(AuthToken))
-            {
-                PlayerPrefs.SetString(PlayerTokenKey, AuthToken);
-                // Set a far future expiry since we don't know the actual expiry
-                PlayerPrefs.SetString(TokenExpiryKey, DateTime.MaxValue.ToUniversalTime().Ticks.ToString());
-                PlayerPrefs.Save();
-                Debug.Log("[PlayKit SDK] Shared token saved as player token.");
-            }
         }
 
         private bool IsTokenValid()
@@ -282,21 +242,15 @@ namespace PlayKit_SDK.Auth
             
             PlayerPrefs.SetString(TokenExpiryKey, expiryDate.ToUniversalTime().Ticks.ToString());
             PlayerPrefs.Save();
-            
-            // Also save to shared token storage
-            PlayKit_LocalSharedToken.SaveToken(token);
-            
-            Debug.Log("[PlayKit SDK] New player token saved successfully (both local and shared).");
+
+            Debug.Log("[PlayKit SDK] New player token saved successfully.");
         }
-        
+
         public static void ClearPlayerToken()
         {
             PlayerPrefs.DeleteKey(PlayerTokenKey);
             PlayerPrefs.DeleteKey(TokenExpiryKey);
             PlayerPrefs.Save();
-            
-            // Also clear the shared token
-            PlayKit_LocalSharedToken.EraseToken();
         }
         
         /// <summary>

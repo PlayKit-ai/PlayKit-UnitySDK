@@ -26,11 +26,20 @@ namespace PlayKit_SDK
         [Tooltip("Chat model name to use (leave empty to use SDK default) 使用的对话模型名称（留空则使用SDK默认值）")]
         [SerializeField] private string chatModel;
 
+        [Header("Reply Prediction Settings 回复预测设置")]
+        [Tooltip("Automatically generate player reply predictions after NPC responds 在NPC回复后自动生成玩家回复预测")]
+        [SerializeField] private bool generateReplyPrediction = false;
+
+        [Tooltip("Number of reply predictions to generate (3-5 recommended) 生成的回复预测数量（建议3-5个）")]
+        [Range(2, 6)]
+        [SerializeField] private int predictionCount = 4;
+
         public string CharacterDesign => characterDesign;
 
         private PlayKit_AIChatClient _chatClient;
         private List<PlayKit_ChatMessage> _conversationHistory;
-        private string _currentPrompt;
+        private string _currentCharacterDesign;
+        private Dictionary<string, string> _memories = new Dictionary<string, string>();
         private bool _isTalking;
         private bool _isReady;
 
@@ -43,6 +52,12 @@ namespace PlayKit_SDK
         /// </summary>
         public event Action<NpcActionCallArgs> OnActionTriggered;
 
+        /// <summary>
+        /// Event fired when reply predictions are generated.
+        /// Subscribe to receive suggested player responses.
+        /// </summary>
+        public event Action<string[]> OnReplyPredictionGenerated;
+
         public bool IsTalking => _isTalking;
         public bool IsReady => _isReady;
 
@@ -50,6 +65,24 @@ namespace PlayKit_SDK
         /// Whether this NPC has actions configured and enabled
         /// </summary>
         public bool HasEnabledActions => _actionsModule != null && _actionsModule.EnabledActions.Count > 0;
+
+        /// <summary>
+        /// Whether to automatically generate reply predictions after NPC responds.
+        /// </summary>
+        public bool GenerateReplyPrediction
+        {
+            get => generateReplyPrediction;
+            set => generateReplyPrediction = value;
+        }
+
+        /// <summary>
+        /// Number of reply predictions to generate.
+        /// </summary>
+        public int PredictionCount
+        {
+            get => predictionCount;
+            set => predictionCount = Mathf.Clamp(value, 2, 6);
+        }
 
         public void Setup(PlayKit_AIChatClient chatClient)
         {
@@ -64,6 +97,12 @@ namespace PlayKit_SDK
             Initialize().Forget();
         }
 
+        private void OnDestroy()
+        {
+            // Unregister from AIContextManager when destroyed
+            AIContextManager.Instance?.UnregisterNpc(this);
+        }
+
         private async UniTask Initialize()
         {
             await UniTask.WaitUntil(() => PlayKit_SDK.IsReady());
@@ -76,7 +115,7 @@ namespace PlayKit_SDK
             }
 
             if (!string.IsNullOrEmpty(characterDesign))
-                SetSystemPrompt(characterDesign);
+                SetCharacterDesign(characterDesign);
 
             if (!string.IsNullOrEmpty(chatModel))
             {
@@ -189,6 +228,9 @@ namespace PlayKit_SDK
         /// </summary>
         private async UniTask<string> TalkSimpleInternal(string message, CancellationToken token)
         {
+            // Record conversation with AIContextManager
+            AIContextManager.Instance?.RecordConversation(this);
+
             // Add user message to history
             _conversationHistory.Add(new PlayKit_ChatMessage
             {
@@ -209,6 +251,13 @@ namespace PlayKit_SDK
                         Content = result.Response
                     });
                     _isTalking = false;
+
+                    // Trigger reply prediction generation (fire and forget)
+                    if (generateReplyPrediction)
+                    {
+                        TriggerReplyPredictionAsync(token).Forget();
+                    }
+
                     return result.Response;
                 }
                 else
@@ -230,6 +279,9 @@ namespace PlayKit_SDK
         /// </summary>
         private async UniTask<string> TalkWithActionsInternal(string message, CancellationToken token)
         {
+            // Record conversation with AIContextManager
+            AIContextManager.Instance?.RecordConversation(this);
+
             // Add user message to history
             _conversationHistory.Add(new PlayKit_ChatMessage
             {
@@ -269,6 +321,13 @@ namespace PlayKit_SDK
                     }
 
                     _isTalking = false;
+
+                    // Trigger reply prediction generation (fire and forget)
+                    if (generateReplyPrediction)
+                    {
+                        TriggerReplyPredictionAsync(token).Forget();
+                    }
+
                     return responseText;
                 }
                 else
@@ -290,6 +349,9 @@ namespace PlayKit_SDK
         /// </summary>
         private async UniTask TalkSimpleStreamInternal(string message, Action<string> onChunk, Action<string> onComplete, CancellationToken token)
         {
+            // Record conversation with AIContextManager
+            AIContextManager.Instance?.RecordConversation(this);
+
             // Add user message to history
             _conversationHistory.Add(new PlayKit_ChatMessage
             {
@@ -313,6 +375,12 @@ namespace PlayKit_SDK
                                 Role = "assistant",
                                 Content = completeResponse
                             });
+
+                            // Trigger reply prediction generation (fire and forget)
+                            if (generateReplyPrediction)
+                            {
+                                TriggerReplyPredictionAsync(token).Forget();
+                            }
                         }
                         onComplete?.Invoke(completeResponse);
                     },
@@ -333,6 +401,9 @@ namespace PlayKit_SDK
         /// </summary>
         private async UniTask TalkWithActionsStreamInternal(string message, Action<string> onChunk, Action<string> onComplete, CancellationToken token)
         {
+            // Record conversation with AIContextManager
+            AIContextManager.Instance?.RecordConversation(this);
+
             // Add user message to history
             _conversationHistory.Add(new PlayKit_ChatMessage
             {
@@ -375,6 +446,12 @@ namespace PlayKit_SDK
                             if (choice.Message?.ToolCalls != null)
                             {
                                 ProcessActionCalls(choice.Message.ToolCalls);
+                            }
+
+                            // Trigger reply prediction generation (fire and forget)
+                            if (generateReplyPrediction)
+                            {
+                                TriggerReplyPredictionAsync(token).Forget();
                             }
 
                             onComplete?.Invoke(responseText);
@@ -461,16 +538,342 @@ namespace PlayKit_SDK
 
         #endregion
 
+        #region Reply Prediction (Suggestion)
+
+        /// <summary>
+        /// Manually generate reply predictions based on current conversation.
+        /// Uses the fast model configured in PlayKitSettings for quick generation.
+        /// </summary>
+        /// <param name="count">Number of predictions to generate (default: uses PredictionCount property)</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Array of predicted player replies, or empty array on failure</returns>
+        public async UniTask<string[]> GenerateReplyPredictionsAsync(int? count = null, CancellationToken? cancellationToken = null)
+        {
+            var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
+            int predictionNum = count ?? predictionCount;
+
+            if (_conversationHistory == null || _conversationHistory.Count < 2)
+            {
+                Debug.Log("[NPCClient] Not enough conversation history to generate predictions");
+                return Array.Empty<string>();
+            }
+
+            try
+            {
+                // Get player description from AIContextManager
+                var playerDesc = AIContextManager.Instance?.GetPlayerDescription();
+                var playerContext = string.IsNullOrEmpty(playerDesc)
+                    ? ""
+                    : $"- Player description: {playerDesc}\n";
+
+                // Get last NPC message
+                var lastNpcMessage = _conversationHistory
+                    .LastOrDefault(m => m.Role == "assistant")?.Content ?? "";
+
+                if (string.IsNullOrEmpty(lastNpcMessage))
+                {
+                    Debug.Log("[NPCClient] No NPC message found to generate predictions from");
+                    return Array.Empty<string>();
+                }
+
+                // Build recent history (last 6 non-system messages)
+                var recentHistory = _conversationHistory
+                    .Where(m => m.Role != "system")
+                    .TakeLast(6)
+                    .Select(m => $"{m.Role}: {m.Content}")
+                    .ToList();
+
+                // Build prompt for prediction generation
+                var prompt = $@"Based on the conversation history below, generate exactly {predictionNum} natural and contextually appropriate responses that the player might say next.
+
+Context:
+- This is a conversation between a player and an NPC in a game
+{playerContext}- The NPC just said: ""{lastNpcMessage}""
+
+Conversation history:
+{string.Join("\n", recentHistory)}
+
+Requirements:
+1. Each response should be 1-2 sentences maximum
+2. Responses should be diverse in tone and intent
+3. Include a mix of questions, statements, and action-oriented responses
+4. Responses should feel natural for a player character
+
+Output ONLY a JSON array of {predictionNum} strings, nothing else:
+[""response1"", ""response2"", ""response3"", ""response4""]";
+
+                // Use fast model for prediction
+                var settings = PlayKitSettings.Instance;
+                var chatClient = PlayKit_SDK.Factory.CreateChatClient(settings?.FastModel ?? "default-chat-fast");
+
+                if (chatClient == null)
+                {
+                    Debug.LogError("[NPCClient] Failed to create chat client for predictions");
+                    return Array.Empty<string>();
+                }
+
+                var config = new PlayKit_ChatConfig(new List<PlayKit_ChatMessage>
+                {
+                    new PlayKit_ChatMessage { Role = "user", Content = prompt }
+                });
+
+                var result = await chatClient.TextGenerationAsync(config, token);
+
+                if (!result.Success || string.IsNullOrEmpty(result.Response))
+                {
+                    Debug.LogWarning($"[NPCClient] Failed to generate predictions: {result.ErrorMessage}");
+                    return Array.Empty<string>();
+                }
+
+                // Parse JSON response
+                var predictions = ParsePredictionsFromJson(result.Response, predictionNum);
+
+                if (predictions.Length > 0)
+                {
+                    Debug.Log($"[NPCClient] Generated {predictions.Length} reply predictions");
+                }
+
+                return predictions;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[NPCClient] Error generating predictions: {ex.Message}");
+                return Array.Empty<string>();
+            }
+        }
+
+        /// <summary>
+        /// Parse predictions from JSON array response
+        /// </summary>
+        private string[] ParsePredictionsFromJson(string response, int expectedCount)
+        {
+            try
+            {
+                // Try to find JSON array in response
+                var startIndex = response.IndexOf('[');
+                var endIndex = response.LastIndexOf(']');
+
+                if (startIndex == -1 || endIndex == -1 || endIndex <= startIndex)
+                {
+                    Debug.LogWarning("[NPCClient] Could not find JSON array in prediction response");
+                    return ExtractPredictionsFromText(response, expectedCount);
+                }
+
+                var jsonArray = response.Substring(startIndex, endIndex - startIndex + 1);
+
+                // Simple JSON array parsing without external dependencies
+                var predictions = new List<string>();
+                var inString = false;
+                var currentString = new System.Text.StringBuilder();
+                var escaped = false;
+
+                for (int i = 1; i < jsonArray.Length - 1; i++)
+                {
+                    char c = jsonArray[i];
+
+                    if (escaped)
+                    {
+                        currentString.Append(c);
+                        escaped = false;
+                        continue;
+                    }
+
+                    if (c == '\\')
+                    {
+                        escaped = true;
+                        continue;
+                    }
+
+                    if (c == '"')
+                    {
+                        if (inString)
+                        {
+                            // End of string
+                            var pred = currentString.ToString().Trim();
+                            if (!string.IsNullOrEmpty(pred))
+                            {
+                                predictions.Add(pred);
+                            }
+                            currentString.Clear();
+                        }
+                        inString = !inString;
+                        continue;
+                    }
+
+                    if (inString)
+                    {
+                        currentString.Append(c);
+                    }
+                }
+
+                return predictions.ToArray();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[NPCClient] Failed to parse predictions JSON: {ex.Message}");
+                return ExtractPredictionsFromText(response, expectedCount);
+            }
+        }
+
+        /// <summary>
+        /// Fallback: Extract predictions from text when JSON parsing fails
+        /// </summary>
+        private string[] ExtractPredictionsFromText(string response, int expectedCount)
+        {
+            var predictions = new List<string>();
+            var lines = response.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+
+                // Skip empty lines and JSON brackets
+                if (string.IsNullOrEmpty(trimmed) || trimmed == "[" || trimmed == "]")
+                    continue;
+
+                // Remove common prefixes like "1.", "- ", etc.
+                var cleaned = trimmed;
+                if (cleaned.Length > 2 && char.IsDigit(cleaned[0]) && cleaned[1] == '.')
+                {
+                    cleaned = cleaned.Substring(2).Trim();
+                }
+                else if (cleaned.StartsWith("- "))
+                {
+                    cleaned = cleaned.Substring(2).Trim();
+                }
+
+                // Remove surrounding quotes
+                if (cleaned.StartsWith("\"") && cleaned.EndsWith("\""))
+                {
+                    cleaned = cleaned.Substring(1, cleaned.Length - 2);
+                }
+
+                // Remove trailing comma
+                if (cleaned.EndsWith(","))
+                {
+                    cleaned = cleaned.Substring(0, cleaned.Length - 1).Trim();
+                }
+
+                if (!string.IsNullOrEmpty(cleaned) && predictions.Count < expectedCount)
+                {
+                    predictions.Add(cleaned);
+                }
+            }
+
+            return predictions.ToArray();
+        }
+
+        /// <summary>
+        /// Internal method to trigger prediction generation after NPC response
+        /// </summary>
+        private async UniTask TriggerReplyPredictionAsync(CancellationToken token)
+        {
+            if (!generateReplyPrediction) return;
+
+            var predictions = await GenerateReplyPredictionsAsync(predictionCount, token);
+
+            if (predictions.Length > 0)
+            {
+                OnReplyPredictionGenerated?.Invoke(predictions);
+            }
+        }
+
+        #endregion
+
         #region Conversation History Management
 
         /// <summary>
-        /// Set the system prompt for the NPC character.
+        /// Set the character design for the NPC.
+        /// The system prompt is composed of CharacterDesign + all Memories.
         /// </summary>
-        /// <param name="prompt">The new system prompt</param>
+        /// <param name="design">The character design/persona for this NPC</param>
+        public void SetCharacterDesign(string design)
+        {
+            _currentCharacterDesign = design;
+            RebuildSystemPrompt();
+        }
+
+        /// <summary>
+        /// [Deprecated] Use SetCharacterDesign instead.
+        /// This method is kept for backwards compatibility.
+        /// </summary>
+        /// <param name="prompt">The character design/persona for this NPC</param>
+        [Obsolete("Use SetCharacterDesign instead. SetSystemPrompt is deprecated.")]
         public void SetSystemPrompt(string prompt)
         {
-            _currentPrompt = prompt;
+            Debug.LogWarning("[NPCClient] SetSystemPrompt is deprecated. Use SetCharacterDesign instead.");
+            SetCharacterDesign(prompt);
+        }
 
+        /// <summary>
+        /// Set or update a memory for the NPC.
+        /// Memories are appended to the character design to form the system prompt.
+        /// Set memoryContent to null or empty to remove the memory.
+        /// </summary>
+        /// <param name="memoryName">The name/key of the memory</param>
+        /// <param name="memoryContent">The content of the memory. Null or empty to remove.</param>
+        public void SetMemory(string memoryName, string memoryContent)
+        {
+            if (string.IsNullOrEmpty(memoryName))
+            {
+                Debug.LogWarning("[NPCClient] Memory name cannot be empty");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(memoryContent))
+            {
+                // Remove memory if content is null or empty
+                if (_memories.ContainsKey(memoryName))
+                {
+                    _memories.Remove(memoryName);
+                    Debug.Log($"[NPCClient] Memory '{memoryName}' removed");
+                }
+            }
+            else
+            {
+                // Add or update memory
+                _memories[memoryName] = memoryContent;
+                Debug.Log($"[NPCClient] Memory '{memoryName}' set");
+            }
+
+            RebuildSystemPrompt();
+        }
+
+        /// <summary>
+        /// Get a specific memory by name.
+        /// </summary>
+        /// <param name="memoryName">The name of the memory to retrieve</param>
+        /// <returns>The memory content, or null if not found</returns>
+        public string GetMemory(string memoryName)
+        {
+            return _memories.TryGetValue(memoryName, out var content) ? content : null;
+        }
+
+        /// <summary>
+        /// Get all memory names currently stored.
+        /// </summary>
+        /// <returns>Array of memory names</returns>
+        public string[] GetMemoryNames()
+        {
+            return _memories.Keys.ToArray();
+        }
+
+        /// <summary>
+        /// Clear all memories (but keep character design).
+        /// </summary>
+        public void ClearMemories()
+        {
+            _memories.Clear();
+            RebuildSystemPrompt();
+            Debug.Log("[NPCClient] All memories cleared");
+        }
+
+        /// <summary>
+        /// Rebuild the system prompt from CharacterDesign + Memories.
+        /// This is called automatically when SetCharacterDesign or SetMemory is called.
+        /// </summary>
+        private void RebuildSystemPrompt()
+        {
             // Remove existing system message if any
             for (int i = _conversationHistory.Count - 1; i >= 0; i--)
             {
@@ -480,13 +883,29 @@ namespace PlayKit_SDK
                 }
             }
 
-            // Add new system message if we have a prompt
-            if (!string.IsNullOrEmpty(_currentPrompt))
+            // Build combined system prompt
+            var promptParts = new List<string>();
+
+            if (!string.IsNullOrEmpty(_currentCharacterDesign))
+            {
+                promptParts.Add(_currentCharacterDesign);
+            }
+
+            if (_memories.Count > 0)
+            {
+                var memoryStrings = _memories.Select(kvp => $"[{kvp.Key}]: {kvp.Value}");
+                promptParts.Add("Memories:\n" + string.Join("\n", memoryStrings));
+            }
+
+            var combinedPrompt = string.Join("\n\n", promptParts);
+
+            // Add new system message if we have content
+            if (!string.IsNullOrEmpty(combinedPrompt))
             {
                 _conversationHistory.Insert(0, new PlayKit_ChatMessage
                 {
                     Role = "system",
-                    Content = _currentPrompt
+                    Content = combinedPrompt
                 });
             }
         }
@@ -527,9 +946,16 @@ namespace PlayKit_SDK
         /// </summary>
         public string SaveHistory()
         {
+            var memoryEntries = _memories.Select(kvp => new MemoryEntry
+            {
+                Name = kvp.Key,
+                Content = kvp.Value
+            }).ToArray();
+
             var saveData = new ConversationSaveData
             {
-                Prompt = _currentPrompt,
+                CharacterDesign = _currentCharacterDesign,
+                Memories = memoryEntries,
                 History = _conversationHistory.ToArray()
             };
             return JsonUtility.ToJson(saveData);
@@ -546,8 +972,28 @@ namespace PlayKit_SDK
                 if (data == null) return false;
 
                 _conversationHistory.Clear();
-                SetSystemPrompt(data.Prompt);
+                _memories.Clear();
 
+                // Load character design (with backwards compatibility for old Prompt field)
+                var design = !string.IsNullOrEmpty(data.CharacterDesign) ? data.CharacterDesign : data.Prompt;
+                _currentCharacterDesign = design;
+
+                // Load memories
+                if (data.Memories != null)
+                {
+                    foreach (var memory in data.Memories)
+                    {
+                        if (!string.IsNullOrEmpty(memory.Name) && !string.IsNullOrEmpty(memory.Content))
+                        {
+                            _memories[memory.Name] = memory.Content;
+                        }
+                    }
+                }
+
+                // Rebuild system prompt from CharacterDesign + Memories
+                RebuildSystemPrompt();
+
+                // Load non-system messages
                 foreach (var message in data.History)
                 {
                     if (message.Role != "system")
@@ -567,20 +1013,12 @@ namespace PlayKit_SDK
 
         /// <summary>
         /// Clear the conversation history, starting fresh.
-        /// The system prompt (character) will be preserved.
+        /// The system prompt (CharacterDesign + Memories) will be preserved.
         /// </summary>
         public void ClearHistory()
         {
             _conversationHistory.Clear();
-
-            if (!string.IsNullOrEmpty(_currentPrompt))
-            {
-                _conversationHistory.Add(new PlayKit_ChatMessage
-                {
-                    Role = "system",
-                    Content = _currentPrompt
-                });
-            }
+            RebuildSystemPrompt();
         }
 
         /// <summary>
@@ -650,7 +1088,19 @@ namespace PlayKit_SDK
     [Serializable]
     public class ConversationSaveData
     {
-        public string Prompt;
+        public string Prompt; // Kept for backwards compatibility
+        public string CharacterDesign;
+        public MemoryEntry[] Memories;
         public PlayKit_ChatMessage[] History;
+    }
+
+    /// <summary>
+    /// Data structure for serializing a memory entry
+    /// </summary>
+    [Serializable]
+    public class MemoryEntry
+    {
+        public string Name;
+        public string Content;
     }
 }
