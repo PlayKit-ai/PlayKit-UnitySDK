@@ -48,7 +48,7 @@
   "dev.token.not_set": "（설정되지 않음）",
   "dev.token.hide": "👁 토큰 숨기기",
   "dev.token.show": "👁 토큰 표시",
-  "dev.token.ignore": "개발자 토큰 무시",
+  "dev.token.ignore": "플레이어 권한으로 게임 진행",
   "dev.token.ignore.tooltip": "테스트를 위해 플레이어 인증 흐름 강제",
   "dev.player_token.clear": "로컬 플레이어 토큰 지우기",
   "dev.player_token.clear.title": "플레이어 토큰 지우기",
@@ -66,7 +66,7 @@
   "about.links.report_issue": "🐛 문제 보고",
   "about.links.website": "🌐 웹사이트",
   "about.resources.title": "리소스 및 지원",
-  "about.resources.email": "📧 이메일：support@agentlandlab.com",
+  "about.resources.email": "📧 이메일：support@playkit.ai",
   "about.examples.title": "예제",
   "about.examples.not_found": "SDK에서 예제 씬을 찾을 수 없습니다.",
 
@@ -194,7 +194,7 @@
   "voice.section.runtime": "런타임 상태",
 
   "voice.transcription.model": "음성 인식 모델",
-  "voice.transcription.model.help": "음성 인식에 사용할 모델 (예: whisper-1)",
+  "voice.transcription.model.help": "음성 인식에 사용할 모델 (예: whisper-large)",
   "voice.transcription.language": "기본 언어",
   "voice.transcription.language.help": "음성 인식 언어 코드 (예: 'en', 'zh', 'ja')",
 

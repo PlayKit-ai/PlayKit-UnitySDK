@@ -55,16 +55,10 @@ namespace PlayKit_SDK.Provider.AI
                 throw new ArgumentException("Model is required for object generation");
             }
 
-            // Build messages array
+            // Build messages array from request
             var messages = new List<ChatMessage>();
 
-            // Add system message if provided
-            if (!string.IsNullOrEmpty(request.System))
-            {
-                messages.Add(new ChatMessage { Role = "system", Content = request.System });
-            }
-
-            // Add messages from request if provided, otherwise use prompt
+            // Add messages from request
             if (request.Messages != null && request.Messages.Count > 0)
             {
                 messages.AddRange(request.Messages.Select(m => new ChatMessage
@@ -73,13 +67,9 @@ namespace PlayKit_SDK.Provider.AI
                     Content = m.Content
                 }));
             }
-            else if (!string.IsNullOrEmpty(request.Prompt))
-            {
-                messages.Add(new ChatMessage { Role = "user", Content = request.Prompt });
-            }
             else
             {
-                throw new ArgumentException("Either Prompt or Messages is required for object generation");
+                throw new ArgumentException("Messages is required for object generation");
             }
 
             // Build the v2 chat completion request with native schema support

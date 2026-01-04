@@ -266,14 +266,31 @@ namespace PlayKit_SDK.Auth
 
                     using (var webRequest = UnityWebRequest.Get(endpoint))
                     {
-                        await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken);
+                        // Don't use ToUniTask() as it throws on non-2xx status codes
+                        // Instead, manually wait for the request to complete
+                        var operation = webRequest.SendWebRequest();
+                        while (!operation.isDone)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            await UniTask.Yield();
+                        }
 
                         var responseText = webRequest.downloadHandler.text;
-                        var response = JsonConvert.DeserializeObject<PollResponse>(responseText);
+                        PollResponse response = null;
+                        
+                        try
+                        {
+                            response = JsonConvert.DeserializeObject<PollResponse>(responseText);
+                        }
+                        catch
+                        {
+                            // Failed to parse response, continue polling
+                            Debug.LogWarning($"[PlayKit_DeviceAuthFlow] Failed to parse poll response: {responseText}");
+                        }
 
                         if (webRequest.result == UnityWebRequest.Result.Success)
                         {
-                            if (response.status == "pending")
+                            if (response?.status == "pending")
                             {
                                 // Update poll interval if provided
                                 if (response.poll_interval.HasValue)
@@ -281,7 +298,7 @@ namespace PlayKit_SDK.Auth
                                     _pollIntervalMs = response.poll_interval.Value * 1000;
                                 }
                             }
-                            else if (response.status == "authorized")
+                            else if (response?.status == "authorized")
                             {
                                 return new DeviceAuthResult
                                 {
@@ -295,22 +312,28 @@ namespace PlayKit_SDK.Auth
                         }
                         else
                         {
-                            // Handle error responses
+                            // Handle error responses (including HTTP 400)
                             if (response?.error == "slow_down")
                             {
                                 _pollIntervalMs = Math.Min(_pollIntervalMs * 2, 30000);
+                                Debug.Log("[PlayKit_DeviceAuthFlow] Slowing down poll rate");
                             }
                             else if (response?.error == "access_denied")
                             {
                                 Status = DeviceAuthStatus.Denied;
-                                OnAuthError?.Invoke("User denied authorization");
+                                OnAuthError?.Invoke("用户拒绝了授权\nUser denied authorization");
                                 return null;
                             }
                             else if (response?.error == "expired_token")
                             {
                                 Status = DeviceAuthStatus.Expired;
-                                OnAuthError?.Invoke("Session expired");
+                                OnAuthError?.Invoke("会话已过期\nSession expired");
                                 return null;
+                            }
+                            else
+                            {
+                                // Unknown error, log but continue polling
+                                Debug.LogWarning($"[PlayKit_DeviceAuthFlow] Poll returned error: {response?.error ?? webRequest.error}");
                             }
                         }
                     }
@@ -321,7 +344,8 @@ namespace PlayKit_SDK.Auth
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"[PlayKit_DeviceAuthFlow] Poll error, retrying: {ex.Message}");
+                    // Network error or other exception, continue polling
+                    Debug.LogWarning($"[PlayKit_DeviceAuthFlow] Poll exception, retrying: {ex.Message}");
                 }
 
                 // Wait before next poll
@@ -334,7 +358,7 @@ namespace PlayKit_SDK.Auth
             }
 
             Status = DeviceAuthStatus.Expired;
-            OnAuthError?.Invoke("Authorization session expired");
+            OnAuthError?.Invoke("授权会话已过期\nAuthorization session expired");
             return null;
         }
 

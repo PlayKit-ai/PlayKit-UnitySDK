@@ -16,7 +16,7 @@ namespace PlayKit_SDK.Auth
         [MenuItem("PlayKit SDK/Documentation", priority = 52)]
         private static void OpenDocumentation()
         {
-            Application.OpenURL("https://docs.playkit.agentlandlab.com");
+            Application.OpenURL("https://docs.playkit.ai");
         }
 
        

@@ -13,8 +13,8 @@ namespace PlayKit_SDK
     public class PlayKit_NPCClient_VoiceModule : MonoBehaviour
     {
         [Header("Voice Transcription Configuration 语音转录配置")]
-        [Tooltip("Transcription model name (e.g., whisper-1) 转录模型名称（例如：whisper-1）")]
-        [SerializeField] private string transcriptionModel = "whisper-1";
+        [Tooltip("Transcription model name (e.g., whisper-large) 转录模型名称（例如：whisper-large）")]
+        [SerializeField] private string transcriptionModel = "whisper-large";
         [Tooltip("Default language code for transcription (e.g., 'zh', 'en') 默认转录语言代码（例如：'zh', 'en'）")]
         [SerializeField] private string defaultLanguage = "zh";
 

@@ -48,7 +48,7 @@
   "dev.token.not_set": "（未設定）",
   "dev.token.hide": "👁 トークンを隠す",
   "dev.token.show": "👁 トークンを表示",
-  "dev.token.ignore": "開発者トークンを無視",
+  "dev.token.ignore": "プレイヤー権限でゲームをプレイ",
   "dev.token.ignore.tooltip": "テスト用にプレイヤー認証フローを強制",
   "dev.player_token.clear": "ローカルプレイヤートークンをクリア",
   "dev.player_token.clear.title": "プレイヤートークンをクリア",
@@ -66,7 +66,7 @@
   "about.links.report_issue": "🐛 問題を報告",
   "about.links.website": "🌐 ウェブサイト",
   "about.resources.title": "リソースとサポート",
-  "about.resources.email": "📧 メール：support@agentlandlab.com",
+  "about.resources.email": "📧 メール：support@playkit.ai",
   "about.examples.title": "サンプル",
   "about.examples.not_found": "SDK にサンプルシーンが見つかりません。",
 
@@ -194,7 +194,7 @@
   "voice.section.runtime": "ランタイム状態",
 
   "voice.transcription.model": "音声認識モデル",
-  "voice.transcription.model.help": "音声認識に使用するモデル（例：whisper-1）",
+  "voice.transcription.model.help": "音声認識に使用するモデル（例：whisper-large）",
   "voice.transcription.language": "デフォルト言語",
   "voice.transcription.language.help": "音声認識の言語コード（例：'en'、'zh'、'ja'）",
 

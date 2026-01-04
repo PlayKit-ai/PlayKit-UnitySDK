@@ -1,13 +1,7 @@
 fileFormatVersion: 2
 guid: 7c4c3a587d66108499ebcb2631a064e0
 TextureImporter:
-  internalIDToNameTable:
-  - first:
-      213: -2191989549806839966
-    second: Email_0
-  - first:
-      213: -8749797727669135116
-    second: Email_1
+  internalIDToNameTable: []
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -114,49 +108,7 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites:
-    - serializedVersion: 2
-      name: Email_0
-      rect:
-        serializedVersion: 2
-        x: 21
-        y: 10
-        width: 50
-        height: 15
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 267156c3e1d7491e0800000000000000
-      internalID: -2191989549806839966
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Email_1
-      rect:
-        serializedVersion: 2
-        x: 72
-        y: 11
-        width: 34
-        height: 13
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 4f8d2c93359729680800000000000000
-      internalID: -8749797727669135116
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
+    sprites: []
     outline: []
     physicsShape: []
     bones: []
@@ -167,9 +119,7 @@ TextureImporter:
     edges: []
     weights: []
     secondaryTextures: []
-    nameFileIdTable:
-      Email_0: -2191989549806839966
-      Email_1: -8749797727669135116
+    nameFileIdTable: {}
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

@@ -6,7 +6,7 @@ namespace PlayKit_SDK
 {
     public class PlayKit_SDK : MonoBehaviour
     {
-        public const string VERSION = "v0.2.1.0-canary";
+        public const string VERSION = "v0.2.1.2-canary";
 
         // Configuration is now loaded from PlayKitSettings ScriptableObject
         // No need to manually place prefabs in scenes - SDK initializes automatically at runtime
@@ -16,6 +16,9 @@ namespace PlayKit_SDK
 
         // Auth manager is created dynamically instead of being serialized
         private Auth.PlayKit_AuthManager authManager;
+
+        // Flag to track if this instance was created by auto-initialization
+        private static bool _isAutoInitializing = false;
 
         /// <summary>
         /// Automatically creates SDK instance at runtime startup.
@@ -31,31 +34,44 @@ namespace PlayKit_SDK
                 return;
             }
 
+            // Set flag before creating components to prevent warnings
+            _isAutoInitializing = true;
+
             // Create SDK GameObject automatically
             GameObject sdkObject = new GameObject("PlayKit_SDK");
-            Instance = sdkObject.AddComponent<PlayKit_SDK>();
-
-            // Add AIContextManager component
-            sdkObject.AddComponent<AIContextManager>();
-
+            
+            // AddComponent<PlayKit_SDK>() triggers Awake() synchronously
+            // Awake() will add AIContextManager and set Instance
+            sdkObject.AddComponent<PlayKit_SDK>();
+            
             DontDestroyOnLoad(sdkObject);
 
-            Debug.Log("[PlayKit SDK] SDK instance created automatically. Configure via Tools > PlayKit SDK > Settings");
+            // Clear flag after initialization
+            _isAutoInitializing = false;
+
+            Debug.Log("[PlayKit SDK] SDK initialized. Configure via Tools > PlayKit SDK > Settings");
         }
 
         private void Awake()
         {
-            // Handle manual prefab instances (backward compatibility)
+            // Handle instance assignment
             if (Instance == null)
             {
                 Instance = this;
-                DontDestroyOnLoad(gameObject);
-                Debug.LogWarning("[PlayKit SDK] SDK initialized from scene prefab. Consider removing the prefab - SDK now initializes automatically.");
+                
+                // Only call DontDestroyOnLoad if not already called in AutoInitialize
+                if (!_isAutoInitializing)
+                {
+                    DontDestroyOnLoad(gameObject);
+                    // Warn about scene prefab only if this wasn't auto-initialized
+                    Debug.LogWarning("[PlayKit SDK] SDK initialized from scene prefab. Consider removing the prefab - SDK now initializes automatically.");
+                }
             }
             else if (Instance != this)
             {
-                Debug.LogWarning("[PlayKit SDK] Duplicate SDK instance detected. Destroying duplicate.");
+                // This is a duplicate - destroy it silently
                 Destroy(gameObject);
+                return;
             }
 
             // Create AuthManager component if not exists
@@ -64,7 +80,7 @@ namespace PlayKit_SDK
                 authManager = gameObject.AddComponent<Auth.PlayKit_AuthManager>();
             }
 
-            // Create AIContextManager component if not exists (for backward compatibility with scene prefabs)
+            // Create AIContextManager component if not exists
             if (GetComponent<AIContextManager>() == null)
             {
                 gameObject.AddComponent<AIContextManager>();
@@ -77,6 +93,7 @@ namespace PlayKit_SDK
         private static Provider.IImageProvider _imageProvider;
         private static Provider.AI.IObjectProvider _objectProvider;
         private static Provider.ITranscriptionProvider _transcriptionProvider;
+        private static PlayKit_RechargeManager _rechargeManager;
 
         /// <summary>
         /// Asynchronously initializes the SDK. This must complete successfully before creating clients.
@@ -156,6 +173,15 @@ namespace PlayKit_SDK
             _imageProvider = new Provider.AI.AIImageProvider(PlayKitAuthManager);
             _objectProvider = new Provider.AI.AIObjectProvider(PlayKitAuthManager);
             _transcriptionProvider = new Provider.AI.AITranscriptionProvider(PlayKitAuthManager);
+
+            // Initialize RechargeManager
+            _rechargeManager = new PlayKit_RechargeManager();
+            _rechargeManager.Initialize(
+                settings.BaseUrl,
+                gameId,
+                () => PlayKitAuthManager.GetPlayerClient()?.GetPlayerToken()
+            );
+
             _isInitialized = true;
             Debug.Log("[PlayKit SDK] PlayKit_SDK Initialized Successfully");
             return true;
@@ -201,6 +227,21 @@ namespace PlayKit_SDK
             }
 
             return PlayKitAuthManager.GetPlayerClient();
+        }
+
+        /// <summary>
+        /// Gets the RechargeManager for opening recharge portal.
+        /// </summary>
+        /// <returns>The RechargeManager instance, or null if SDK not initialized</returns>
+        public static PlayKit_RechargeManager GetRechargeManager()
+        {
+            if (!_isInitialized)
+            {
+                Debug.LogWarning("SDK not initialized. Please call PlayKit_SDK.InitializeAsync() first.");
+                return null;
+            }
+
+            return _rechargeManager;
         }
 
         /// <summary>
@@ -266,7 +307,7 @@ namespace PlayKit_SDK
             /// <summary>
             /// Creates an audio transcription client for speech-to-text conversion
             /// </summary>
-            /// <param name="modelName">The transcription model to use (e.g., "whisper-1")</param>
+            /// <param name="modelName">The transcription model to use (e.g., "whisper-large")</param>
             /// <returns>An audio transcription client</returns>
             public static PlayKit_AudioTranscriptionClient CreateTranscriptionClient(string modelName)
             {
@@ -283,7 +324,7 @@ namespace PlayKit_SDK
 
                 if (string.IsNullOrEmpty(modelName))
                 {
-                    Debug.LogError("[PlayKit SDK] Transcription model name cannot be empty. Please specify a model like 'whisper-1'.");
+                    Debug.LogError("[PlayKit SDK] Transcription model name cannot be empty. Please specify a model like 'whisper-large'.");
                     return null;
                 }
 
@@ -329,7 +370,7 @@ namespace PlayKit_SDK
         /// <summary>
         /// Quick access to create a transcription client
         /// </summary>
-        /// <param name="modelName">The transcription model to use (e.g., "whisper-1")</param>
+        /// <param name="modelName">The transcription model to use (e.g., "whisper-large")</param>
         /// <returns>An audio transcription client</returns>
         public static PlayKit_AudioTranscriptionClient CreateTranscriptionClient(string modelName)
         {

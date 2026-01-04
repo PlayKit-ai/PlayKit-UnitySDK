@@ -62,7 +62,7 @@
   "dev.token.not_set": "（未設定）",
   "dev.token.hide": "隱藏令牌",
   "dev.token.show": "顯示令牌",
-  "dev.token.ignore": "忽略開發者令牌",
+  "dev.token.ignore": "以玩家身份游玩",
   "dev.token.ignore.tooltip": "強制使用玩家認證流程進行測試",
   "dev.player_token.clear": "清除本機玩家令牌",
   "dev.player_token.clear.title": "清除玩家令牌",
@@ -202,7 +202,7 @@
   "voice.section.runtime": "執行時狀態",
 
   "voice.transcription.model": "轉錄模型",
-  "voice.transcription.model.help": "用於語音轉文字的模型（例如 whisper-1）",
+  "voice.transcription.model.help": "用於語音轉文字的模型（例如 whisper-large）",
   "voice.transcription.language": "預設語言",
   "voice.transcription.language.help": "轉錄的語言代碼（例如 'en'、'zh'、'ja'）",
 

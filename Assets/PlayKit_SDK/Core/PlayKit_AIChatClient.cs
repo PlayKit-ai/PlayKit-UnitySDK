@@ -7,6 +7,7 @@ using UnityEngine;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using PlayKit_SDK.Provider.AI;
+using PlayKit_SDK.Public;
 
 namespace PlayKit_SDK
 {
@@ -122,15 +123,22 @@ namespace PlayKit_SDK
                 return null;
             }
 
+            // Build messages array
+            var messages = new List<PlayKit_ChatMessage>();
+            if (!string.IsNullOrEmpty(systemMessage))
+            {
+                messages.Add(new PlayKit_ChatMessage { Role = "system", Content = systemMessage });
+            }
+            messages.Add(new PlayKit_ChatMessage { Role = "user", Content = prompt });
+
             var request = new ObjectGenerationRequest
             {
                 Model = _model,
-                Prompt = prompt,
+                Messages = messages,
                 Schema = parsedSchema.ToObject<object>(),
                 Output = "object",
                 SchemaName = schemaName,
                 SchemaDescription = schemaEntry.description,
-                System = systemMessage,
                 Temperature = temperature,
                 MaxTokens = maxTokens
             };
@@ -374,14 +382,21 @@ namespace PlayKit_SDK
                 return null;
             }
 
+            // Build messages array
+            var messages = new List<PlayKit_ChatMessage>();
+            if (!string.IsNullOrEmpty(systemMessage))
+            {
+                messages.Add(new PlayKit_ChatMessage { Role = "system", Content = systemMessage });
+            }
+            messages.Add(new PlayKit_ChatMessage { Role = "user", Content = prompt });
+
             var request = new ObjectGenerationRequest
             {
                 Model = _model,
-                Prompt = prompt,
+                Messages = messages,
                 Schema = parsedSchema.ToObject<object>(),
                 Output = "object",
                 SchemaName = schemaName,
-                System = systemMessage,
                 Temperature = temperature,
                 MaxTokens = maxTokens
             };

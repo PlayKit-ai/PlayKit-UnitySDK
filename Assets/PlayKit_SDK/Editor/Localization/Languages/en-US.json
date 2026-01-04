@@ -47,7 +47,7 @@
   "dev.token.not_set": "(Not Set)",
   "dev.token.hide": "👁 Hide Token",
   "dev.token.show": "👁 Show Token",
-  "dev.token.ignore": "Ignore Developer Token",
+  "dev.token.ignore": "Play as Player",
   "dev.token.ignore.tooltip": "Force player authentication flow for testing",
   "dev.player_token.clear": "Clear Local Player Token",
   "dev.player_token.clear.title": "Clear Player Token",
@@ -65,7 +65,7 @@
   "about.links.report_issue": "Report Issue",
   "about.links.website": "Website",
   "about.resources.title": "Resources & Support",
-  "about.resources.email": "Email: support@agentlandlab.com",
+  "about.resources.email": "Email: support@playkit.ai",
   "about.examples.title": "Examples",
   "about.examples.not_found": "No example scenes found in the SDK.",
 
@@ -187,7 +187,7 @@
   "voice.section.runtime": "Runtime Status",
 
   "voice.transcription.model": "Transcription Model",
-  "voice.transcription.model.help": "Model used for speech-to-text (e.g., whisper-1)",
+  "voice.transcription.model.help": "Model used for speech-to-text (e.g., whisper-large)",
   "voice.transcription.language": "Default Language",
   "voice.transcription.language.help": "Language code for transcription (e.g., 'en', 'zh', 'ja')",
 

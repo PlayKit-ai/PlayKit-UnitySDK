@@ -1,31 +1,7 @@
 fileFormatVersion: 2
 guid: 17dc832ee97f40c44b4e83d4d89f9cf5
 TextureImporter:
-  internalIDToNameTable:
-  - first:
-      213: 559631843559397421
-    second: Login_0
-  - first:
-      213: -2169570056348474463
-    second: Login_1
-  - first:
-      213: -8489151375182875924
-    second: Login_2
-  - first:
-      213: 6169180659542893674
-    second: Login_3
-  - first:
-      213: 1501428455969892089
-    second: Login_4
-  - first:
-      213: -897498667511426022
-    second: Login_5
-  - first:
-      213: 6041739694064143255
-    second: Login_6
-  - first:
-      213: 188230410880440896
-    second: Login_7
+  internalIDToNameTable: []
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -132,175 +108,7 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites:
-    - serializedVersion: 2
-      name: Login_0
-      rect:
-        serializedVersion: 2
-        x: 47
-        y: 20
-        width: 34
-        height: 33
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: d28da58523634c700800000000000000
-      internalID: 559631843559397421
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Login_1
-      rect:
-        serializedVersion: 2
-        x: 80
-        y: 19
-        width: 32
-        height: 33
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 1a36604578324e1e0800000000000000
-      internalID: -2169570056348474463
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Login_2
-      rect:
-        serializedVersion: 2
-        x: 119
-        y: 23
-        width: 18
-        height: 26
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: ce2b4bd3dc9703a80800000000000000
-      internalID: -8489151375182875924
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Login_3
-      rect:
-        serializedVersion: 2
-        x: 137
-        y: 22
-        width: 20
-        height: 21
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: a64a347cf155d9550800000000000000
-      internalID: 6169180659542893674
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Login_4
-      rect:
-        serializedVersion: 2
-        x: 157
-        y: 16
-        width: 20
-        height: 27
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 9f6afbdc93526d410800000000000000
-      internalID: 1501428455969892089
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Login_5
-      rect:
-        serializedVersion: 2
-        x: 178
-        y: 42
-        width: 8
-        height: 8
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: a14589097b17b83f0800000000000000
-      internalID: -897498667511426022
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Login_6
-      rect:
-        serializedVersion: 2
-        x: 178
-        y: 23
-        width: 8
-        height: 20
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 79b0212cd3298d350800000000000000
-      internalID: 6041739694064143255
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Login_7
-      rect:
-        serializedVersion: 2
-        x: 187
-        y: 23
-        width: 20
-        height: 20
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 04a5478bf8abc9200800000000000000
-      internalID: 188230410880440896
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
+    sprites: []
     outline: []
     physicsShape: []
     bones: []
@@ -311,15 +119,7 @@ TextureImporter:
     edges: []
     weights: []
     secondaryTextures: []
-    nameFileIdTable:
-      Login_0: 559631843559397421
-      Login_1: -2169570056348474463
-      Login_2: -8489151375182875924
-      Login_3: 6169180659542893674
-      Login_4: 1501428455969892089
-      Login_5: -897498667511426022
-      Login_6: 6041739694064143255
-      Login_7: 188230410880440896
+    nameFileIdTable: {}
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

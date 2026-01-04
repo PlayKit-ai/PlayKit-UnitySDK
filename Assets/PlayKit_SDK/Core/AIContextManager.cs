@@ -294,13 +294,13 @@ Conversation:
         {
             if (_instance != null && _instance != this)
             {
-                Debug.LogWarning("[AIContextManager] Duplicate instance detected, destroying this one");
+                // Silently destroy duplicate - this can happen during normal initialization
                 Destroy(this);
                 return;
             }
 
             _instance = this;
-            Debug.Log("[AIContextManager] Initialized");
+            // Don't log initialization message to reduce console noise
         }
 
         private void Start()

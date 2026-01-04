@@ -15,9 +15,6 @@ namespace PlayKit_SDK.Provider.AI
     {
         [JsonProperty("model")]
         public string Model { get; set; }
-        
-        [JsonProperty("prompt")]
-        public string Prompt { get; set; }
 
         [JsonProperty("messages")]
         public List<PlayKit_ChatMessage> Messages { get; set; }
@@ -39,9 +36,6 @@ namespace PlayKit_SDK.Provider.AI
         
         [JsonProperty("maxTokens")]
         public int? MaxTokens { get; set; }
-        
-        [JsonProperty("system")]
-        public string System { get; set; }
     }
 
 

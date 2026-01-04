@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae5b7fd14fa3fe6469d003aa34738da9, type: 3}
   m_Name: PlayKitSettings
   m_EditorClassIdentifier: 
-  gameId: 
+  gameId: ef6eaf4b-39ae-4c76-bcf6-b07541cf0ccc
   defaultChatModel: deepseek-chat
   defaultImageModel: flux-1-schnell
-  ignoreDeveloperToken: 0
-  customBaseUrl: https://lab-staging.playkit.ai
+  ignoreDeveloperToken: 1
+  customBaseUrl: 
   enableAutoCompact: 1
   autoCompactTimeoutSeconds: 300
   autoCompactMinMessages: 10

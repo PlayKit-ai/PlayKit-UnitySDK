@@ -1,13 +1,11 @@
 {
-    "name": "PlayKit_SDK.Editor",
-    "rootNamespace": "PlayKit_SDK.Editor",
+    "name": "PlayKit_SDK",
+    "rootNamespace": "PlayKit_SDK",
     "references": [
-        "PlayKit_SDK",
-        "UniTask"
+        "UniTask",
+        "Unity.Newtonsoft.Json"
     ],
-    "includePlatforms": [
-        "Editor"
-    ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,

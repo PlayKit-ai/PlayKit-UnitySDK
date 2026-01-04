@@ -10,29 +10,53 @@ namespace PlayKit_SDK.Auth
     /// <summary>
     /// Manages the authentication flow using Device Authorization.
     /// Replaces the previous OTP (send-code/verify-code) authentication method.
+    /// Reuses the existing LoginWeb.prefab UI structure.
     /// </summary>
     public class PlayKit_AuthFlowManager : MonoBehaviour
     {
         // Public property to signal the final outcome of the entire flow.
         public bool IsSuccess { get; private set; } = false;
 
-        // --- Serialized Fields for UI ---
+        // --- Serialized Fields for UI (matching LoginWeb.prefab structure) ---
         [Header("Core UI")]
         [Tooltip("The modal GameObject shown during loading/waiting.")]
         [SerializeField] private GameObject loadingModal;
 
         [Tooltip("A UI Text element to display status and error messages.")]
-        [SerializeField] private Text statusText;
+        [SerializeField] private Text errorText;
 
-        [Header("Device Auth UI")]
-        [Tooltip("The main panel containing the login button.")]
-        [SerializeField] private GameObject loginPanel;
+        [Header("Legacy OTP Panels (will be hidden)")]
+        [Tooltip("The identifier input panel (email/phone) - will be hidden.")]
+        [SerializeField] private GameObject identifierPanel;
 
-        [Tooltip("Button to start the Device Auth flow.")]
-        [SerializeField] private Button loginButton;
+        [Tooltip("The verification code panel - will be hidden.")]
+        [SerializeField] private GameObject verificationPanel;
 
-        [Tooltip("Button to cancel the auth flow.")]
-        [SerializeField] private Button cancelButton;
+        [Header("Buttons")]
+        [Tooltip("Back button - will be hidden.")]
+        [SerializeField] private Button backBtn;
+
+        [Tooltip("Legacy identifier input - not used.")]
+        [SerializeField] private InputField identifierInput;
+
+        [Tooltip("Legacy code input - not used.")]
+        [SerializeField] private InputField codeInput;
+
+        [Tooltip("Send code button - used as retry/start button.")]
+        [SerializeField] private Button sendCodeButton;
+
+        [Tooltip("Verify button - will be hidden.")]
+        [SerializeField] private Button verifyButton;
+
+        [Header("Legacy Toggles (will be hidden)")]
+        [SerializeField] private Toggle emailToggle;
+        [SerializeField] private Toggle phoneToggle;
+
+        [Header("Legacy Icons")]
+        [SerializeField] private Sprite emailIcon;
+        [SerializeField] private Sprite phoneIcon;
+        [SerializeField] private Image identifierIconDisplay;
+        [SerializeField] private Text placeholderText;
 
         [Tooltip("Main dialogue container.")]
         [SerializeField] private GameObject dialogue;
@@ -65,12 +89,11 @@ namespace PlayKit_SDK.Auth
             _deviceAuthFlow.OnAuthError += OnDeviceAuthError;
             _deviceAuthFlow.OnCancelled += OnDeviceAuthCancelled;
 
-            // Setup UI
-            SetupUI();
+            // Setup UI for Device Auth flow
+            SetupDeviceAuthUI();
 
-            // Show login panel
-            if (dialogue != null) dialogue.SetActive(true);
-            ShowLoginPanel();
+            // Auto-start the login flow
+            await StartLoginFlow();
         }
 
         private void OnDestroy()
@@ -112,56 +135,54 @@ namespace PlayKit_SDK.Auth
             }
         }
 
-        private void SetupUI()
+        private void SetupDeviceAuthUI()
         {
-            if (loginButton != null)
+            // Show dialogue
+            if (dialogue != null) dialogue.SetActive(true);
+
+            // Hide legacy OTP panels
+            if (identifierPanel != null) identifierPanel.SetActive(false);
+            if (verificationPanel != null) verificationPanel.SetActive(false);
+
+            // Hide unused buttons
+            if (backBtn != null) backBtn.gameObject.SetActive(false);
+            if (verifyButton != null) verifyButton.gameObject.SetActive(false);
+
+            // Hide toggles
+            if (emailToggle != null) emailToggle.gameObject.SetActive(false);
+            if (phoneToggle != null) phoneToggle.gameObject.SetActive(false);
+
+            // Setup sendCodeButton as retry button (initially hidden)
+            if (sendCodeButton != null)
             {
-                loginButton.onClick.AddListener(OnLoginButtonClicked);
+                sendCodeButton.onClick.RemoveAllListeners();
+                sendCodeButton.onClick.AddListener(OnRetryButtonClicked);
+                sendCodeButton.gameObject.SetActive(false);
             }
 
-            if (cancelButton != null)
-            {
-                cancelButton.onClick.AddListener(OnCancelButtonClicked);
-                cancelButton.gameObject.SetActive(false);
-            }
-
-            if (statusText != null)
-            {
-                statusText.text = "Click 'Login' to authenticate";
-            }
-        }
-
-        private void ShowLoginPanel()
-        {
-            if (loginPanel != null) loginPanel.SetActive(true);
-            if (loginButton != null) loginButton.gameObject.SetActive(true);
-            if (cancelButton != null) cancelButton.gameObject.SetActive(false);
-            HideLoadingModal();
-        }
-
-        private void ShowWaitingState()
-        {
-            if (loginButton != null) loginButton.gameObject.SetActive(false);
-            if (cancelButton != null) cancelButton.gameObject.SetActive(true);
+            // Show loading modal
             ShowLoadingModal();
+            UpdateStatus("正在连接...\nConnecting...");
         }
 
-        #region Button Handlers
-
-        private async void OnLoginButtonClicked()
+        private async UniTask StartLoginFlow()
         {
             if (_isAuthInProgress) return;
 
             _isAuthInProgress = true;
-            ShowWaitingState();
-            UpdateStatus("Starting authentication...");
+            
+            // Hide retry button during auth
+            if (sendCodeButton != null) sendCodeButton.gameObject.SetActive(false);
+            
+            ShowLoadingModal();
+            UpdateStatus("正在启动登录...\nStarting authentication...");
 
             try
             {
                 var gameId = PlayKitSettings.Instance?.GameId;
                 if (string.IsNullOrEmpty(gameId))
                 {
-                    OnDeviceAuthError("Game ID not configured");
+                    OnDeviceAuthError("Game ID 未配置\nGame ID not configured");
                     return;
                 }
 
@@ -179,16 +200,14 @@ namespace PlayKit_SDK.Auth
             }
             catch (Exception ex)
             {
-                OnDeviceAuthError($"Authentication failed: {ex.Message}");
+                OnDeviceAuthError($"登录失败: {ex.Message}\nAuthentication failed: {ex.Message}");
             }
         }
 
-        private void OnCancelButtonClicked()
+        private async void OnRetryButtonClicked()
         {
-            _deviceAuthFlow?.CancelFlow();
+            await StartLoginFlow();
         }
-
-        #endregion
 
         #region Device Auth Event Handlers
 
@@ -197,75 +216,87 @@ namespace PlayKit_SDK.Auth
             switch (status)
             {
                 case DeviceAuthStatus.Initiating:
-                    UpdateStatus("Initializing...");
+                    UpdateStatus("正在初始化...\nInitializing...");
                     break;
                 case DeviceAuthStatus.WaitingForBrowser:
-                    UpdateStatus("Please complete authorization in your browser...");
+                    UpdateStatus("请在浏览器中完成授权...\nPlease complete authorization in your browser...");
                     break;
                 case DeviceAuthStatus.Polling:
-                    UpdateStatus("Waiting for authorization...");
+                    UpdateStatus("等待授权中...\nWaiting for authorization...");
                     break;
                 case DeviceAuthStatus.Authorized:
-                    UpdateStatus("Authorization successful!");
+                    UpdateStatus("授权成功！\nAuthorization successful!");
                     break;
                 case DeviceAuthStatus.Denied:
-                    UpdateStatus("Authorization denied.");
+                    UpdateStatus("授权被拒绝\nAuthorization denied.");
                     break;
                 case DeviceAuthStatus.Expired:
-                    UpdateStatus("Session expired. Please try again.");
+                    UpdateStatus("会话已过期，请重试\nSession expired. Please try again.");
                     break;
                 case DeviceAuthStatus.Error:
-                    UpdateStatus("An error occurred.");
+                    UpdateStatus("发生错误\nAn error occurred.");
                     break;
             }
         }
 
         private async void OnDeviceAuthSuccess(DeviceAuthResult result)
         {
-            Debug.Log("[PlayKit Auth] Device auth successful, saving token...");
-            UpdateStatus("Saving credentials...");
+            Debug.Log("[PlayKit Auth] Device auth successful, saving tokens...");
+            UpdateStatus("正在保存凭证...\nSaving credentials...");
 
             try
             {
-                // Save the access token as player token
-                PlayKit_AuthManager.SavePlayerToken(result.AccessToken, null);
+                // Save access token, refresh token, and expiry
+                PlayKit_AuthManager.SavePlayerToken(
+                    result.AccessToken,
+                    result.RefreshToken,
+                    result.ExpiresIn
+                );
 
-                Debug.Log("[PlayKit Auth] Token saved successfully.");
-                UpdateStatus("Login successful!");
+                Debug.Log($"[PlayKit Auth] Tokens saved. Access token expires in {result.ExpiresIn}s, Refresh token: {(!string.IsNullOrEmpty(result.RefreshToken) ? "present" : "none")}");
+                UpdateStatus("登录成功！\nLogin successful!");
 
                 IsSuccess = true;
+                
+                // Hide loading and dialogue on success
+                HideLoadingModal();
+                if (dialogue != null) dialogue.SetActive(false);
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[PlayKit Auth] Failed to save token: {ex.Message}");
-                UpdateStatus("Failed to save credentials.");
+                UpdateStatus($"保存凭证失败\nFailed to save credentials.");
                 IsSuccess = false;
+                ShowRetryButton();
             }
             finally
             {
                 _isAuthInProgress = false;
-                HideLoadingModal();
             }
         }
 
         private void OnDeviceAuthError(string error)
         {
             Debug.LogError($"[PlayKit Auth] Device auth error: {error}");
-            UpdateStatus($"Error: {error}");
+            UpdateStatus($"错误: {error}\nError: {error}");
 
             _isAuthInProgress = false;
             IsSuccess = false;
-            ShowLoginPanel();
+            
+            HideLoadingModal();
+            ShowRetryButton();
         }
 
         private void OnDeviceAuthCancelled()
         {
             Debug.Log("[PlayKit Auth] Device auth cancelled by user.");
-            UpdateStatus("Authentication cancelled.");
+            UpdateStatus("登录已取消\nAuthentication cancelled.");
 
             _isAuthInProgress = false;
             IsSuccess = false;
-            ShowLoginPanel();
+            
+            HideLoadingModal();
+            ShowRetryButton();
         }
 
         #endregion
@@ -274,9 +305,9 @@ namespace PlayKit_SDK.Auth
 
         private void UpdateStatus(string message)
         {
-            if (statusText != null)
+            if (errorText != null)
             {
-                statusText.text = message;
+                errorText.text = message;
             }
         }
 
@@ -288,6 +319,24 @@ namespace PlayKit_SDK.Auth
         private void HideLoadingModal()
         {
             if (loadingModal != null) loadingModal.SetActive(false);
+        }
+
+        private void ShowRetryButton()
+        {
+            if (sendCodeButton != null)
+            {
+                sendCodeButton.gameObject.SetActive(true);
+            }
+        }
+
+        #endregion
+
+        #region Legacy API compatibility (not used, but keeps prefab references valid)
+
+        public void ShowIdentifierModal()
+        {
+            // Legacy method - now triggers DeviceAuth retry
+            OnRetryButtonClicked();
         }
 
         #endregion

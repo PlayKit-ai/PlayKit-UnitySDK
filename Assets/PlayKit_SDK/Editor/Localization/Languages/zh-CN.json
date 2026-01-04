@@ -202,7 +202,7 @@
   "voice.section.runtime": "运行时状态",
 
   "voice.transcription.model": "转录模型",
-  "voice.transcription.model.help": "用于语音转文字的模型（例如 whisper-1）",
+  "voice.transcription.model.help": "用于语音转文字的模型（例如 whisper-large）",
   "voice.transcription.language": "默认语言",
   "voice.transcription.language.help": "转录的语言代码（例如 'en'、'zh'、'ja'）",
 

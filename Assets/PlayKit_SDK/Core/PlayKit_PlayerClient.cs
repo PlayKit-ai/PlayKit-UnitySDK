@@ -30,8 +30,38 @@ namespace PlayKit_SDK
         public event Action<RefreshDailyCreditsResponse> OnDailyCreditsRefreshed;
         public event Action<string> OnError;
 
+        // Balance events
+        /// <summary>
+        /// Fired when balance is updated (with new balance value in USD)
+        /// </summary>
+        public event Action<float> OnBalanceUpdated;
+
+        /// <summary>
+        /// Fired when balance falls below LowBalanceThreshold (with current balance)
+        /// </summary>
+        public event Action<float> OnBalanceLow;
+
+        /// <summary>
+        /// Fired when an API call fails due to insufficient credits
+        /// </summary>
+        public event Action<PlayKitException> OnInsufficientCredits;
+
         // ADDED: Public property to access the result of the last JWT exchange.
         public JWTExchangeResponse LastExchangeResponse { get; private set; }
+
+        // Balance checking
+        private CancellationTokenSource _autoBalanceCheckCts;
+        private float _lastKnownBalance = -1f;
+
+        /// <summary>
+        /// Balance threshold below which OnBalanceLow event is fired (default: 0.5 USD)
+        /// </summary>
+        public float LowBalanceThreshold { get; set; } = 0.5f;
+
+        /// <summary>
+        /// Whether auto balance checking is currently enabled
+        /// </summary>
+        public bool IsAutoBalanceCheckEnabled => _autoBalanceCheckCts != null;
 
         #region Data Structures
 
@@ -208,8 +238,22 @@ namespace PlayKit_SDK
                 cachedPlayerInfo = result.Data;
                 Debug.Log($"Player info updated: {cachedPlayerInfo.UserId} has {cachedPlayerInfo.Credits} credits.");
                 OnPlayerInfoUpdated?.Invoke(cachedPlayerInfo);
+
+                // Fire balance events
+                float newBalance = cachedPlayerInfo.Credits;
+                if (_lastKnownBalance < 0 || Math.Abs(newBalance - _lastKnownBalance) > 0.001f)
+                {
+                    _lastKnownBalance = newBalance;
+                    OnBalanceUpdated?.Invoke(newBalance);
+
+                    // Check for low balance
+                    if (newBalance < LowBalanceThreshold)
+                    {
+                        OnBalanceLow?.Invoke(newBalance);
+                    }
+                }
             }
-            
+
             return result;
         }
 
@@ -314,6 +358,16 @@ namespace PlayKit_SDK
         }
 
         /// <summary>
+        /// Clear the stored player token (used for logout)
+        /// </summary>
+        public void ClearPlayerToken()
+        {
+            playerToken = null;
+            cachedPlayerInfo = null;
+            Debug.Log("[PlayKit_PlayerClient] Player token cleared.");
+        }
+
+        /// <summary>
         /// Refresh daily credits for the current player.
         /// Grants $0.50 USD when balance is below $0.50 USD, once per day.
         /// </summary>
@@ -359,10 +413,81 @@ namespace PlayKit_SDK
             return result;
         }
 
+        /// <summary>
+        /// Check balance by fetching player info. Triggers OnBalanceUpdated and OnBalanceLow events if applicable.
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token</param>
+        public async UniTask CheckBalanceAsync(CancellationToken cancellationToken = default)
+        {
+            await GetPlayerInfoAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// Enable automatic periodic balance checking
+        /// </summary>
+        /// <param name="intervalSeconds">Check interval in seconds (default: 30)</param>
+        public void EnableAutoBalanceCheck(float intervalSeconds = 30f)
+        {
+            DisableAutoBalanceCheck(); // Cancel any existing check
+
+            _autoBalanceCheckCts = new CancellationTokenSource();
+            RunAutoBalanceCheckAsync(intervalSeconds, _autoBalanceCheckCts.Token).Forget();
+            Debug.Log($"[PlayKit_PlayerClient] Auto balance check enabled with interval: {intervalSeconds}s");
+        }
+
+        /// <summary>
+        /// Disable automatic balance checking
+        /// </summary>
+        public void DisableAutoBalanceCheck()
+        {
+            if (_autoBalanceCheckCts != null)
+            {
+                _autoBalanceCheckCts.Cancel();
+                _autoBalanceCheckCts.Dispose();
+                _autoBalanceCheckCts = null;
+                Debug.Log("[PlayKit_PlayerClient] Auto balance check disabled");
+            }
+        }
+
+        private async UniTaskVoid RunAutoBalanceCheckAsync(float intervalSeconds, CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    await UniTask.Delay(TimeSpan.FromSeconds(intervalSeconds), cancellationToken: cancellationToken);
+
+                    if (cancellationToken.IsCancellationRequested)
+                        break;
+
+                    await CheckBalanceAsync(cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[PlayKit_PlayerClient] Auto balance check failed: {ex.Message}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handle insufficient credits error from API calls.
+        /// Call this when an API call fails with INSUFFICIENT_CREDITS or PLAYER_INSUFFICIENT_CREDIT error.
+        /// </summary>
+        /// <param name="exception">The exception from the API call</param>
+        public void HandleInsufficientCredits(PlayKitException exception)
+        {
+            Debug.LogWarning($"[PlayKit_PlayerClient] Insufficient credits: {exception.Message}");
+            OnInsufficientCredits?.Invoke(exception);
+        }
+
         // ... Other public and private methods remain the same ...
         // For brevity, the unchanged helper methods (PostRequestAsync, GetRequestAsync, etc.) are omitted,
         // but they should be included in your final file. They are identical to your provided code.
-        
+
         #endregion
 
         #region Network Request Methods
