@@ -5,6 +5,7 @@
 
   "tab.configuration": "配置",
   "tab.development": "開發",
+  "tab.addons": "擴充套件",
   "tab.about": "關於",
 
   "config.auth.title": "開發者認證",
@@ -248,5 +249,16 @@
 
   "mic.action.start": "開始錄音",
   "mic.action.stop": "停止錄音",
-  "mic.action.cancel": "取消"
+  "mic.action.cancel": "取消",
+
+  "addons.title": "擴充套件",
+  "addons.description": "透過擴充套件增強 PlayKit SDK 的平台支援。",
+  "addons.steam.title": "Steam 登入和支付擴充套件",
+  "addons.steam.description": "為PlayKit SDK添加Steam平台支援，包括Steam登入認證和微交易支付功能。",
+  "addons.steam.features": "功能特性：",
+  "addons.steam.feature1": "Steam 登入認證",
+  "addons.steam.feature2": "Steam 微交易支付",
+  "addons.steam.feature3": "多App ID支援（正式版/Demo/Playtest）",
+  "addons.steam.get_addon": "獲取擴充套件",
+  "addons.steam.documentation": "查看文檔"
 }

@@ -5,6 +5,7 @@
 
   "tab.configuration": "구성",
   "tab.development": "개발",
+  "tab.addons": "애드온",
   "tab.about": "정보",
 
   "config.game.title": "게임 구성",
@@ -240,5 +241,16 @@
 
   "mic.action.start": "녹음 시작",
   "mic.action.stop": "녹음 중지",
-  "mic.action.cancel": "취소"
+  "mic.action.cancel": "취소",
+
+  "addons.title": "애드온",
+  "addons.description": "PlayKit SDK에 플랫폼 통합 기능을 추가합니다.",
+  "addons.steam.title": "Steam 인증 및 결제 애드온",
+  "addons.steam.description": "Steam 플랫폼 지원을 추가하여 Steam 인증 및 마이크로트랜잭션 결제 기능을 제공합니다.",
+  "addons.steam.features": "기능:",
+  "addons.steam.feature1": "Steam 인증",
+  "addons.steam.feature2": "Steam 마이크로트랜잭션 결제",
+  "addons.steam.feature3": "다중 App ID 지원 (릴리스/데모/플레이테스트)",
+  "addons.steam.get_addon": "애드온 받기",
+  "addons.steam.documentation": "문서"
 }

@@ -27,7 +27,7 @@ namespace PlayKit_SDK
         public event Action<PlayerInfo> OnPlayerInfoUpdated;
         public event Action<string> OnPlayerTokenReceived;
         public event Action<string> OnNicknameChanged;
-        public event Action<RefreshDailyCreditsResponse> OnDailyCreditsRefreshed;
+        public event Action<DailyRefreshResult> OnDailyCreditsRefreshed;
         public event Action<string> OnError;
 
         // Balance events
@@ -63,6 +63,43 @@ namespace PlayKit_SDK
         /// </summary>
         public bool IsAutoBalanceCheckEnabled => _autoBalanceCheckCts != null;
 
+        // Recharge integration
+        private PlayKit_RechargeManager _rechargeManager;
+
+        /// <summary>
+        /// If true, automatically prompt recharge when balance is low or insufficient.
+        /// Works with the OnBalanceLow and OnInsufficientCredits events.
+        /// </summary>
+        public bool AutoPromptRecharge { get; set; } = false;
+
+        /// <summary>
+        /// The SKU to use for auto-prompt recharge (required for Steam, optional for browser)
+        /// </summary>
+        public string AutoPromptRechargeSku { get; set; }
+
+        /// <summary>
+        /// Set the RechargeManager instance (for automatic recharge method switching)
+        /// </summary>
+        public void SetRechargeManager(PlayKit_RechargeManager rechargeManager)
+        {
+            _rechargeManager = rechargeManager;
+        }
+
+        /// <summary>
+        /// Get the current display balance (already converted to game's display currency)
+        /// </summary>
+        public float GetDisplayBalance() => cachedPlayerInfo?.Balance ?? 0f;
+
+        /// <summary>
+        /// Get the current recharge method
+        /// </summary>
+        public string GetRechargeMethod() => cachedPlayerInfo?.RechargeMethod ?? "browser";
+
+        /// <summary>
+        /// Get the current channel type
+        /// </summary>
+        public string GetChannelType() => cachedPlayerInfo?.ChannelType;
+
         #region Data Structures
 
         [Serializable]
@@ -74,8 +111,42 @@ namespace PlayKit_SDK
             /// Player nickname (per-game nickname > first_name > null)
             /// </summary>
             [JsonProperty("nickname")] public string Nickname { get; set; }
-            // [JsonProperty("tokenType")] public string TokenType { get; set; }
-            // [JsonProperty("tokenId")] public string TokenId { get; set; }
+            /// <summary>
+            /// Daily refresh result (automatically triggered on player-info request)
+            /// </summary>
+            [JsonProperty("dailyRefresh")] public DailyRefreshResult DailyRefresh { get; set; }
+
+            // ========== New fields for channel wallet support ==========
+
+            /// <summary>
+            /// Display balance (already converted to game's display currency).
+            /// Use this value directly for UI display without any conversion.
+            /// </summary>
+            [JsonProperty("balance")] public float Balance { get; set; }
+
+            /// <summary>
+            /// Recharge method for this channel.
+            /// - "browser": Opens web portal for recharge
+            /// - "steam": Uses Steam Microtransaction API
+            /// - "ios": Uses iOS In-App Purchase (future)
+            /// - "android": Uses Google Play Billing (future)
+            /// </summary>
+            [JsonProperty("rechargeMethod")] public string RechargeMethod { get; set; }
+
+            /// <summary>
+            /// Channel type (e.g., "standalone", "steam_release", "steam_demo")
+            /// </summary>
+            [JsonProperty("channelType")] public string ChannelType { get; set; }
+        }
+
+        [Serializable]
+        public class DailyRefreshResult
+        {
+            [JsonProperty("refreshed")] public bool Refreshed { get; set; }
+            [JsonProperty("message")] public string Message { get; set; }
+            [JsonProperty("balanceBefore")] public float BalanceBefore { get; set; }
+            [JsonProperty("balanceAfter")] public float BalanceAfter { get; set; }
+            [JsonProperty("amountAdded")] public float AmountAdded { get; set; }
         }
 
         [Serializable]
@@ -121,19 +192,6 @@ namespace PlayKit_SDK
         public class ErrorResponse
         {
             [JsonProperty("error")] public string Error { get; set; }
-        }
-
-        [Serializable]
-        public class RefreshDailyCreditsResponse
-        {
-            [JsonProperty("success")] public bool Success { get; set; }
-            [JsonProperty("refreshed")] public bool Refreshed { get; set; }
-            [JsonProperty("message")] public string Message { get; set; }
-            [JsonProperty("balanceBefore")] public float BalanceBefore { get; set; }
-            [JsonProperty("balanceAfter")] public float BalanceAfter { get; set; }
-            [JsonProperty("amountAdded")] public float AmountAdded { get; set; }
-            [JsonProperty("dailyGiftThreshold")] public float DailyGiftThreshold { get; set; }
-            [JsonProperty("dailyGiftAmount")] public float DailyGiftAmount { get; set; }
         }
 
         public class ApiResult<T>
@@ -239,17 +297,38 @@ namespace PlayKit_SDK
                 Debug.Log($"Player info updated: {cachedPlayerInfo.UserId} has {cachedPlayerInfo.Credits} credits.");
                 OnPlayerInfoUpdated?.Invoke(cachedPlayerInfo);
 
-                // Fire balance events
-                float newBalance = cachedPlayerInfo.Credits;
+                // Fire daily refresh event if credits were refreshed
+                if (cachedPlayerInfo.DailyRefresh?.Refreshed == true)
+                {
+                    Debug.Log($"Daily credits refreshed: {cachedPlayerInfo.DailyRefresh.Message}");
+                    OnDailyCreditsRefreshed?.Invoke(cachedPlayerInfo.DailyRefresh);
+                }
+
+                // Update RechargeManager with the recharge method from server
+                if (_rechargeManager != null && !string.IsNullOrEmpty(cachedPlayerInfo.RechargeMethod))
+                {
+                    _rechargeManager.SetRechargeMethod(cachedPlayerInfo.RechargeMethod);
+                    Debug.Log($"[PlayKit_PlayerClient] Recharge method set to: {cachedPlayerInfo.RechargeMethod}");
+                }
+
+                // Fire balance events - prefer Balance (display currency) over Credits
+                float newBalance = cachedPlayerInfo.Balance > 0 ? cachedPlayerInfo.Balance : cachedPlayerInfo.Credits;
                 if (_lastKnownBalance < 0 || Math.Abs(newBalance - _lastKnownBalance) > 0.001f)
                 {
                     _lastKnownBalance = newBalance;
                     OnBalanceUpdated?.Invoke(newBalance);
 
-                    // Check for low balance
+                    // Check for low balance and handle auto-prompt recharge
                     if (newBalance < LowBalanceThreshold)
                     {
                         OnBalanceLow?.Invoke(newBalance);
+
+                        // Auto-prompt recharge if enabled
+                        if (AutoPromptRecharge && _rechargeManager != null)
+                        {
+                            Debug.Log($"[PlayKit_PlayerClient] Low balance ({newBalance}), auto-prompting recharge");
+                            _rechargeManager.OpenRechargeWindow(AutoPromptRechargeSku);
+                        }
                     }
                 }
             }
@@ -368,53 +447,8 @@ namespace PlayKit_SDK
         }
 
         /// <summary>
-        /// Refresh daily credits for the current player.
-        /// Grants $0.50 USD when balance is below $0.50 USD, once per day.
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>ApiResult with RefreshDailyCreditsResponse on success</returns>
-        public async UniTask<ApiResult<RefreshDailyCreditsResponse>> RefreshDailyCreditsAsync(CancellationToken cancellationToken = default)
-        {
-            string authToken = GetAuthToken();
-            if (string.IsNullOrEmpty(authToken))
-            {
-                string error = "No valid auth token available";
-                Debug.LogError(error);
-                OnError?.Invoke(error);
-                return new ApiResult<RefreshDailyCreditsResponse> { Success = false, Error = error };
-            }
-
-            string url = $"{BaseUrl}/api/external/refresh-daily-credits";
-            var result = await PostRequestAsync<object, RefreshDailyCreditsResponse>(url, new object(), cancellationToken, authToken);
-
-            if (result.Success && result.Data != null)
-            {
-                if (result.Data.Success)
-                {
-                    // Update cached player info if credits were added
-                    if (result.Data.Refreshed && cachedPlayerInfo != null)
-                    {
-                        cachedPlayerInfo.Credits = result.Data.BalanceAfter;
-                        OnPlayerInfoUpdated?.Invoke(cachedPlayerInfo);
-                    }
-
-                    Debug.Log($"Daily credits refresh: {result.Data.Message}");
-                    OnDailyCreditsRefreshed?.Invoke(result.Data);
-                }
-                else
-                {
-                    string error = result.Data.Message ?? "Failed to refresh daily credits";
-                    Debug.LogWarning(error);
-                    // Still invoke the event as the response was valid
-                    OnDailyCreditsRefreshed?.Invoke(result.Data);
-                }
-            }
-
-            return result;
-        }
-
-        /// <summary>
         /// Check balance by fetching player info. Triggers OnBalanceUpdated and OnBalanceLow events if applicable.
+        /// Daily credits are automatically refreshed when calling GetPlayerInfoAsync.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
         public async UniTask CheckBalanceAsync(CancellationToken cancellationToken = default)

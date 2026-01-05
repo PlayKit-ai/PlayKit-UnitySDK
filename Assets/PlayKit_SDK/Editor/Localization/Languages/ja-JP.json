@@ -5,6 +5,7 @@
 
   "tab.configuration": "設定",
   "tab.development": "開発",
+  "tab.addons": "アドオン",
   "tab.about": "情報",
 
   "config.game.title": "ゲーム設定",
@@ -240,5 +241,16 @@
 
   "mic.action.start": "録音開始",
   "mic.action.stop": "録音停止",
-  "mic.action.cancel": "キャンセル"
+  "mic.action.cancel": "キャンセル",
+
+  "addons.title": "アドオン",
+  "addons.description": "PlayKit SDKにプラットフォーム統合機能を追加します。",
+  "addons.steam.title": "Steam認証＆決済アドオン",
+  "addons.steam.description": "Steam プラットフォームのサポートを追加し、Steam認証とマイクロトランザクション決済機能を提供します。",
+  "addons.steam.features": "機能:",
+  "addons.steam.feature1": "Steam 認証",
+  "addons.steam.feature2": "Steam マイクロトランザクション決済",
+  "addons.steam.feature3": "複数App IDサポート（リリース版/デモ版/プレイテスト版）",
+  "addons.steam.get_addon": "アドオン取得",
+  "addons.steam.documentation": "ドキュメント"
 }

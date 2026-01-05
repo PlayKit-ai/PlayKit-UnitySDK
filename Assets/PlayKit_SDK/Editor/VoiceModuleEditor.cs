@@ -6,10 +6,10 @@ using L = PlayKit.SDK.Editor.EditorLocalization;
 namespace PlayKit_SDK.Editor
 {
     /// <summary>
-    /// Custom Editor for PlayKit_NPCClient_VoiceModule with i18n support.
+    /// Custom Editor for PlayKit_NPC_VoiceModule with i18n support.
     /// Provides a user-friendly interface for configuring voice transcription settings.
     /// </summary>
-    [CustomEditor(typeof(PlayKit_NPCClient_VoiceModule))]
+    [CustomEditor(typeof(PlayKit_NPC_VoiceModule))]
     public class VoiceModuleEditor : UnityEditor.Editor
     {
         // Serialized Properties
@@ -153,7 +153,7 @@ namespace PlayKit_SDK.Editor
                     EditorGUILayout.Space(5);
                     if (GUILayout.Button(L.Get("voice.microphone.create")))
                     {
-                        var voiceModule = (PlayKit_NPCClient_VoiceModule)target;
+                        var voiceModule = (PlayKit_NPC_VoiceModule)target;
                         var recorder = voiceModule.gameObject.GetComponent<PlayKit_MicrophoneRecorder>();
                         if (recorder == null)
                         {
@@ -200,7 +200,7 @@ namespace PlayKit_SDK.Editor
             {
                 EditorGUILayout.BeginVertical(boxStyle);
 
-                var voiceModule = (PlayKit_NPCClient_VoiceModule)target;
+                var voiceModule = (PlayKit_NPC_VoiceModule)target;
 
                 // Ready status
                 EditorGUILayout.BeginHorizontal();

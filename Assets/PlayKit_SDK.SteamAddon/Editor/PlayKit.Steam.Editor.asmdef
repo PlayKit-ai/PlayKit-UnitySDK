@@ -1,0 +1,21 @@
+{
+    "name": "PlayKit.Steam.Editor",
+    "rootNamespace": "PlayKit_SDK.Steam.Editor",
+    "references": [
+        "PlayKit.Steam",
+        "PlayKit_SDK",
+        "PlayKit_SDK.Editor",
+        "UniTask"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

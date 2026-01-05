@@ -27,6 +27,7 @@ namespace PlayKit_SDK
         private enum Tab
         {
             Configuration,
+            Addons,
             About
         }
         private Tab currentTab = Tab.Configuration;
@@ -58,6 +59,16 @@ namespace PlayKit_SDK
         private bool _isLoadingModels = false;
         private string _modelsLoadError = "";
 
+        // Addons state
+        private const string STEAM_ADDON_PACKAGE_NAME = "com.playkit.sdk.steam";
+        private const string STEAM_ADDON_GIT_URL = "https://github.com/playkit-ai/playkit-unity-steam.git";
+        private const string STEAM_ADDON_DOCS_URL = "https://docs.playkit.ai/unity/addons/steam";
+        private bool _isSteamAddonInstalled = false;
+        private bool _isSteamAddonInstalling = false;
+        private UnityEditor.PackageManager.Requests.ListRequest _packageListRequest;
+        private UnityEditor.PackageManager.Requests.AddRequest _packageAddRequest;
+        private UnityEditor.PackageManager.Requests.RemoveRequest _packageRemoveRequest;
+
         [System.Serializable]
         private class GameInfo
         {
@@ -65,6 +76,7 @@ namespace PlayKit_SDK
             public string name;
             public string description;
             public bool is_suspended;
+            public string channel; // Distribution channel (standalone, steam_release, steam_demo, etc.)
         }
 
         [System.Serializable]
@@ -123,6 +135,8 @@ namespace PlayKit_SDK
                     LoadModelsList();
                 }
             }
+            // Check addon installation status
+            CheckSteamAddonInstalled();
         }
 
         private void OnDisable()
@@ -165,6 +179,9 @@ namespace PlayKit_SDK
             {
                 case Tab.Configuration:
                     DrawConfigurationTab();
+                    break;
+                case Tab.Addons:
+                    DrawAddonsTab();
                     break;
                 case Tab.About:
                     DrawAboutTab();
@@ -234,6 +251,11 @@ namespace PlayKit_SDK
             if (GUILayout.Toggle(currentTab == Tab.Configuration, L10n.Get("tab.configuration"), tabStyle))
             {
                 currentTab = Tab.Configuration;
+            }
+
+            if (GUILayout.Toggle(currentTab == Tab.Addons, L10n.Get("tab.addons"), tabStyle))
+            {
+                currentTab = Tab.Addons;
             }
 
             if (GUILayout.Toggle(currentTab == Tab.About, L10n.Get("tab.about"), tabStyle))
@@ -549,6 +571,18 @@ namespace PlayKit_SDK
                     EditorGUILayout.Space(5);
                     EditorGUILayout.LabelField(L10n.Get("config.game.id_label"), game.id, EditorStyles.miniLabel);
 
+                    // Display channel type
+                    if (!string.IsNullOrEmpty(game.channel))
+                    {
+                        string channelDisplay = game.channel;
+                        // Format channel name for better readability
+                        if (game.channel == "standalone") channelDisplay = "Standalone";
+                        else if (game.channel.StartsWith("steam")) channelDisplay = "Steam (" + game.channel.Replace("steam_", "") + ")";
+                        else channelDisplay = char.ToUpper(game.channel[0]) + game.channel.Substring(1);
+
+                        EditorGUILayout.LabelField("Channel", channelDisplay, EditorStyles.miniLabel);
+                    }
+
                     if (!string.IsNullOrEmpty(game.description))
                     {
                         EditorGUILayout.LabelField(L10n.Get("config.game.description"), game.description, EditorStyles.wordWrappedMiniLabel);
@@ -672,6 +706,207 @@ namespace PlayKit_SDK
             EditorGUILayout.EndVertical();
         }
 
+        private void DrawSteamAddonRow()
+        {
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            // Title row
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label(L10n.Get("addons.steam.title"), EditorStyles.boldLabel);
+            GUILayout.FlexibleSpace();
+
+            // Status badge
+            GUIStyle statusStyle = new GUIStyle(EditorStyles.miniLabel);
+            if (_isSteamAddonInstalled)
+            {
+                statusStyle.normal.textColor = new Color(0.2f, 0.7f, 0.2f);
+                GUILayout.Label(L10n.Get("addons.steam.status.installed"), statusStyle);
+            }
+            else
+            {
+                statusStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+                GUILayout.Label(L10n.Get("addons.steam.status.not_installed"), statusStyle);
+            }
+            EditorGUILayout.EndHorizontal();
+
+            // Description
+            EditorGUILayout.LabelField(L10n.Get("addons.steam.description"), EditorStyles.wordWrappedMiniLabel);
+
+            EditorGUILayout.Space(5);
+
+            // Action buttons
+            EditorGUILayout.BeginHorizontal();
+
+            if (_isSteamAddonInstalled)
+            {
+                // Documentation button
+                if (GUILayout.Button(L10n.Get("addons.steam.open_docs"), GUILayout.Height(25), GUILayout.Width(120)))
+                {
+                    Application.OpenURL(STEAM_ADDON_DOCS_URL);
+                }
+
+                GUILayout.FlexibleSpace();
+
+                // Remove button
+                if (GUILayout.Button(L10n.Get("addons.steam.remove"), GUILayout.Height(25), GUILayout.Width(80)))
+                {
+                    if (EditorUtility.DisplayDialog(
+                        L10n.Get("addons.steam.remove_confirm.title"),
+                        L10n.Get("addons.steam.remove_confirm.message"),
+                        L10n.Get("common.yes"),
+                        L10n.Get("common.cancel")))
+                    {
+                        RemoveSteamAddon();
+                    }
+                }
+            }
+            else
+            {
+                GUI.enabled = !_isSteamAddonInstalling;
+
+                if (GUILayout.Button(
+                    _isSteamAddonInstalling ? L10n.Get("addons.steam.installing") : L10n.Get("addons.steam.install"),
+                    GUILayout.Height(30)))
+                {
+                    InstallSteamAddon();
+                }
+
+                GUI.enabled = true;
+
+                GUILayout.FlexibleSpace();
+
+                // Documentation button
+                if (GUILayout.Button(L10n.Get("addons.steam.open_docs"), GUILayout.Height(30), GUILayout.Width(120)))
+                {
+                    Application.OpenURL(STEAM_ADDON_DOCS_URL);
+                }
+            }
+
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.EndVertical();
+        }
+
+        private void CheckSteamAddonInstalled()
+        {
+            // Check if Steam Addon types exist (works for both UPM and local installations)
+            var steamAuthType = System.Type.GetType("PlayKit_SDK.Steam.PlayKit_SteamAuthManager, PlayKit.Steam");
+            _isSteamAddonInstalled = steamAuthType != null;
+
+            // Also check UPM packages as fallback
+            if (!_isSteamAddonInstalled)
+            {
+                _packageListRequest = UnityEditor.PackageManager.Client.List(true);
+                EditorApplication.update += OnPackageListProgress;
+            }
+        }
+
+        private void OnPackageListProgress()
+        {
+            if (_packageListRequest == null || !_packageListRequest.IsCompleted)
+                return;
+
+            EditorApplication.update -= OnPackageListProgress;
+
+            if (_packageListRequest.Status == UnityEditor.PackageManager.StatusCode.Success)
+            {
+                foreach (var package in _packageListRequest.Result)
+                {
+                    if (package.name == STEAM_ADDON_PACKAGE_NAME)
+                    {
+                        _isSteamAddonInstalled = true;
+                        break;
+                    }
+                }
+                Repaint();
+            }
+
+            _packageListRequest = null;
+        }
+
+        private void InstallSteamAddon()
+        {
+            _isSteamAddonInstalling = true;
+            _packageAddRequest = UnityEditor.PackageManager.Client.Add(STEAM_ADDON_GIT_URL);
+            EditorApplication.update += OnPackageAddProgress;
+        }
+
+        private void OnPackageAddProgress()
+        {
+            if (_packageAddRequest == null || !_packageAddRequest.IsCompleted)
+                return;
+
+            EditorApplication.update -= OnPackageAddProgress;
+
+            _isSteamAddonInstalling = false;
+
+            if (_packageAddRequest.Status == UnityEditor.PackageManager.StatusCode.Success)
+            {
+                _isSteamAddonInstalled = true;
+                EditorUtility.DisplayDialog(
+                    L10n.Get("addons.steam.install_success.title"),
+                    L10n.Get("addons.steam.install_success.message"),
+                    L10n.Get("common.ok")
+                );
+            }
+            else
+            {
+                EditorUtility.DisplayDialog(
+                    L10n.Get("addons.steam.install_error.title"),
+                    L10n.GetFormat("addons.steam.install_error.message", _packageAddRequest.Error?.message ?? "Unknown error"),
+                    L10n.Get("common.ok")
+                );
+            }
+
+            _packageAddRequest = null;
+            Repaint();
+        }
+
+        private void RemoveSteamAddon()
+        {
+            _packageRemoveRequest = UnityEditor.PackageManager.Client.Remove(STEAM_ADDON_PACKAGE_NAME);
+            EditorApplication.update += OnPackageRemoveProgress;
+        }
+
+        private void OnPackageRemoveProgress()
+        {
+            if (_packageRemoveRequest == null || !_packageRemoveRequest.IsCompleted)
+                return;
+
+            EditorApplication.update -= OnPackageRemoveProgress;
+
+            if (_packageRemoveRequest.Status == UnityEditor.PackageManager.StatusCode.Success)
+            {
+                _isSteamAddonInstalled = false;
+            }
+
+            _packageRemoveRequest = null;
+            Repaint();
+        }
+
+        #endregion
+
+        #region Addons Tab
+
+        private void DrawAddonsTab()
+        {
+            EditorGUILayout.Space(10);
+
+            GUILayout.Label(L10n.Get("addons.title"), EditorStyles.boldLabel);
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            // 说明文本
+            EditorGUILayout.HelpBox(L10n.Get("addons.description"), MessageType.Info);
+
+            EditorGUILayout.Space(10);
+
+            // Steam Addon (with install/uninstall functionality)
+            DrawSteamAddonRow();
+
+            EditorGUILayout.EndVertical();
+        }
+
         #endregion
 
         #region About Tab
@@ -715,7 +950,7 @@ namespace PlayKit_SDK
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button(L10n.Get("about.links.documentation"), GUILayout.Height(30)))
             {
-                Application.OpenURL("https://docs.playkit.dev");
+                Application.OpenURL("https://docs.playkit.ai");
             }
             if (GUILayout.Button(L10n.Get("about.links.examples"), GUILayout.Height(30)))
             {
@@ -730,7 +965,7 @@ namespace PlayKit_SDK
             }
             if (GUILayout.Button(L10n.Get("about.links.website"), GUILayout.Height(30)))
             {
-                Application.OpenURL("https://playkit.dev");
+                Application.OpenURL("https://playkit.ai");
             }
             EditorGUILayout.EndHorizontal();
 
@@ -905,7 +1140,7 @@ namespace PlayKit_SDK
                         if (response != null && response.success && response.games != null)
                         {
                             _gamesList = response.games;
-                            _gamesDisplayNames = _gamesList.Select(g => g.name ?? g.id).ToArray();
+                            _gamesDisplayNames = _gamesList.Select(g => FormatGameDisplayName(g)).ToArray();
 
                             // Find current selection
                             if (!string.IsNullOrEmpty(settings.GameId))
@@ -1081,6 +1316,51 @@ namespace PlayKit_SDK
         #endregion
 
         #region Helpers
+
+        private string FormatGameDisplayName(GameInfo game)
+        {
+            string channelBadge = GetChannelBadge(game.channel);
+            string gameName = game.name ?? game.id;
+
+            if (!string.IsNullOrEmpty(channelBadge))
+            {
+                return $"{gameName} [{channelBadge}]";
+            }
+
+            return gameName;
+        }
+
+        private string GetChannelBadge(string channel)
+        {
+            if (string.IsNullOrEmpty(channel))
+                return "";
+
+            switch (channel.ToLower())
+            {
+                case "standalone":
+                    return "Standalone";
+                case "steam_release":
+                    return "Steam";
+                case "steam_demo":
+                    return "Steam Demo";
+                case "steam_playtest":
+                    return "Steam Playtest";
+                case "ios":
+                    return "iOS";
+                case "android":
+                    return "Android";
+                case "xbox":
+                    return "Xbox";
+                case "playstation":
+                    return "PlayStation";
+                case "nintendo":
+                    return "Nintendo";
+                case "epic":
+                    return "Epic";
+                default:
+                    return channel;
+            }
+        }
 
         private void OpenExampleScenes()
         {

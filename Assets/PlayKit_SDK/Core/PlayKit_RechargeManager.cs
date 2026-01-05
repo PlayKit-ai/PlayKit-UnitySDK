@@ -1,11 +1,17 @@
 using System;
+using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
+using PlayKit_SDK.Recharge;
 using UnityEngine;
 
 namespace PlayKit_SDK
 {
     /// <summary>
-    /// Manages recharge functionality - opening recharge portal in browser.
-    /// This is an API-only implementation without UI components.
+    /// Manages recharge functionality using platform-specific providers.
+    /// Automatically selects the appropriate provider based on rechargeMethod from player-info API.
+    ///
+    /// Default: BrowserRechargeProvider (opens web portal)
+    /// External providers (Steam, iOS, Android) can be registered via RegisterProvider()
     /// </summary>
     public class PlayKit_RechargeManager
     {
@@ -13,15 +19,48 @@ namespace PlayKit_SDK
         private string _gameId;
         private Func<string> _getPlayerToken;
 
+        private IRechargeProvider _currentProvider;
+        private BrowserRechargeProvider _browserProvider;
+        private Dictionary<string, IRechargeProvider> _providers = new Dictionary<string, IRechargeProvider>();
+
         /// <summary>
-        /// Event fired when recharge window is opened
+        /// The currently active recharge method
         /// </summary>
+        public string CurrentRechargeMethod => _currentProvider?.RechargeMethod ?? "unknown";
+
+        /// <summary>
+        /// Event fired when recharge is initiated
+        /// </summary>
+        public event Action OnRechargeInitiated;
+
+        /// <summary>
+        /// Event fired when recharge is completed (balance updated)
+        /// </summary>
+        public event Action<RechargeResult> OnRechargeCompleted;
+
+        /// <summary>
+        /// Event fired when recharge is cancelled
+        /// </summary>
+        public event Action OnRechargeCancelled;
+
+        /// <summary>
+        /// Event fired when recharge window is opened (for browser provider)
+        /// </summary>
+        [Obsolete("Use OnRechargeInitiated instead")]
         public event Action OnRechargeOpened;
 
         /// <summary>
-        /// Custom recharge portal URL (optional, uses default if not set)
+        /// Custom recharge portal URL (for browser provider)
         /// </summary>
-        public string RechargePortalUrl { get; set; }
+        public string RechargePortalUrl
+        {
+            get => _browserProvider?.RechargePortalUrl;
+            set
+            {
+                if (_browserProvider != null)
+                    _browserProvider.RechargePortalUrl = value;
+            }
+        }
 
         /// <summary>
         /// Initialize the RechargeManager
@@ -34,40 +73,129 @@ namespace PlayKit_SDK
             _baseUrl = baseUrl;
             _gameId = gameId;
             _getPlayerToken = getPlayerToken;
+
+            // Initialize default browser provider
+            _browserProvider = new BrowserRechargeProvider();
+            _browserProvider.Initialize(baseUrl, gameId, getPlayerToken);
+            SubscribeToProvider(_browserProvider);
+
+            // Register browser as default provider
+            _providers["browser"] = _browserProvider;
+            _currentProvider = _browserProvider;
+
+            Debug.Log("[PlayKit_RechargeManager] Initialized with default browser provider");
         }
 
         /// <summary>
-        /// Get the recharge URL with authentication token
+        /// Register an external recharge provider (e.g., Steam, iOS, Android).
+        /// Called by platform-specific addons (SteamAddon, iOSAddon, etc.)
         /// </summary>
-        /// <returns>Full recharge URL</returns>
-        public string GetRechargeUrl()
+        /// <param name="provider">The provider to register</param>
+        public void RegisterProvider(IRechargeProvider provider)
         {
-            string baseRechargeUrl = RechargePortalUrl ?? $"{_baseUrl}/recharge";
-            string playerToken = _getPlayerToken?.Invoke();
-
-            if (string.IsNullOrEmpty(playerToken))
+            if (provider == null)
             {
-                Debug.LogWarning("[PlayKit_RechargeManager] No player token available for recharge URL");
-                return baseRechargeUrl;
+                Debug.LogWarning("[PlayKit_RechargeManager] Cannot register null provider");
+                return;
             }
 
-            // Build URL with query parameters
-            string separator = baseRechargeUrl.Contains("?") ? "&" : "?";
-            return $"{baseRechargeUrl}{separator}token={Uri.EscapeDataString(playerToken)}&gameId={Uri.EscapeDataString(_gameId)}";
+            string method = provider.RechargeMethod?.ToLower() ?? "unknown";
+            _providers[method] = provider;
+            SubscribeToProvider(provider);
+
+            Debug.Log($"[PlayKit_RechargeManager] Registered provider: {method}");
         }
 
         /// <summary>
-        /// Open the recharge window in the default browser
+        /// Get a registered provider by method name
         /// </summary>
-        public void OpenRechargeWindow()
+        /// <typeparam name="T">The provider type</typeparam>
+        /// <param name="method">The recharge method (e.g., "steam", "ios")</param>
+        /// <returns>The provider, or null if not found</returns>
+        public T GetProvider<T>(string method) where T : class, IRechargeProvider
         {
-            string url = GetRechargeUrl();
+            if (_providers.TryGetValue(method?.ToLower() ?? "", out var provider))
+            {
+                return provider as T;
+            }
+            return null;
+        }
 
-            Debug.Log($"[PlayKit_RechargeManager] Opening recharge window: {url}");
+        /// <summary>
+        /// Set the recharge method (called automatically from player-info response).
+        /// Valid values: "browser", "steam", "ios", "android"
+        /// </summary>
+        /// <param name="rechargeMethod">The recharge method to use</param>
+        public void SetRechargeMethod(string rechargeMethod)
+        {
+            string method = rechargeMethod?.ToLower() ?? "browser";
 
-            Application.OpenURL(url);
+            if (_providers.TryGetValue(method, out var provider) && provider.IsAvailable)
+            {
+                _currentProvider = provider;
+                Debug.Log($"[PlayKit_RechargeManager] Switched to {method} provider");
+            }
+            else
+            {
+                // Fallback to browser
+                _currentProvider = _browserProvider;
+                if (method != "browser")
+                {
+                    Debug.LogWarning($"[PlayKit_RechargeManager] {method} provider not available, falling back to browser");
+                }
+            }
+        }
 
-            OnRechargeOpened?.Invoke();
+        /// <summary>
+        /// Get the recharge URL with authentication token (for browser provider)
+        /// </summary>
+        /// <returns>Full recharge URL, or null if not using browser provider</returns>
+        public string GetRechargeUrl()
+        {
+            return _browserProvider?.GetRechargeUrl();
+        }
+
+        /// <summary>
+        /// Open the recharge window/overlay
+        /// </summary>
+        /// <param name="sku">Product SKU (required for Steam, optional for browser)</param>
+        public void OpenRechargeWindow(string sku = null)
+        {
+            RechargeAsync(sku).Forget();
+        }
+
+        /// <summary>
+        /// Initiate a recharge operation
+        /// </summary>
+        /// <param name="sku">Product SKU (required for Steam, optional for browser)</param>
+        /// <returns>Result of the recharge initiation</returns>
+        public async UniTask<RechargeResult> RechargeAsync(string sku = null)
+        {
+            if (_currentProvider == null)
+            {
+                Debug.LogError("[PlayKit_RechargeManager] No recharge provider available");
+                return new RechargeResult
+                {
+                    Initiated = false,
+                    Error = "No recharge provider initialized"
+                };
+            }
+
+            Debug.Log($"[PlayKit_RechargeManager] Initiating recharge via {CurrentRechargeMethod}");
+            return await _currentProvider.RechargeAsync(sku);
+        }
+
+        private void SubscribeToProvider(IRechargeProvider provider)
+        {
+            provider.OnRechargeInitiated += () =>
+            {
+                OnRechargeInitiated?.Invoke();
+#pragma warning disable CS0618 // Type or member is obsolete
+                OnRechargeOpened?.Invoke();
+#pragma warning restore CS0618
+            };
+            provider.OnRechargeCompleted += result => OnRechargeCompleted?.Invoke(result);
+            provider.OnRechargeCancelled += () => OnRechargeCancelled?.Invoke();
         }
     }
 }

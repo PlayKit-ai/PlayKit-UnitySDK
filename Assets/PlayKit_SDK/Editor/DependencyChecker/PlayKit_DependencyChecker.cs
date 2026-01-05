@@ -61,11 +61,11 @@ namespace PlayKit_SDK.Editor
             CheckDependencies();
         }
 
-        [MenuItem("PlayKit SDK/Check Dependencies")]
-        public static void CheckDependenciesManual()
-        {
-            CheckDependencies(isManual: true);
-        }
+        // [MenuItem("PlayKit SDK/Check Dependencies")]
+        // public static void CheckDependenciesManual()
+        // {
+        //     CheckDependencies(isManual: true);
+        // }
 
         [MenuItem("PlayKit SDK/Install UniTask")]
         public static void InstallUniTaskManual()
@@ -305,12 +305,12 @@ namespace PlayKit_SDK.Editor
         /// <summary>
         /// Reset the skip preference (useful for testing or re-enabling check)
         /// </summary>
-        [MenuItem("PlayKit SDK/Reset Dependency Check")]
-        public static void ResetDependencyCheck()
-        {
-            EditorPrefs.DeleteKey(SKIP_CHECK_KEY);
-            EditorPrefs.DeleteKey(LAST_CHECK_KEY);
-            Debug.Log("[PlayKit SDK] Dependency check preferences reset. Check will run on next Editor startup.");
-        }
+        // [MenuItem("PlayKit SDK/Reset Dependency Check")]
+        // public static void ResetDependencyCheck()
+        // {
+        //     EditorPrefs.DeleteKey(SKIP_CHECK_KEY);
+        //     EditorPrefs.DeleteKey(LAST_CHECK_KEY);
+        //     Debug.Log("[PlayKit SDK] Dependency check preferences reset. Check will run on next Editor startup.");
+        // }
     }
 }

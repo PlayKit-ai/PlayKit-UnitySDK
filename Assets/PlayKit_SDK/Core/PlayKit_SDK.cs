@@ -6,7 +6,7 @@ namespace PlayKit_SDK
 {
     public class PlayKit_SDK : MonoBehaviour
     {
-        public const string VERSION = "v0.2.1.2-canary";
+        public const string VERSION = "v0.2.1.0-canary.2";
 
         // Configuration is now loaded from PlayKitSettings ScriptableObject
         // No need to manually place prefabs in scenes - SDK initializes automatically at runtime
@@ -182,6 +182,13 @@ namespace PlayKit_SDK
                 () => PlayKitAuthManager.GetPlayerClient()?.GetPlayerToken()
             );
 
+            // Wire up PlayerClient with RechargeManager for auto-prompt recharge feature
+            var playerClient = PlayKitAuthManager.GetPlayerClient();
+            if (playerClient != null)
+            {
+                playerClient.SetRechargeManager(_rechargeManager);
+            }
+
             _isInitialized = true;
             Debug.Log("[PlayKit SDK] PlayKit_SDK Initialized Successfully");
             return true;
@@ -343,7 +350,7 @@ namespace PlayKit_SDK
             /// <param name="recipient">The NPC Object</param>
             /// <param name="modelName">Optional specific model to use</param>
             /// <returns>An NPC client ready for conversation</returns>
-            public static void CreateNpc(PlayKit_NPCClient recipient, string modelName = null)
+            public static void CreateNpc(PlayKit_NPC recipient, string modelName = null)
             {
                 if (!Instance)
                 {

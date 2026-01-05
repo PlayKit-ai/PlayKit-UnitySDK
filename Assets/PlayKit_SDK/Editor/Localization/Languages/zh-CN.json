@@ -5,6 +5,7 @@
 
   "tab.configuration": "配置",
   "tab.development": "开发",
+  "tab.addons": "插件",
   "tab.about": "关于",
 
   "config.auth.title": "开发者认证",
@@ -248,5 +249,28 @@
 
   "mic.action.start": "开始录音",
   "mic.action.stop": "停止录音",
-  "mic.action.cancel": "取消"
+  "mic.action.cancel": "取消",
+
+  "addons.title": "扩展插件",
+  "addons.description": "通过扩展插件增强 PlayKit SDK 的平台支持。",
+  "addons.steam.title": "Steam 登录和支付插件",
+  "addons.steam.description": "为PlayKit SDK添加Steam平台支持，包括Steam登录认证和微交易支付功能。",
+  "addons.steam.features": "功能特性：",
+  "addons.steam.feature1": "Steam 登录认证",
+  "addons.steam.feature2": "Steam 微交易支付",
+  "addons.steam.feature3": "多App ID支持（正式版/Demo/Playtest）",
+  "addons.steam.get_addon": "获取插件",
+  "addons.steam.documentation": "查看文档",
+  "addons.steam.status.installed": "已安装",
+  "addons.steam.status.not_installed": "未安装",
+  "addons.steam.install": "安装 Steam 扩展",
+  "addons.steam.installing": "安装中...",
+  "addons.steam.open_docs": "查看文档",
+  "addons.steam.install_success.title": "安装已开始",
+  "addons.steam.install_success.message": "Steam 扩展安装已开始。请等待 Unity Package Manager 完成安装。",
+  "addons.steam.install_error.title": "安装失败",
+  "addons.steam.install_error.message": "安装 Steam 扩展失败：{0}",
+  "addons.steam.remove": "移除",
+  "addons.steam.remove_confirm.title": "移除 Steam 扩展",
+  "addons.steam.remove_confirm.message": "确定要移除 Steam 扩展吗？"
 }

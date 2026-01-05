@@ -8,7 +8,7 @@ using System.Collections.Generic;
 
 namespace PlayKit_SDK.Editor
 {
-    [CustomEditor(typeof(PlayKit_NPCClient_ActionsModule))]
+    [CustomEditor(typeof(PlayKit_NPC_ActionsModule))]
     public class NpcActionsModuleEditor : UnityEditor.Editor
     {
         private ReorderableList actionsList;
@@ -291,7 +291,7 @@ namespace PlayKit_SDK.Editor
                 EditorGUILayout.Space(10);
                 EditorGUILayout.LabelField(L.Get("npc.section.runtime"), EditorStyles.boldLabel);
 
-                var module = (PlayKit_NPCClient_ActionsModule)target;
+                var module = (PlayKit_NPC_ActionsModule)target;
                 EditorGUILayout.LabelField(L.Get("npc.actions.runtime.ready"), module.IsReady ? L.Get("common.yes") : L.Get("common.no"));
                 EditorGUILayout.LabelField(L.Get("npc.actions.runtime.enabled_count"), module.EnabledActions.Count.ToString());
             }

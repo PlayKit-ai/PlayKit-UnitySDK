@@ -78,14 +78,14 @@ namespace PlayKit_SDK
 
         #region NPC Tracking
 
-        private Dictionary<PlayKit_NPCClient, NpcConversationState> _npcStates = new Dictionary<PlayKit_NPCClient, NpcConversationState>();
+        private Dictionary<PlayKit_NPC, NpcConversationState> _npcStates = new Dictionary<PlayKit_NPC, NpcConversationState>();
         private Coroutine _autoCompactCoroutine;
 
         /// <summary>
         /// Register an NPC for context management.
         /// Called automatically by NPCClient.
         /// </summary>
-        internal void RegisterNpc(PlayKit_NPCClient npc)
+        internal void RegisterNpc(PlayKit_NPC npc)
         {
             if (npc == null) return;
 
@@ -104,7 +104,7 @@ namespace PlayKit_SDK
         /// <summary>
         /// Unregister an NPC (called on destroy).
         /// </summary>
-        internal void UnregisterNpc(PlayKit_NPCClient npc)
+        internal void UnregisterNpc(PlayKit_NPC npc)
         {
             if (npc == null) return;
 
@@ -119,7 +119,7 @@ namespace PlayKit_SDK
         /// Update last conversation time for an NPC.
         /// Called after each Talk() exchange.
         /// </summary>
-        internal void RecordConversation(PlayKit_NPCClient npc)
+        internal void RecordConversation(PlayKit_NPC npc)
         {
             if (npc == null) return;
 
@@ -139,19 +139,19 @@ namespace PlayKit_SDK
         /// <summary>
         /// Event fired when an NPC's conversation is compacted.
         /// </summary>
-        public event Action<PlayKit_NPCClient> OnNpcCompacted;
+        public event Action<PlayKit_NPC> OnNpcCompacted;
 
         /// <summary>
         /// Event fired when compaction fails for an NPC.
         /// </summary>
-        public event Action<PlayKit_NPCClient, string> OnCompactionFailed;
+        public event Action<PlayKit_NPC, string> OnCompactionFailed;
 
         /// <summary>
         /// Check if an NPC is eligible for compaction.
         /// </summary>
         /// <param name="npc">The NPC to check</param>
         /// <returns>True if eligible for compaction</returns>
-        public bool IsEligibleForCompaction(PlayKit_NPCClient npc)
+        public bool IsEligibleForCompaction(PlayKit_NPC npc)
         {
             if (npc == null) return false;
             if (!_npcStates.TryGetValue(npc, out var state)) return false;
@@ -180,7 +180,7 @@ namespace PlayKit_SDK
         /// <param name="npc">The NPC to compact</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True if compaction succeeded</returns>
-        public async UniTask<bool> CompactConversationAsync(PlayKit_NPCClient npc, CancellationToken cancellationToken = default)
+        public async UniTask<bool> CompactConversationAsync(PlayKit_NPC npc, CancellationToken cancellationToken = default)
         {
             if (npc == null)
             {

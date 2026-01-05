@@ -4,6 +4,7 @@
   "header.subtitle": "Unity Native-AI Game Development Kit",
 
   "tab.configuration": "Configuration",
+  "tab.addons": "Addons",
   "tab.about": "About",
 
   "config.auth.title": "Developer Authentication",
@@ -233,5 +234,28 @@
 
   "mic.action.start": "Start Recording",
   "mic.action.stop": "Stop Recording",
-  "mic.action.cancel": "Cancel"
+  "mic.action.cancel": "Cancel",
+
+  "addons.title": "Addons",
+  "addons.description": "Extend PlayKit SDK with additional platform integrations.",
+  "addons.steam.title": "Steam Authentication & Payment Addon",
+  "addons.steam.description": "Add Steam platform support to PlayKit SDK, including Steam authentication and microtransaction payment features.",
+  "addons.steam.features": "Features:",
+  "addons.steam.feature1": "Steam Authentication",
+  "addons.steam.feature2": "Steam Microtransaction Payments",
+  "addons.steam.feature3": "Multi App ID Support (Release/Demo/Playtest)",
+  "addons.steam.get_addon": "Get Addon",
+  "addons.steam.documentation": "Documentation",
+  "addons.steam.status.installed": "Installed",
+  "addons.steam.status.not_installed": "Not Installed",
+  "addons.steam.install": "Install Steam Addon",
+  "addons.steam.installing": "Installing...",
+  "addons.steam.open_docs": "Documentation",
+  "addons.steam.install_success.title": "Installation Started",
+  "addons.steam.install_success.message": "Steam Addon installation has started. Please wait for Unity Package Manager to complete the installation.",
+  "addons.steam.install_error.title": "Installation Failed",
+  "addons.steam.install_error.message": "Failed to install Steam Addon: {0}",
+  "addons.steam.remove": "Remove",
+  "addons.steam.remove_confirm.title": "Remove Steam Addon",
+  "addons.steam.remove_confirm.message": "Are you sure you want to remove the Steam Addon?"
 }
