@@ -114,6 +114,98 @@ namespace PlayKit_SDK.Auth
             return await ShowLoginWebAsync();
         }
 
+        /// <summary>
+        /// Authenticate using an external auth provider (from platform addons).
+        /// The provider handles the platform-specific auth flow and returns a standardized result.
+        /// </summary>
+        /// <param name="provider">The auth provider to use</param>
+        /// <returns>True if authentication succeeded</returns>
+        public async UniTask<bool> AuthenticateWithProviderAsync(IAuthProvider provider)
+        {
+            if (provider == null)
+            {
+                Debug.LogError("[PlayKit SDK] Cannot authenticate with null provider");
+                return false;
+            }
+
+            standaloneLoadingObject.gameObject.SetActive(true);
+
+            try
+            {
+                Debug.Log($"[PlayKit SDK] Authenticating with provider: {provider.DisplayName}");
+
+                // Subscribe to status changes for UI feedback
+                provider.OnStatusChanged += OnProviderStatusChanged;
+
+                // Call the provider's authentication method
+                var result = await provider.AuthenticateAsync();
+
+                // Unsubscribe from status changes
+                provider.OnStatusChanged -= OnProviderStatusChanged;
+
+                if (result == null || !result.Success)
+                {
+                    Debug.LogError($"[PlayKit SDK] Provider authentication failed: {result?.Error ?? "Unknown error"}");
+                    standaloneLoadingObject.gameObject.SetActive(false);
+                    return false;
+                }
+
+                // Extract and store the player token
+                if (string.IsNullOrEmpty(result.PlayerToken))
+                {
+                    Debug.LogError("[PlayKit SDK] Provider returned no player token");
+                    standaloneLoadingObject.gameObject.SetActive(false);
+                    return false;
+                }
+
+                // Set the auth token
+                AuthToken = result.PlayerToken;
+                IsDeveloperToken = false;
+
+                // Save tokens if refresh token is provided
+                if (!string.IsNullOrEmpty(result.RefreshToken))
+                {
+                    RefreshToken = result.RefreshToken;
+                    int expiresIn = result.ExpiresIn > 0 ? result.ExpiresIn :
+                                    (result.ExpiresAt.HasValue ? (int)(result.ExpiresAt.Value - DateTime.UtcNow).TotalSeconds : 3600);
+
+                    SavePlayerToken(result.PlayerToken, result.RefreshToken, expiresIn);
+                }
+                else if (!string.IsNullOrEmpty(result.PlayerToken))
+                {
+                    // Save token without refresh (legacy format)
+                    string expiresAt = result.ExpiresAt?.ToString("o") ?? "";
+                    SavePlayerToken(result.PlayerToken, expiresAt);
+                }
+
+                // Update PlayerClient
+                if (PlayerClient != null)
+                {
+                    PlayerClient.SetPlayerToken(AuthToken);
+                }
+
+                Debug.Log($"[PlayKit SDK] Provider authentication successful. User: {result.UserId}");
+                standaloneLoadingObject.gameObject.SetActive(false);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[PlayKit SDK] Provider authentication exception: {ex.Message}");
+                provider.OnStatusChanged -= OnProviderStatusChanged;
+                standaloneLoadingObject.gameObject.SetActive(false);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Handle status updates from auth provider (for UI feedback)
+        /// </summary>
+        private void OnProviderStatusChanged(string status)
+        {
+            Debug.Log($"[PlayKit SDK] Auth provider status: {status}");
+            // Could update loading UI here in the future
+        }
+
         private async UniTask<bool> ShowLoginWebAsync()
         {
             var loginWebPrefab = Resources.Load<GameObject>("LoginWeb");
@@ -410,7 +502,8 @@ namespace PlayKit_SDK.Auth
         {
             if (IsTokenValid())
             {
-                if (PlayerClient != null && !PlayerClient.HasValidPlayerToken() && !IsDeveloperToken)
+                // Set token for both player tokens and developer tokens
+                if (PlayerClient != null && !PlayerClient.HasValidPlayerToken())
                 {
                     PlayerClient.SetPlayerToken(AuthToken);
                 }

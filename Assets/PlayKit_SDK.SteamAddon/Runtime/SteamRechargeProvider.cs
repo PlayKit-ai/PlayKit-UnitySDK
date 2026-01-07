@@ -275,6 +275,77 @@ namespace PlayKit_SDK.Steam
             OnRechargeCancelled?.Invoke();
         }
 
+        /// <summary>
+        /// Get available IAP products from backend
+        /// </summary>
+        public async UniTask<ProductListResult> GetAvailableProductsAsync()
+        {
+            string playerToken = _getPlayerToken?.Invoke();
+            if (string.IsNullOrEmpty(playerToken))
+            {
+                Debug.LogError("[SteamRechargeProvider] No player token available for GetAvailableProductsAsync");
+                return new ProductListResult
+                {
+                    Success = false,
+                    Error = "No player token available"
+                };
+            }
+
+            try
+            {
+                string url = $"{_baseUrl}/api/external/games/{_gameId}/products";
+
+                using (var request = UnityWebRequest.Get(url))
+                {
+                    // Add Authorization header with player token
+                    request.SetRequestHeader("Authorization", $"Bearer {playerToken}");
+
+                    await request.SendWebRequest();
+
+                    if (request.result == UnityWebRequest.Result.Success)
+                    {
+                        var response = JsonConvert.DeserializeObject<ProductsApiResponse>(request.downloadHandler.text);
+
+                        if (response != null && response.Success)
+                        {
+                            return new ProductListResult
+                            {
+                                Success = true,
+                                Products = response.Products ?? new System.Collections.Generic.List<IAPProduct>()
+                            };
+                        }
+                        else
+                        {
+                            return new ProductListResult
+                            {
+                                Success = false,
+                                Error = response?.Error ?? "Failed to load products"
+                            };
+                        }
+                    }
+                    else
+                    {
+                        string error = request.downloadHandler?.text ?? request.error;
+                        Debug.LogError($"[SteamRechargeProvider] Failed to load products: {error}");
+                        return new ProductListResult
+                        {
+                            Success = false,
+                            Error = $"Network error: {error}"
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+                return new ProductListResult
+                {
+                    Success = false,
+                    Error = $"Exception: {ex.Message}"
+                };
+            }
+        }
+
         #region Request/Response DTOs
 
         [Serializable]
@@ -309,6 +380,14 @@ namespace PlayKit_SDK.Steam
             [JsonProperty("creditedAmount")] public float CreditedAmount { get; set; }
             [JsonProperty("newBalance")] public float NewBalance { get; set; }
             [JsonProperty("sandbox")] public bool Sandbox { get; set; }
+            [JsonProperty("error")] public string Error { get; set; }
+        }
+
+        [Serializable]
+        private class ProductsApiResponse
+        {
+            [JsonProperty("success")] public bool Success { get; set; }
+            [JsonProperty("products")] public System.Collections.Generic.List<IAPProduct> Products { get; set; }
             [JsonProperty("error")] public string Error { get; set; }
         }
 

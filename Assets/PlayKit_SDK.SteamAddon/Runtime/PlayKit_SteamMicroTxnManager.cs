@@ -161,6 +161,10 @@ namespace PlayKit_SDK.Steam
         {
             Debug.Log($"[PlayKit_SteamMicroTxn] Finalizing transaction: {orderId}");
 
+            // Switch to main thread - Steam callback comes from background thread
+            // but UnityWebRequest must be created on main thread
+            await UniTask.SwitchToMainThread();
+
             var result = await _steamProvider.FinalizeAsync(orderId, true);
 
             if (result.Initiated)

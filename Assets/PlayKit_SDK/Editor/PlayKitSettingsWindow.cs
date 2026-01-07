@@ -294,6 +294,11 @@ namespace PlayKit_SDK
 
             EditorGUILayout.Space(10);
 
+            // Recharge Configuration
+            DrawRechargeConfiguration();
+
+            EditorGUILayout.Space(10);
+
             // Advanced Settings (collapsible, Custom Base URL only)
             DrawAdvancedSettings();
         }
@@ -558,6 +563,18 @@ namespace PlayKit_SDK
                 {
                     var selectedGame = _gamesList[_selectedGameIndex];
                     settings.GameId = selectedGame.id;
+
+                    // Auto-sync channel type from selected game
+                    SerializedProperty channelTypeProp = serializedSettings.FindProperty("channelType");
+                    if (channelTypeProp != null && !string.IsNullOrEmpty(selectedGame.channel))
+                    {
+                        channelTypeProp.stringValue = selectedGame.channel;
+                        serializedSettings.ApplyModifiedProperties();
+
+                        // Notify addons about game selection change
+                        NotifyAddonsGameSelectionChanged(selectedGame.id, selectedGame.channel);
+                    }
+
                     EditorUtility.SetDirty(settings);
                     AssetDatabase.SaveAssets();
                     // Load models for the newly selected game
@@ -668,6 +685,43 @@ namespace PlayKit_SDK
             EditorGUILayout.EndVertical();
         }
 
+        private void DrawRechargeConfiguration()
+        {
+            GUILayout.Label(L10n.Get("config.recharge.title"), EditorStyles.boldLabel);
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            // Channel Type (Read-Only - auto-synced from selected game)
+            SerializedProperty channelTypeProp = serializedSettings.FindProperty("channelType");
+            string channelType = channelTypeProp.stringValue;
+
+            // Display channel type as read-only label
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.PrefixLabel(new GUIContent(
+                L10n.Get("config.recharge.channel_type"),
+                L10n.Get("config.recharge.channel_type.tooltip")
+            ));
+            EditorGUILayout.SelectableLabel(
+                string.IsNullOrEmpty(channelType) ? L10n.Get("config.recharge.channel_type.not_set") : channelType,
+                EditorStyles.textField,
+                GUILayout.Height(EditorGUIUtility.singleLineHeight)
+            );
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.HelpBox(L10n.Get("config.recharge.channel_type.auto_sync"), MessageType.Info);
+
+            EditorGUILayout.Space(10);
+
+            // Enable Default Recharge Handler
+            SerializedProperty enableHandlerProp = serializedSettings.FindProperty("enableDefaultRechargeHandler");
+            EditorGUILayout.PropertyField(enableHandlerProp, new GUIContent(
+                L10n.Get("config.recharge.enable_default_handler"),
+                L10n.Get("config.recharge.enable_default_handler.tooltip")
+            ));
+
+            EditorGUILayout.EndVertical();
+        }
+
         private void DrawAdvancedSettings()
         {
             // Collapsible foldout header
@@ -702,6 +756,105 @@ namespace PlayKit_SDK
 
             string effectiveUrl = settings.BaseUrl;
             EditorGUILayout.LabelField(L10n.Get("config.advanced.effective_url"), effectiveUrl, EditorStyles.miniLabel);
+
+            EditorGUILayout.Space(10);
+
+            // Build Token Injection (DANGER ZONE)
+            DrawBuildTokenInjection();
+
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawBuildTokenInjection()
+        {
+            GUILayout.Label("Build Token Injection", EditorStyles.boldLabel);
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+          
+
+            EditorGUILayout.Space(5);
+
+            // Toggle
+            SerializedProperty forceBuildTokenProp = serializedSettings.FindProperty("forceDeveloperTokenInBuild");
+
+            EditorGUI.BeginChangeCheck();
+            bool currentValue = forceBuildTokenProp.boolValue;
+
+            // Style for the toggle (red when enabled)
+            GUIStyle toggleStyle = new GUIStyle(EditorStyles.toggle);
+            if (currentValue)
+            {
+                toggleStyle.normal.textColor = Color.red;
+                toggleStyle.onNormal.textColor = Color.red;
+            }
+
+            bool newValue = EditorGUILayout.Toggle(
+                new GUIContent(
+                    "Force Developer Token Injection At Build",
+                    "Embeds developer token from EditorPrefs into the build. Token will be in the build binary."
+                ),
+                currentValue,
+                toggleStyle
+            );
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                if (newValue && !currentValue)
+                {
+                    // Enabling - show confirmation
+                    bool confirm = EditorUtility.DisplayDialog(
+                        "⚠️ Enable Token Injection?",
+                        "This will embed your developer token in ALL future builds until disabled.\n\n" +
+                        "Your token will be extractable from the build binary.\n\n" +
+                        "Only use this for internal testing. Never distribute these builds publicly.\n\n" +
+                        "Enable anyway?",
+                        "Yes, Enable",
+                        "Cancel"
+                    );
+
+                    if (confirm)
+                    {
+                        forceBuildTokenProp.boolValue = true;
+                    }
+                }
+                else
+                {
+                    forceBuildTokenProp.boolValue = newValue;
+                }
+
+                serializedSettings.ApplyModifiedProperties();
+                EditorUtility.SetDirty(settings);
+                AssetDatabase.SaveAssets();
+            }
+
+            // Show current status
+            if (forceBuildTokenProp.boolValue)
+            {
+                EditorGUILayout.Space(5);
+
+                GUIStyle warningStyle = new GUIStyle(EditorStyles.label);
+                warningStyle.normal.textColor = Color.red;
+                warningStyle.fontStyle = FontStyle.Bold;
+
+                EditorGUILayout.LabelField("⚠️ TOKEN INJECTION ENABLED", warningStyle);
+
+                string currentToken = PlayKitSettings.LocalDeveloperToken;
+                if (!string.IsNullOrEmpty(currentToken))
+                {
+                    string maskedToken = currentToken.Length > 10
+                        ? "***" + currentToken.Substring(currentToken.Length - 10)
+                        : "***" + currentToken;
+                    EditorGUILayout.LabelField("Token to inject:", maskedToken, EditorStyles.miniLabel);
+                }
+                else
+                {
+                    EditorGUILayout.HelpBox(
+                        "No developer token found in EditorPrefs. Build will fail if you attempt to build.",
+                        MessageType.Warning
+                    );
+                }
+            }
 
             EditorGUILayout.EndVertical();
         }
@@ -896,15 +1049,139 @@ namespace PlayKit_SDK
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            // 说明文本
-            EditorGUILayout.HelpBox(L10n.Get("addons.description"), MessageType.Info);
+            // Get all registered addons
+            var allAddons = AddonRegistry.Instance.GetAllAddons();
+            string currentChannelType = settings?.ChannelType ?? "standalone";
 
-            EditorGUILayout.Space(10);
-
-            // Steam Addon (with install/uninstall functionality)
-            DrawSteamAddonRow();
+            if (allAddons.Count == 0)
+            {
+                EditorGUILayout.HelpBox(L10n.Get("addons.none_registered"), MessageType.Warning);
+            }
+            else
+            {
+                foreach (var kvp in allAddons)
+                {
+                    DrawAddonCard(kvp.Value, currentChannelType);
+                    EditorGUILayout.Space(5);
+                }
+            }
 
             EditorGUILayout.EndVertical();
+        }
+
+        private void DrawAddonCard(IPlayKitAddon addon, string currentChannelType)
+        {
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+
+            // Title row with toggle
+            EditorGUILayout.BeginHorizontal();
+
+            EditorGUI.BeginChangeCheck();
+            bool isEnabled = settings.EnabledAddons.GetValueOrDefault(addon.AddonId, false);
+            bool newValue = EditorGUILayout.Toggle(isEnabled, GUILayout.Width(20));
+
+            GUILayout.Label(addon.DisplayName, EditorStyles.boldLabel);
+            GUILayout.FlexibleSpace();
+
+            // Status badges
+            GUIStyle statusStyle = new GUIStyle(EditorStyles.miniLabel);
+            if (addon.IsInstalled)
+            {
+                statusStyle.normal.textColor = new Color(0.2f, 0.7f, 0.2f);
+                GUILayout.Label($"v{addon.Version}", statusStyle);
+            }
+            else
+            {
+                statusStyle.normal.textColor = new Color(0.8f, 0.4f, 0.2f);
+                GUILayout.Label(L10n.Get("addons.not_installed"), statusStyle);
+            }
+
+            EditorGUILayout.EndHorizontal();
+
+            // Description
+            EditorGUILayout.LabelField(addon.Description, EditorStyles.wordWrappedMiniLabel);
+
+            EditorGUILayout.Space(3);
+
+            // Exclusion group info
+            if (!string.IsNullOrEmpty(addon.ExclusionGroup))
+            {
+                EditorGUILayout.LabelField(
+                    L10n.Get("addons.exclusion_group"),
+                    addon.ExclusionGroup,
+                    EditorStyles.miniLabel
+                );
+            }
+
+            // Required channel types
+            if (addon.RequiredChannelTypes != null && addon.RequiredChannelTypes.Length > 0)
+            {
+                EditorGUILayout.LabelField(
+                    L10n.Get("addons.required_channels"),
+                    string.Join(", ", addon.RequiredChannelTypes),
+                    EditorStyles.miniLabel
+                );
+            }
+
+            // Channel mismatch warning
+            if (isEnabled && addon.RequiredChannelTypes != null && addon.RequiredChannelTypes.Length > 0)
+            {
+                bool channelMatches = AddonRegistry.CheckChannelMatch(currentChannelType, addon.RequiredChannelTypes);
+                if (!channelMatches)
+                {
+                    EditorGUILayout.Space(3);
+                    EditorGUILayout.HelpBox(
+                        L10n.GetFormat("config.validation.addon_channel_mismatch",
+                            addon.DisplayName,
+                            string.Join(", ", addon.RequiredChannelTypes),
+                            currentChannelType),
+                        MessageType.Warning
+                    );
+                }
+            }
+
+            // Handle toggle change with conflict resolution
+            if (EditorGUI.EndChangeCheck())
+            {
+                HandleAddonToggle(addon, newValue);
+            }
+
+            // Allow addon to draw custom settings UI
+            if (addon is IPlayKitAddonEditor addonEditor && addon.IsInstalled)
+            {
+                addonEditor.DrawAddonSettings(currentChannelType);
+            }
+
+            EditorGUILayout.EndVertical();
+        }
+
+        private void HandleAddonToggle(IPlayKitAddon addon, bool newValue)
+        {
+            if (newValue && !string.IsNullOrEmpty(addon.ExclusionGroup))
+            {
+                // Check for conflicts
+                var conflicts = AddonRegistry.Instance.GetConflictingAddons(
+                    addon.AddonId,
+                    settings.EnabledAddons.ToDictionary()
+                );
+
+                // Auto-disable conflicting addons
+                foreach (var conflictId in conflicts)
+                {
+                    settings.SetAddonEnabled(conflictId, false);
+                    var conflictAddon = AddonRegistry.Instance.GetAllAddons().GetValueOrDefault(conflictId);
+                    if (conflictAddon != null)
+                    {
+                        Debug.LogWarning(L10n.GetFormat("addons.conflict_disabled",
+                            conflictAddon.DisplayName,
+                            addon.DisplayName,
+                            addon.ExclusionGroup));
+                    }
+                }
+            }
+
+            // Set the new value
+            settings.SetAddonEnabled(addon.AddonId, newValue);
         }
 
         #endregion
@@ -1310,6 +1587,21 @@ namespace PlayKit_SDK
             {
                 _isLoadingModels = false;
                 Repaint();
+            }
+        }
+
+        /// <summary>
+        /// Notifies all addons that implement IPlayKitAddonEditor about game selection changes.
+        /// </summary>
+        private void NotifyAddonsGameSelectionChanged(string gameId, string channelType)
+        {
+            var allAddons = AddonRegistry.Instance.GetAllAddons();
+            foreach (var kvp in allAddons)
+            {
+                if (kvp.Value is IPlayKitAddonEditor addonEditor)
+                {
+                    addonEditor.OnGameSelectionChanged(gameId, channelType);
+                }
             }
         }
 

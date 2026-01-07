@@ -31,6 +31,10 @@ namespace PlayKit_SDK
         [Tooltip("Override the default API base URL. Leave empty to use default (https://playkit.ai).")]
         [SerializeField] private string customBaseUrl = "";
 
+        [Header("Build Token Injection")]
+        [Tooltip("Injects developer token into builds. Token will be embedded in the build and accessible via decompilation. ONLY use for internal testing builds, NEVER for production!")]
+        [SerializeField] private bool forceDeveloperTokenInBuild = false;
+
         [Header("AI Context Manager Settings")]
         [Tooltip("Enable automatic conversation compaction for NPCs when idle")]
         [SerializeField] private bool enableAutoCompact = true;
@@ -43,6 +47,17 @@ namespace PlayKit_SDK
 
         [Tooltip("Model used for conversation compaction and reply predictions")]
         [SerializeField] private string fastModel = "default-chat-fast";
+
+        [Header("Addon Management")]
+        [Tooltip("Enabled/disabled state of installed addons (e.g., Steam, iOS, Android)")]
+        [SerializeField] private SerializableDictionary<string, bool> enabledAddons = new SerializableDictionary<string, bool>();
+
+        [Header("Recharge Configuration")]
+        [Tooltip("Distribution channel type (e.g., 'standalone', 'steam_release', 'ios', 'android')")]
+        [SerializeField] private string channelType = "standalone";
+
+        [Tooltip("Enable SDK's default recharge handler (shows UI when balance is low). Disable to implement custom recharge flow.")]
+        [SerializeField] private bool enableDefaultRechargeHandler = true;
 
         // Singleton instance
         private static PlayKitSettings _instance;
@@ -99,7 +114,7 @@ namespace PlayKit_SDK
         }
 
         // Constants
-        private const string DEFAULT_BASE_URL = "https://playkit.ai";
+        private const string DEFAULT_BASE_URL = "https://api.playkit.ai";
 
         // Public properties
         public string GameId
@@ -117,6 +132,11 @@ namespace PlayKit_SDK
         public string DefaultChatModel => defaultChatModel;
         public string DefaultImageModel => defaultImageModel;
         public bool IgnoreDeveloperToken => ignoreDeveloperToken;
+
+        /// <summary>
+        /// Whether to inject developer token into builds (DANGER: token will be in build)
+        /// </summary>
+        public bool ForceDeveloperTokenInBuild => forceDeveloperTokenInBuild;
         public string CustomBaseUrl => customBaseUrl;
 
         // AI Context Manager Settings
@@ -124,6 +144,13 @@ namespace PlayKit_SDK
         public float AutoCompactTimeoutSeconds => autoCompactTimeoutSeconds;
         public int AutoCompactMinMessages => autoCompactMinMessages;
         public string FastModel => fastModel;
+
+        // Addon Management
+        public SerializableDictionary<string, bool> EnabledAddons => enabledAddons;
+
+        // Recharge Configuration
+        public string ChannelType => channelType;
+        public bool EnableDefaultRechargeHandler => enableDefaultRechargeHandler;
 
         /// <summary>
         /// Gets the effective base URL for API calls.
@@ -162,6 +189,20 @@ namespace PlayKit_SDK
 #if UNITY_EDITOR
                 return UnityEditor.EditorPrefs.GetString("PlayKit_LocalDeveloperToken", "");
 #else
+                // In builds, check if developer token injection is enabled
+                if (forceDeveloperTokenInBuild)
+                {
+                    var tokenAsset = Resources.Load<TextAsset>("PlayKit_BuildToken");
+                    if (tokenAsset != null)
+                    {
+                        Debug.LogWarning("[PlayKit SDK] ⚠️ USING BUILD-INJECTED DEVELOPER TOKEN! This should NEVER be used in production builds!");
+                        return tokenAsset.text;
+                    }
+                    else
+                    {
+                        Debug.LogError("[PlayKit SDK] forceDeveloperTokenInBuild is enabled but PlayKit_BuildToken not found in Resources!");
+                    }
+                }
                 return "";
 #endif
             }
@@ -209,6 +250,23 @@ namespace PlayKit_SDK
         public static void ClearLocalDeveloperToken()
         {
             UnityEditor.EditorPrefs.DeleteKey("PlayKit_LocalDeveloperToken");
+        }
+
+        /// <summary>
+        /// Sets the enabled state of an addon.
+        /// </summary>
+        /// <param name="addonId">The addon ID</param>
+        /// <param name="enabled">Whether the addon should be enabled</param>
+        public void SetAddonEnabled(string addonId, bool enabled)
+        {
+            if (string.IsNullOrEmpty(addonId))
+            {
+                Debug.LogWarning("[PlayKitSettings] Cannot set enabled state for null/empty addon ID");
+                return;
+            }
+
+            enabledAddons[addonId] = enabled;
+            UnityEditor.EditorUtility.SetDirty(this);
         }
 
         /// <summary>

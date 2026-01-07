@@ -21,9 +21,10 @@ namespace PlayKit.SDK.Editor
         {
             { "en-US", "English" },
             { "zh-CN", "简体中文" },
-            { "zh-TW", "繁體中文" },
-            { "ja-JP", "日本語" },
-            { "ko-KR", "한국어" }
+            // Temporarily disabled:
+            // { "zh-TW", "繁體中文" },
+            // { "ja-JP", "日本語" },
+            // { "ko-KR", "한국어" }
         };
 
         private static string currentLanguage = "en-US";
@@ -153,11 +154,11 @@ namespace PlayKit.SDK.Editor
                 case SystemLanguage.Chinese:
                     return "zh-CN";
 
-                case SystemLanguage.Japanese:
-                    return "ja-JP";
-
-                case SystemLanguage.Korean:
-                    return "ko-KR";
+                // Temporarily disabled languages fallback to English
+                // case SystemLanguage.Japanese:
+                //     return "ja-JP";
+                // case SystemLanguage.Korean:
+                //     return "ko-KR";
 
                 case SystemLanguage.English:
                 default:

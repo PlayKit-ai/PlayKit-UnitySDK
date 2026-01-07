@@ -7,6 +7,7 @@ using PlayKit_SDK.Steam;
 using Cysharp.Threading.Tasks;
 using Newtonsoft.Json;
 using UnityEngine.Networking;
+using L10n = PlayKit.SDK.Editor.L10n;
 
 namespace PlayKit_SDK.Steam.Editor
 {
@@ -52,7 +53,7 @@ namespace PlayKit_SDK.Steam.Editor
         [MenuItem("PlayKit SDK/Steam Addon/Debug Window")]
         public static void ShowWindow()
         {
-            var window = GetWindow<PlayKit_SteamDebugWindow>("Steam Debug");
+            var window = GetWindow<PlayKit_SteamDebugWindow>(L10n.Get("steam.window.title"));
             window.minSize = new Vector2(500, 400);
             window.Show();
         }
@@ -93,38 +94,38 @@ namespace PlayKit_SDK.Steam.Editor
                 alignment = TextAnchor.MiddleCenter
             };
 
-            GUILayout.Label("PlayKit Steam Addon - Debug Window", titleStyle);
-            GUILayout.Label("Monitor Steam status and test IAP purchases", EditorStyles.centeredGreyMiniLabel);
+            GUILayout.Label(L10n.Get("steam.header.title"), titleStyle);
+            GUILayout.Label(L10n.Get("steam.header.subtitle"), EditorStyles.centeredGreyMiniLabel);
 
             EditorGUILayout.EndVertical();
         }
 
         private void DrawSteamStatus()
         {
-            GUILayout.Label("Steam Status", EditorStyles.boldLabel);
+            GUILayout.Label(L10n.Get("steam.status.title"), EditorStyles.boldLabel);
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
             // Refresh button
             EditorGUILayout.BeginHorizontal();
-            GUILayout.Label("Connection:", GUILayout.Width(100));
+            GUILayout.Label(L10n.Get("steam.status.connection"), GUILayout.Width(100));
 
             if (_steamInitialized)
             {
                 GUIStyle successStyle = new GUIStyle(EditorStyles.label);
                 successStyle.normal.textColor = new Color(0.2f, 0.8f, 0.2f);
-                GUILayout.Label("✓ Connected", successStyle);
+                GUILayout.Label(L10n.Get("steam.status.connected"), successStyle);
             }
             else
             {
                 GUIStyle errorStyle = new GUIStyle(EditorStyles.label);
                 errorStyle.normal.textColor = new Color(0.8f, 0.2f, 0.2f);
-                GUILayout.Label("✗ Not Connected", errorStyle);
+                GUILayout.Label(L10n.Get("steam.status.not_connected"), errorStyle);
             }
 
             GUILayout.FlexibleSpace();
 
-            if (GUILayout.Button("Refresh", GUILayout.Width(80)))
+            if (GUILayout.Button(L10n.Get("steam.status.refresh"), GUILayout.Width(80)))
             {
                 RefreshSteamStatus();
             }
@@ -135,12 +136,12 @@ namespace PlayKit_SDK.Steam.Editor
             {
                 EditorGUILayout.Space(5);
 
-                EditorGUILayout.LabelField("Steam ID:", _steamId ?? "N/A");
-                EditorGUILayout.LabelField("Display Name:", _steamName ?? "N/A");
+                EditorGUILayout.LabelField(L10n.Get("steam.status.steam_id"), _steamId ?? L10n.Get("common.n_a"));
+                EditorGUILayout.LabelField(L10n.Get("steam.status.display_name"), _steamName ?? L10n.Get("common.n_a"));
 
                 EditorGUILayout.Space(5);
                 EditorGUILayout.HelpBox(
-                    "Steam is running and initialized. You can test purchases in Play Mode.",
+                    L10n.Get("steam.status.initialized"),
                     MessageType.Info
                 );
             }
@@ -148,11 +149,7 @@ namespace PlayKit_SDK.Steam.Editor
             {
                 EditorGUILayout.Space(5);
                 EditorGUILayout.HelpBox(
-                    "Steam is not running or not initialized.\n\n" +
-                    "To test Steam features:\n" +
-                    "1. Launch Steam client\n" +
-                    "2. Enter Play Mode\n" +
-                    "3. Steam will auto-initialize",
+                    L10n.Get("steam.status.not_initialized"),
                     MessageType.Warning
                 );
             }
@@ -162,12 +159,12 @@ namespace PlayKit_SDK.Steam.Editor
 
         private void DrawSteamAppId()
         {
-            GUILayout.Label("Steam Configuration", EditorStyles.boldLabel);
+            GUILayout.Label(L10n.Get("steam.config.title"), EditorStyles.boldLabel);
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
             EditorGUILayout.BeginHorizontal();
-            GUILayout.Label("Steam App ID:", GUILayout.Width(100));
+            GUILayout.Label(L10n.Get("steam.config.app_id"), GUILayout.Width(100));
 
             if (!string.IsNullOrEmpty(_steamAppId))
             {
@@ -175,10 +172,10 @@ namespace PlayKit_SDK.Steam.Editor
             }
             else
             {
-                GUILayout.Label("Not configured", EditorStyles.miniLabel);
+                GUILayout.Label(L10n.Get("steam.config.not_configured"), EditorStyles.miniLabel);
             }
 
-            if (GUILayout.Button("Load from Server", GUILayout.Width(120)))
+            if (GUILayout.Button(L10n.Get("steam.config.load_from_server"), GUILayout.Width(120)))
             {
                 LoadSteamConfigFromServer();
             }
@@ -187,9 +184,52 @@ namespace PlayKit_SDK.Steam.Editor
 
             EditorGUILayout.Space(5);
 
+            // steam_appid.txt sync status and button
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.Label("steam_appid.txt:", GUILayout.Width(100));
+
+            string currentFileAppId = SteamAppIdWriter.ReadCurrentAppId();
+            if (!string.IsNullOrEmpty(currentFileAppId))
+            {
+                // Show sync status
+                bool isSynced = !string.IsNullOrEmpty(_steamAppId) && currentFileAppId == _steamAppId;
+
+                GUIStyle statusStyle = new GUIStyle(EditorStyles.label);
+                statusStyle.normal.textColor = isSynced
+                    ? new Color(0.2f, 0.8f, 0.2f)
+                    : new Color(0.8f, 0.6f, 0.2f);
+
+                GUILayout.Label(currentFileAppId + (isSynced ? " ✓" : " (outdated)"), statusStyle);
+            }
+            else
+            {
+                GUILayout.Label(L10n.Get("steam.appid.not_created"), EditorStyles.miniLabel);
+            }
+
+            GUILayout.FlexibleSpace();
+
+            GUI.enabled = !string.IsNullOrEmpty(_steamAppId);
+            if (GUILayout.Button("Sync to File", GUILayout.Width(100)))
+            {
+                bool success = SteamAppIdWriter.WriteSteamAppId(_steamAppId);
+                if (success)
+                {
+                    EditorUtility.DisplayDialog(
+                        L10n.Get("common.success"),
+                        $"steam_appid.txt updated with App ID: {_steamAppId}",
+                        L10n.Get("common.ok")
+                    );
+                }
+                Repaint();
+            }
+            GUI.enabled = true;
+
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.Space(5);
+
             EditorGUILayout.HelpBox(
-                "Steam App ID is configured in PlayKit Dashboard.\n" +
-                "Select a Steam channel game in PlayKit Settings to use Steam features.",
+                L10n.Get("steam.config.help"),
                 MessageType.Info
             );
 
@@ -198,16 +238,16 @@ namespace PlayKit_SDK.Steam.Editor
 
         private void DrawProducts()
         {
-            GUILayout.Label("IAP Products", EditorStyles.boldLabel);
+            GUILayout.Label(L10n.Get("steam.products.title"), EditorStyles.boldLabel);
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
             EditorGUILayout.BeginHorizontal();
-            GUILayout.Label($"Available Products: {_products.Count}", EditorStyles.miniLabel);
+            GUILayout.Label(string.Format(L10n.Get("steam.products.available"), _products.Count), EditorStyles.miniLabel);
             GUILayout.FlexibleSpace();
 
             GUI.enabled = !_isLoadingProducts;
-            if (GUILayout.Button(_isLoadingProducts ? "Loading..." : "Refresh Products", GUILayout.Width(120)))
+            if (GUILayout.Button(_isLoadingProducts ? L10n.Get("steam.products.loading") : L10n.Get("steam.products.refresh"), GUILayout.Width(120)))
             {
                 LoadProducts();
             }
@@ -218,19 +258,18 @@ namespace PlayKit_SDK.Steam.Editor
             if (_isLoadingProducts)
             {
                 EditorGUILayout.Space(5);
-                EditorGUILayout.HelpBox("Loading products from server...", MessageType.Info);
+                EditorGUILayout.HelpBox(L10n.Get("steam.products.loading_msg"), MessageType.Info);
             }
             else if (!string.IsNullOrEmpty(_productsError))
             {
                 EditorGUILayout.Space(5);
-                EditorGUILayout.HelpBox($"Error: {_productsError}", MessageType.Error);
+                EditorGUILayout.HelpBox(string.Format(L10n.Get("steam.products.error"), _productsError), MessageType.Error);
             }
             else if (_products.Count == 0)
             {
                 EditorGUILayout.Space(5);
                 EditorGUILayout.HelpBox(
-                    "No products configured.\n" +
-                    "Configure IAP products in PlayKit Dashboard.",
+                    L10n.Get("steam.products.no_products"),
                     MessageType.Warning
                 );
             }
@@ -258,7 +297,7 @@ namespace PlayKit_SDK.Steam.Editor
             {
                 GUILayout.Label(product.description, EditorStyles.miniLabel);
             }
-            GUILayout.Label($"SKU: {product.sku}", EditorStyles.miniLabel);
+            GUILayout.Label(string.Format(L10n.Get("steam.products.sku"), product.sku), EditorStyles.miniLabel);
             EditorGUILayout.EndVertical();
 
             GUILayout.FlexibleSpace();
@@ -266,7 +305,7 @@ namespace PlayKit_SDK.Steam.Editor
             // Price
             string priceText = product.price_cents > 0
                 ? $"{product.price_cents / 100.0:F2} {product.currency ?? "USD"}"
-                : "Free";
+                : L10n.Get("steam.products.free");
             GUILayout.Label(priceText, EditorStyles.boldLabel, GUILayout.Width(80));
 
             EditorGUILayout.EndHorizontal();
@@ -274,37 +313,34 @@ namespace PlayKit_SDK.Steam.Editor
 
         private void DrawTestPurchase()
         {
-            GUILayout.Label("Test Purchase", EditorStyles.boldLabel);
+            GUILayout.Label(L10n.Get("steam.purchase.title"), EditorStyles.boldLabel);
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
             if (!Application.isPlaying)
             {
                 EditorGUILayout.HelpBox(
-                    "Enter Play Mode to test purchases.\n" +
-                    "Steam purchases can only be tested at runtime.",
+                    L10n.Get("steam.purchase.need_play_mode"),
                     MessageType.Info
                 );
             }
             else if (!_steamInitialized)
             {
                 EditorGUILayout.HelpBox(
-                    "Steam is not initialized.\n" +
-                    "Make sure Steam client is running.",
+                    L10n.Get("steam.purchase.not_initialized"),
                     MessageType.Warning
                 );
             }
             else if (_products.Count == 0)
             {
                 EditorGUILayout.HelpBox(
-                    "No products available.\n" +
-                    "Load products first.",
+                    L10n.Get("steam.purchase.no_products"),
                     MessageType.Warning
                 );
             }
             else
             {
-                EditorGUILayout.LabelField("Select Product:");
+                EditorGUILayout.LabelField(L10n.Get("steam.purchase.select_product"));
 
                 string[] productNames = new string[_products.Count];
                 for (int i = 0; i < _products.Count; i++)
@@ -328,7 +364,7 @@ namespace PlayKit_SDK.Steam.Editor
                 EditorGUILayout.Space(5);
 
                 GUI.enabled = !_isPurchasing && !string.IsNullOrEmpty(_selectedSku);
-                if (GUILayout.Button(_isPurchasing ? "Purchasing..." : "Test Purchase", GUILayout.Height(30)))
+                if (GUILayout.Button(_isPurchasing ? L10n.Get("steam.purchase.purchasing") : L10n.Get("steam.purchase.button"), GUILayout.Height(30)))
                 {
                     TestPurchase(_selectedSku);
                 }
@@ -337,9 +373,7 @@ namespace PlayKit_SDK.Steam.Editor
                 EditorGUILayout.Space(5);
 
                 EditorGUILayout.HelpBox(
-                    "This will initiate a real Steam purchase flow.\n" +
-                    "The Steam overlay will appear if configured correctly.\n" +
-                    "Make sure you're testing with a development build.",
+                    L10n.Get("steam.purchase.warning"),
                     MessageType.Info
                 );
             }
@@ -372,7 +406,7 @@ namespace PlayKit_SDK.Steam.Editor
                 var settings = Resources.Load<ScriptableObject>("PlayKitSettings");
                 if (settings == null)
                 {
-                    EditorUtility.DisplayDialog("Error", "PlayKitSettings not found", "OK");
+                    EditorUtility.DisplayDialog(L10n.Get("common.error"), L10n.Get("steam.error.settings_not_found"), L10n.Get("common.ok"));
                     return;
                 }
 
@@ -382,7 +416,7 @@ namespace PlayKit_SDK.Steam.Editor
 
                 if (string.IsNullOrEmpty(gameId))
                 {
-                    EditorUtility.DisplayDialog("Error", "No game selected in PlayKit Settings", "OK");
+                    EditorUtility.DisplayDialog(L10n.Get("common.error"), L10n.Get("steam.error.no_game_selected"), L10n.Get("common.ok"));
                     return;
                 }
 
@@ -390,10 +424,22 @@ namespace PlayKit_SDK.Steam.Editor
                 var baseUrlProp = settings.GetType().GetProperty("BaseUrl");
                 string baseUrl = baseUrlProp?.GetValue(settings) as string ?? "https://playkit.ai";
 
-                string endpoint = $"{baseUrl}/api/games/{gameId}/steam-config";
+                // Get developer token
+                string developerToken = PlayKitSettings.LocalDeveloperToken;
+
+                if (string.IsNullOrEmpty(developerToken))
+                {
+                    Debug.LogError(L10n.Get("steam.error.load_config_failed") + " No developer token available");
+                    return;
+                }
+
+                string endpoint = $"{baseUrl}/api/external/steam-config/{gameId}";
 
                 using (var request = UnityWebRequest.Get(endpoint))
                 {
+                    // Add Authorization header
+                    request.SetRequestHeader("Authorization", $"Bearer {developerToken}");
+
                     var operation = request.SendWebRequest();
 
                     while (!operation.isDone)
@@ -408,17 +454,24 @@ namespace PlayKit_SDK.Steam.Editor
                         {
                             var config = JsonConvert.DeserializeObject<Dictionary<string, object>>(response["steamConfig"].ToString());
                             _steamAppId = config.ContainsKey("releaseAppId") ? config["releaseAppId"]?.ToString() : null;
+
+                            // Auto-sync to file after loading
+                            if (!string.IsNullOrEmpty(_steamAppId))
+                            {
+                                SteamAppIdWriter.WriteSteamAppId(_steamAppId);
+                                Debug.Log($"[PlayKit Steam] ✓ Synced steam_appid.txt with App ID: {_steamAppId}");
+                            }
                         }
                     }
                     else
                     {
-                        Debug.LogError($"Failed to load Steam config: {request.error}");
+                        Debug.LogError(string.Format(L10n.Get("steam.error.load_config_failed"), request.error));
                     }
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Error loading Steam config: {ex.Message}");
+                Debug.LogError(string.Format(L10n.Get("steam.error.load_config_exception"), ex.Message));
             }
 
             Repaint();
@@ -435,7 +488,7 @@ namespace PlayKit_SDK.Steam.Editor
                 var settings = Resources.Load<ScriptableObject>("PlayKitSettings");
                 if (settings == null)
                 {
-                    _productsError = "PlayKitSettings not found";
+                    _productsError = L10n.Get("steam.error.settings_not_found");
                     return;
                 }
 
@@ -444,17 +497,29 @@ namespace PlayKit_SDK.Steam.Editor
 
                 if (string.IsNullOrEmpty(gameId))
                 {
-                    _productsError = "No game selected";
+                    _productsError = L10n.Get("steam.error.no_game_selected");
                     return;
                 }
 
                 var baseUrlProp = settings.GetType().GetProperty("BaseUrl");
                 string baseUrl = baseUrlProp?.GetValue(settings) as string ?? "https://playkit.ai";
 
-                string endpoint = $"{baseUrl}/api/games/{gameId}/products";
+                // Get developer token
+                string developerToken = PlayKitSettings.LocalDeveloperToken;
+
+                if (string.IsNullOrEmpty(developerToken))
+                {
+                    _productsError = "No developer token available";
+                    return;
+                }
+
+                string endpoint = $"{baseUrl}/api/external/games/{gameId}/products";
 
                 using (var request = UnityWebRequest.Get(endpoint))
                 {
+                    // Add Authorization header
+                    request.SetRequestHeader("Authorization", $"Bearer {developerToken}");
+
                     var operation = request.SendWebRequest();
 
                     while (!operation.isDone)
@@ -471,19 +536,19 @@ namespace PlayKit_SDK.Steam.Editor
                         }
                         else
                         {
-                            _productsError = response?.error ?? "Failed to load products";
+                            _productsError = response?.error ?? L10n.Get("steam.error.load_products_failed");
                         }
                     }
                     else
                     {
-                        _productsError = $"API Error: {request.error}";
+                        _productsError = string.Format(L10n.Get("steam.error.api_error"), request.error);
                     }
                 }
             }
             catch (Exception ex)
             {
                 _productsError = ex.Message;
-                Debug.LogError($"Error loading products: {ex.Message}");
+                Debug.LogError(string.Format(L10n.Get("steam.error.load_products_exception"), ex.Message));
             }
             finally
             {
@@ -499,89 +564,131 @@ namespace PlayKit_SDK.Steam.Editor
 
             try
             {
+                Debug.Log($"[Steam Test Purchase] Starting test purchase for SKU: {sku}");
+
                 // Find PlayKit SDK instance in scene
                 var sdkType = System.Type.GetType("PlayKit_SDK.PlayKit_SDK, PlayKit_SDK");
                 if (sdkType == null)
                 {
+                    Debug.LogError("[Steam Test Purchase] PlayKit SDK type not found");
                     EditorUtility.DisplayDialog(
-                        "Error",
+                        L10n.Get("common.error"),
                         "PlayKit SDK type not found.\n" +
                         "Make sure PlayKit SDK is properly installed.",
-                        "OK"
+                        L10n.Get("common.ok")
                     );
                     return;
                 }
+
+                Debug.Log("[Steam Test Purchase] SDK type found");
 
                 var sdkInstance = FindObjectOfType(sdkType);
                 if (sdkInstance == null)
                 {
+                    Debug.LogError("[Steam Test Purchase] SDK instance not found in scene");
                     EditorUtility.DisplayDialog(
-                        "Error",
+                        L10n.Get("common.error"),
                         "PlayKit SDK not found in scene.\n" +
                         "Make sure PlayKit_SDK is initialized.",
-                        "OK"
+                        L10n.Get("common.ok")
                     );
                     return;
                 }
 
-                // Get RechargeManager property
-                var rechargeManagerProp = sdkType.GetProperty("RechargeManager");
-                if (rechargeManagerProp == null)
+                Debug.Log("[Steam Test Purchase] SDK instance found");
+
+                // Get RechargeManager via GetRechargeManager() method
+                var getRechargeManagerMethod = sdkType.GetMethod("GetRechargeManager", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                if (getRechargeManagerMethod == null)
                 {
+                    Debug.LogError("[Steam Test Purchase] GetRechargeManager method not found");
                     EditorUtility.DisplayDialog(
-                        "Error",
-                        "RechargeManager property not found.",
-                        "OK"
+                        L10n.Get("common.error"),
+                        "GetRechargeManager method not found.",
+                        L10n.Get("common.ok")
                     );
                     return;
                 }
 
-                var rechargeManager = rechargeManagerProp.GetValue(sdkInstance);
+                Debug.Log("[Steam Test Purchase] GetRechargeManager method found, calling it...");
+
+                var rechargeManager = getRechargeManagerMethod.Invoke(null, null);
                 if (rechargeManager == null)
                 {
+                    Debug.LogError("[Steam Test Purchase] RechargeManager is null (SDK may not be initialized)");
                     EditorUtility.DisplayDialog(
-                        "Error",
-                        "RechargeManager not initialized.",
-                        "OK"
+                        L10n.Get("common.error"),
+                        "RechargeManager not initialized.\n" +
+                        "Make sure PlayKit_SDK.InitializeAsync() has been called and completed successfully.",
+                        L10n.Get("common.ok")
                     );
                     return;
                 }
+
+                Debug.Log($"[Steam Test Purchase] RechargeManager obtained: {rechargeManager.GetType().Name}");
 
                 // Call RechargeAsync
                 var rechargeMethod = rechargeManager.GetType().GetMethod("RechargeAsync");
-                if (rechargeMethod != null)
+                if (rechargeMethod == null)
                 {
-                    // Invoke and await the result without explicit type casting
-                    var taskObj = rechargeMethod.Invoke(rechargeManager, new object[] { sku });
-                    var result = await (dynamic)taskObj;
+                    Debug.LogError("[Steam Test Purchase] RechargeAsync method not found on RechargeManager");
+                    EditorUtility.DisplayDialog(
+                        L10n.Get("common.error"),
+                        "RechargeAsync method not found on RechargeManager.",
+                        L10n.Get("common.ok")
+                    );
+                    return;
+                }
 
-                    if (result.Success)
-                    {
-                        EditorUtility.DisplayDialog(
-                            "Purchase Complete",
-                            $"Purchase successful!\n" +
-                            $"Credited: {result.CreditedAmount} coins",
-                            "OK"
-                        );
-                    }
-                    else
-                    {
-                        EditorUtility.DisplayDialog(
-                            "Purchase Failed",
-                            $"Error: {result.Error}",
-                            "OK"
-                        );
-                    }
+                Debug.Log($"[Steam Test Purchase] Calling RechargeAsync with SKU: {sku}");
+
+                // Invoke and await the result without explicit type casting
+                var taskObj = rechargeMethod.Invoke(rechargeManager, new object[] { sku });
+
+                Debug.Log("[Steam Test Purchase] Awaiting purchase result...");
+                var result = await (dynamic)taskObj;
+
+                // Use reflection to safely access result properties
+                var resultType = result.GetType();
+                var initiatedProp = resultType.GetProperty("Initiated");
+                var errorProp = resultType.GetProperty("Error");
+                var dataProp = resultType.GetProperty("Data");
+
+                bool initiated = initiatedProp != null ? (bool)initiatedProp.GetValue(result) : false;
+                string error = errorProp != null ? (string)errorProp.GetValue(result) : null;
+                string data = dataProp != null ? (string)dataProp.GetValue(result) : null;
+
+                Debug.Log($"[Steam Test Purchase] Result received - Initiated: {initiated}, Error: {error}, Data: {data}");
+
+                if (initiated)
+                {
+                    Debug.Log($"[Steam Test Purchase] Purchase initiated successfully! Data: {data}");
+                    EditorUtility.DisplayDialog(
+                        "Purchase Initiated",
+                        $"Purchase initiated successfully!\n" +
+                        $"The Steam overlay should appear to complete the purchase.\n" +
+                        $"Order ID: {data}",
+                        L10n.Get("common.ok")
+                    );
+                }
+                else
+                {
+                    Debug.LogError($"[Steam Test Purchase] Purchase failed: {error}");
+                    EditorUtility.DisplayDialog(
+                        "Purchase Failed",
+                        $"Error: {error ?? "Unknown error"}",
+                        L10n.Get("common.ok")
+                    );
                 }
             }
             catch (Exception ex)
             {
+                Debug.LogError($"[Steam Test Purchase] Exception during purchase: {ex}");
                 EditorUtility.DisplayDialog(
-                    "Error",
-                    $"Failed to test purchase:\n{ex.Message}",
-                    "OK"
+                    L10n.Get("common.error"),
+                    $"Failed to test purchase:\n{ex.Message}\n\nSee console for full stack trace.",
+                    L10n.Get("common.ok")
                 );
-                Debug.LogError($"Error testing purchase: {ex}");
             }
             finally
             {

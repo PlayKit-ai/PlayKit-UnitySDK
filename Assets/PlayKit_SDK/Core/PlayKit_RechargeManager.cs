@@ -18,6 +18,7 @@ namespace PlayKit_SDK
         private string _baseUrl;
         private string _gameId;
         private Func<string> _getPlayerToken;
+        private Func<float> _getCurrentBalance;
 
         private IRechargeProvider _currentProvider;
         private BrowserRechargeProvider _browserProvider;
@@ -74,7 +75,7 @@ namespace PlayKit_SDK
             _gameId = gameId;
             _getPlayerToken = getPlayerToken;
 
-            // Initialize default browser provider
+            // Initialize default browser provider (without balance getter)
             _browserProvider = new BrowserRechargeProvider();
             _browserProvider.Initialize(baseUrl, gameId, getPlayerToken);
             SubscribeToProvider(_browserProvider);
@@ -84,6 +85,47 @@ namespace PlayKit_SDK
             _currentProvider = _browserProvider;
 
             Debug.Log("[PlayKit_RechargeManager] Initialized with default browser provider");
+        }
+
+        /// <summary>
+        /// Initialize the RechargeManager with balance getter for modal support
+        /// </summary>
+        /// <param name="baseUrl">Base URL for the API</param>
+        /// <param name="gameId">Game ID</param>
+        /// <param name="getPlayerToken">Function to get the current player token</param>
+        /// <param name="getCurrentBalance">Function to get the current player balance</param>
+        public void Initialize(string baseUrl, string gameId, Func<string> getPlayerToken, Func<float> getCurrentBalance)
+        {
+            _baseUrl = baseUrl;
+            _gameId = gameId;
+            _getPlayerToken = getPlayerToken;
+            _getCurrentBalance = getCurrentBalance;
+
+            // Initialize default browser provider with balance getter
+            _browserProvider = new BrowserRechargeProvider();
+            _browserProvider.Initialize(baseUrl, gameId, getPlayerToken, getCurrentBalance);
+            SubscribeToProvider(_browserProvider);
+
+            // Browser provider always shows modal (recharge handler UI)
+            _browserProvider.SetShowModal(true);
+
+            // Register browser as default provider
+            _providers["browser"] = _browserProvider;
+            _currentProvider = _browserProvider;
+
+            Debug.Log("[PlayKit_RechargeManager] Initialized with default browser provider (with balance getter)");
+        }
+
+        /// <summary>
+        /// Set whether to show the recharge confirmation modal (for browser provider only)
+        /// </summary>
+        /// <param name="showModal">True to show modal, false to skip directly to browser</param>
+        public void SetShowModal(bool showModal)
+        {
+            if (_browserProvider != null)
+            {
+                _browserProvider.SetShowModal(showModal);
+            }
         }
 
         /// <summary>
@@ -98,6 +140,9 @@ namespace PlayKit_SDK
                 Debug.LogWarning("[PlayKit_RechargeManager] Cannot register null provider");
                 return;
             }
+
+            // Initialize the provider with the same configuration as RechargeManager
+            provider.Initialize(_baseUrl, _gameId, _getPlayerToken);
 
             string method = provider.RechargeMethod?.ToLower() ?? "unknown";
             _providers[method] = provider;
@@ -183,6 +228,27 @@ namespace PlayKit_SDK
 
             Debug.Log($"[PlayKit_RechargeManager] Initiating recharge via {CurrentRechargeMethod}");
             return await _currentProvider.RechargeAsync(sku);
+        }
+
+        /// <summary>
+        /// Get available IAP products for the current platform.
+        /// Returns product list configured in PlayKit Dashboard.
+        /// </summary>
+        /// <returns>Product list result</returns>
+        public async UniTask<Recharge.ProductListResult> GetAvailableProductsAsync()
+        {
+            if (_currentProvider == null)
+            {
+                Debug.LogError("[PlayKit_RechargeManager] No recharge provider available");
+                return new Recharge.ProductListResult
+                {
+                    Success = false,
+                    Error = "No recharge provider initialized"
+                };
+            }
+
+            Debug.Log($"[PlayKit_RechargeManager] Loading products via {CurrentRechargeMethod}");
+            return await _currentProvider.GetAvailableProductsAsync();
         }
 
         private void SubscribeToProvider(IRechargeProvider provider)

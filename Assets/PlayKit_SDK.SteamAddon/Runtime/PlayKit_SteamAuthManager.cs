@@ -151,11 +151,55 @@ namespace PlayKit_SDK.Steam
                 OnAuthSuccess?.Invoke(result);
 
                 Debug.Log($"[PlayKit Steam] Authentication successful! User: {result.userId}");
+
+                // Note: SteamRechargeProvider is now automatically registered via SteamAddonDescriptor.GetRechargeProvider()
+
                 return true;
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[PlayKit Steam] Authentication failed: {ex.Message}");
+                OnAuthError?.Invoke(ex.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Initialize Steam without authentication (for developer token scenarios).
+        /// Only initializes Steamworks to enable IAP functionality.
+        /// Does not create session tickets or perform backend authentication.
+        /// </summary>
+        public async UniTask<bool> InitializeSteamOnlyAsync()
+        {
+            if (_steamAppId == 0)
+            {
+                var error = "Steam App ID not configured";
+                Debug.LogError($"[PlayKit Steam] {error}");
+                OnAuthError?.Invoke(error);
+                return false;
+            }
+
+            try
+            {
+                // Initialize Steam
+                Debug.Log("[PlayKit Steam] Initializing Steamworks for developer mode...");
+                if (!await _steamService.InitializeAsync(_steamAppId, skipRestartCheck: true))
+                {
+                    var error = "Failed to initialize Steam. Is Steam running?";
+                    Debug.LogError($"[PlayKit Steam] {error}");
+                    OnAuthError?.Invoke(error);
+                    return false;
+                }
+
+                _steamId = _steamService.SteamId;
+                Debug.Log($"[PlayKit Steam] Steamworks initialized. SteamID: {_steamId}");
+                Debug.Log("[PlayKit Steam] Skipping authentication - developer token mode");
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[PlayKit Steam] Initialization failed: {ex.Message}");
                 OnAuthError?.Invoke(ex.Message);
                 return false;
             }

@@ -161,12 +161,74 @@ namespace PlayKit_SDK
                 PlayKitAuthManager.Setup(gameId);
             }
 
-            bool authSuccess = await PlayKitAuthManager.AuthenticateAsync();
+            // Discover platform addon for authentication and IAP
+            var platformAddon = DiscoverPlatformAddon();
 
-            if (!authSuccess)
+            bool authSuccess;
+
+            // Check if developer token is configured
+            if (developerToken != null && !settings.IgnoreDeveloperToken)
             {
-                Debug.LogError("[PlayKit SDK] SDK Authentication Failed. Cannot proceed.");
-                return false;
+                // Developer token provided - skip platform authentication
+                Debug.Log("[PlayKit SDK] Using developer token, skipping platform authentication");
+                authSuccess = await PlayKitAuthManager.AuthenticateAsync();
+
+                if (!authSuccess)
+                {
+                    Debug.LogError("[PlayKit SDK] Developer token authentication failed");
+                    return false;
+                }
+
+                // Initialize platform services for developer mode (without authentication)
+                if (platformAddon != null)
+                {
+                    Debug.Log($"[PlayKit SDK] Initializing platform addon '{platformAddon.AddonId}' for developer mode");
+                    bool platformInitialized = await platformAddon.InitializeForDeveloperModeAsync();
+
+                    if (!platformInitialized)
+                    {
+                        Debug.LogWarning($"[PlayKit SDK] Platform addon '{platformAddon.AddonId}' initialization failed. Some features may not work.");
+                        // Don't return false - developer token auth succeeded, so continue
+                    }
+                }
+            }
+            else if (platformAddon != null)
+            {
+                // No developer token - use platform-specific authentication
+                var authProvider = platformAddon.GetAuthProvider();
+
+                if (authProvider == null)
+                {
+                    Debug.LogError($"[PlayKit SDK] Platform addon '{platformAddon.AddonId}' does not provide authentication");
+                    return false;
+                }
+
+                if (!authProvider.IsAvailable)
+                {
+                    Debug.LogError($"[PlayKit SDK] {authProvider.DisplayName} is not available. Please ensure the platform is properly configured.");
+                    return false;
+                }
+
+                Debug.Log($"[PlayKit SDK] Using platform authentication: {authProvider.DisplayName}");
+                authSuccess = await PlayKitAuthManager.AuthenticateWithProviderAsync(authProvider);
+
+                if (!authSuccess)
+                {
+                    Debug.LogError("[PlayKit SDK] SDK Authentication Failed. Cannot proceed.");
+                    return false;
+                }
+            }
+            else
+            {
+                // No platform addon - use default browser authentication
+                Debug.Log("[PlayKit SDK] No platform addon found, using default browser authentication");
+                authSuccess = await PlayKitAuthManager.AuthenticateAsync();
+
+                if (!authSuccess)
+                {
+                    Debug.LogError("[PlayKit SDK] SDK Authentication Failed. Cannot proceed.");
+                    return false;
+                }
             }
 
             _chatProvider = new Provider.AI.AIChatProvider(PlayKitAuthManager);
@@ -174,24 +236,88 @@ namespace PlayKit_SDK
             _objectProvider = new Provider.AI.AIObjectProvider(PlayKitAuthManager);
             _transcriptionProvider = new Provider.AI.AITranscriptionProvider(PlayKitAuthManager);
 
-            // Initialize RechargeManager
+            // Initialize RechargeManager with balance getter for modal support
             _rechargeManager = new PlayKit_RechargeManager();
             _rechargeManager.Initialize(
                 settings.BaseUrl,
                 gameId,
-                () => PlayKitAuthManager.GetPlayerClient()?.GetPlayerToken()
+                () => PlayKitAuthManager.GetPlayerClient()?.GetPlayerToken(),
+                () => PlayKitAuthManager.GetPlayerClient()?.GetDisplayBalance() ?? 0f
             );
+
+            // Register platform-specific recharge provider if available
+            if (platformAddon != null)
+            {
+                var rechargeProvider = platformAddon.GetRechargeProvider();
+                if (rechargeProvider != null && rechargeProvider.IsAvailable)
+                {
+                    Debug.Log($"[PlayKit SDK] Registering platform recharge provider: {rechargeProvider.RechargeMethod}");
+                    _rechargeManager.RegisterProvider(rechargeProvider);
+                    _rechargeManager.SetRechargeMethod(rechargeProvider.RechargeMethod);
+                }
+            }
 
             // Wire up PlayerClient with RechargeManager for auto-prompt recharge feature
             var playerClient = PlayKitAuthManager.GetPlayerClient();
             if (playerClient != null)
             {
                 playerClient.SetRechargeManager(_rechargeManager);
+                playerClient.AutoPromptRecharge = settings.EnableDefaultRechargeHandler;
             }
 
             _isInitialized = true;
             Debug.Log("[PlayKit SDK] PlayKit_SDK Initialized Successfully");
             return true;
+        }
+
+        /// <summary>
+        /// Discover and return a platform addon that can provide services for the current channel.
+        /// Returns null if no matching platform addon is found.
+        /// </summary>
+        private static IPlayKitPlatformAddon DiscoverPlatformAddon()
+        {
+            var settings = PlayKitSettings.Instance;
+            if (settings == null)
+            {
+                return null;
+            }
+
+            string channelType = settings.ChannelType;
+            if (string.IsNullOrEmpty(channelType))
+            {
+                Debug.Log("[PlayKit SDK] No channel type configured");
+                return null;
+            }
+
+            // Get all registered addons
+            var allAddons = AddonRegistry.Instance.GetAllAddons();
+
+            foreach (var kvp in allAddons)
+            {
+                var addon = kvp.Value;
+
+                // Check if addon is enabled
+                if (!settings.EnabledAddons.GetValueOrDefault(addon.AddonId, false))
+                    continue;
+
+                // Check if addon is installed
+                if (!addon.IsInstalled)
+                    continue;
+
+                // Check if addon implements IPlayKitPlatformAddon
+                if (addon is IPlayKitPlatformAddon platformAddon)
+                {
+                    // Check if it can provide services for this channel
+                    if (platformAddon.CanProvideServicesForChannel(channelType))
+                    {
+                        Debug.Log($"[PlayKit SDK] Found platform addon: {addon.DisplayName} for channel: {channelType}");
+                        return platformAddon;
+                    }
+                }
+            }
+
+            Debug.Log($"[PlayKit SDK] No platform addon found for channel: {channelType}");
+            return null;
         }
 
         /// <summary>

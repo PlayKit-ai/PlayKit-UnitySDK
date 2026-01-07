@@ -22,8 +22,9 @@ namespace PlayKit_SDK.Steam
         /// Initialize the Steam client.
         /// </summary>
         /// <param name="appId">Your Steam App ID</param>
+        /// <param name="skipRestartCheck">Skip Steam restart check (for developer token mode)</param>
         /// <returns>True if initialization succeeded</returns>
-        public async UniTask<bool> InitializeAsync(uint appId)
+        public async UniTask<bool> InitializeAsync(uint appId, bool skipRestartCheck = false)
         {
             if (IsInitialized)
             {
@@ -33,12 +34,20 @@ namespace PlayKit_SDK.Steam
 
             try
             {
-                // Check if restart through Steam is needed
-                if (SteamClient.RestartAppIfNecessary(appId))
+                // Skip restart check in developer token mode (testing/development)
+                if (!skipRestartCheck)
                 {
-                    Debug.Log("[PlayKit Steam] Restarting through Steam...");
-                    Application.Quit();
-                    return false;
+                    // Check if restart through Steam is needed
+                    if (SteamClient.RestartAppIfNecessary(appId))
+                    {
+                        Debug.Log("[PlayKit Steam] Restarting through Steam...");
+                        Application.Quit();
+                        return false;
+                    }
+                }
+                else
+                {
+                    Debug.Log("[PlayKit Steam] Skipping restart check (developer token mode)");
                 }
 
                 // Initialize on thread pool to avoid blocking
@@ -78,7 +87,9 @@ namespace PlayKit_SDK.Steam
 
                 if (_currentTicket == null || _currentTicket.Data == null)
                 {
-                    Debug.LogError("[PlayKit Steam] Failed to get session ticket");
+                    Debug.LogError($"[PlayKit Steam] Failed to get session ticket for App ID {SteamClient.AppId}. " +
+                                   "This usually means the current Steam user does not have access to this game. " +
+                                   "For testing, use Spacewar (App ID 480) which is accessible to all Steam users.");
                     return null;
                 }
 

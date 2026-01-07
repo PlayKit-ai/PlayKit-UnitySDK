@@ -69,5 +69,12 @@ namespace PlayKit_SDK.Recharge
         /// Event fired when recharge is cancelled
         /// </summary>
         event Action OnRechargeCancelled;
+
+        /// <summary>
+        /// Get available IAP products for this platform.
+        /// Optional - providers can return null if not supported.
+        /// </summary>
+        /// <returns>Product list result, or null if not supported</returns>
+        UniTask<ProductListResult> GetAvailableProductsAsync();
     }
 }
