@@ -34,6 +34,7 @@ namespace PlayKit_SDK.Example
         [SerializeField] private InputField userInputField;
         [SerializeField] private Image _image;
         [SerializeField] private Button sendBtn;
+        [SerializeField] private PlayKit_Image imageGenerator;
 
         private void Awake()
         {
@@ -69,10 +70,10 @@ namespace PlayKit_SDK.Example
         private async UniTaskVoid OnButtonClicked()
         {
             sendBtn.interactable = false;
-            var imageGen = PlayKit_SDK.Factory.CreateImageClient("flux-1-schnell");
+            var imageGen = imageGenerator;
             try
             {
-                var genResult = await imageGen.GenerateImageAsync(userInputField.text,"1024x1024");
+                var genResult = await imageGen.GenerateImageAsync(userInputField.text);
                 _image.sprite =  genResult.ToSprite();
             }
             catch (Exception e)

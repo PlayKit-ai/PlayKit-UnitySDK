@@ -2246,6 +2246,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1776109753}
   - component: {fileID: 1776109754}
+  - component: {fileID: 1776109755}
   m_Layer: 0
   m_Name: Example
   m_TagString: Untagged
@@ -2283,6 +2284,42 @@ MonoBehaviour:
   userInputField: {fileID: 1627950434}
   _image: {fileID: 1100373551}
   sendBtn: {fileID: 477394231}
+  imageGenerator: {fileID: 1776109755}
+--- !u!114 &1776109755
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1776109750}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb04623339dba534fa485b1bc5a6f4de, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  imageModel: 
+  defaultSize: 1024x1024
+  defaultCount: 1
+  autoConvertToTexture: 1
+  logGeneration: 0
+  OnTextureGenerated:
+    m_PersistentCalls:
+      m_Calls: []
+  OnSpriteGenerated:
+    m_PersistentCalls:
+      m_Calls: []
+  OnImagesGenerated:
+    m_PersistentCalls:
+      m_Calls: []
+  OnGenerationStarted:
+    m_PersistentCalls:
+      m_Calls: []
+  OnGenerationEnded:
+    m_PersistentCalls:
+      m_Calls: []
+  OnError:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &1809904495
 GameObject:
   m_ObjectHideFlags: 0
