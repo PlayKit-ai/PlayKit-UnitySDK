@@ -121,13 +121,34 @@ namespace PlayKit_SDK.Editor
         /// </summary>
         private static bool IsUniTaskAvailable()
         {
-            // Try to find the UniTask type by checking multiple possible assembly names
-            var unitaskType = Type.GetType("Cysharp.Threading.Tasks.UniTask, UniTask");
-            if (unitaskType != null) return true;
+            // Check if UniTask package is listed in Package Manager
+            var listRequest = Client.List(true);
+            while (!listRequest.IsCompleted)
+            {
+                System.Threading.Thread.Sleep(10);
+            }
 
-            // Also check the full assembly qualified name pattern
-            unitaskType = Type.GetType("Cysharp.Threading.Tasks.UniTask, UniTask, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null");
-            return unitaskType != null;
+            if (listRequest.Status == StatusCode.Success)
+            {
+                foreach (var package in listRequest.Result)
+                {
+                    if (package.name == "com.cysharp.unitask")
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            // Fallback: check assemblies
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (assembly.GetName().Name == "UniTask")
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static void ShowUniTaskInstallDialog()
