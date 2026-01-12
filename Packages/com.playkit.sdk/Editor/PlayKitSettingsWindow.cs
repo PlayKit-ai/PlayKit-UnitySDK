@@ -755,27 +755,6 @@ namespace PlayKit_SDK
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            // Channel Type (Read-Only - auto-synced from selected game)
-            SerializedProperty channelTypeProp = serializedSettings.FindProperty("channelType");
-            string channelType = channelTypeProp.stringValue;
-
-            // Display channel type as read-only label
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.PrefixLabel(new GUIContent(
-                L10n.Get("config.recharge.channel_type"),
-                L10n.Get("config.recharge.channel_type.tooltip")
-            ));
-            EditorGUILayout.SelectableLabel(
-                string.IsNullOrEmpty(channelType) ? L10n.Get("config.recharge.channel_type.not_set") : channelType,
-                EditorStyles.textField,
-                GUILayout.Height(EditorGUIUtility.singleLineHeight)
-            );
-            EditorGUILayout.EndHorizontal();
-
-            EditorGUILayout.HelpBox(L10n.Get("config.recharge.channel_type.auto_sync"), MessageType.Info);
-
-            EditorGUILayout.Space(10);
-
             // Enable Default Recharge Handler
             SerializedProperty enableHandlerProp = serializedSettings.FindProperty("enableDefaultRechargeHandler");
             EditorGUILayout.PropertyField(enableHandlerProp, new GUIContent(
