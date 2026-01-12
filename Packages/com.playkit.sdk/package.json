@@ -8,10 +8,7 @@
         "name": "PlayKit",
         "url": "https://playkit.ai"
     },
-    "dependencies": {
-        "com.cysharp.unitask": "2.5.0",
-        "com.unity.nuget.newtonsoft-json": "3.2.1"
-    },
+    "dependencies": {},
     "keywords": [
         "ai",
         "npc",
