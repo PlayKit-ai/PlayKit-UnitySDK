@@ -133,7 +133,7 @@ namespace PlayKit_SDK.Provider.AI
                     }
 
                     var choice = chatResponse.Choices[0];
-                    var content = choice.Message?.Content;
+                    var content = choice.Message?.GetTextContent();
 
                     if (string.IsNullOrEmpty(content))
                     {

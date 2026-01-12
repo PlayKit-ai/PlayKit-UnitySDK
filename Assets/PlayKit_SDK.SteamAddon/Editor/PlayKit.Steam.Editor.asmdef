@@ -12,8 +12,13 @@
     ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
-    "overrideReferences": false,
-    "precompiledReferences": [],
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Facepunch.Steamworks.Win64.dll",
+        "Facepunch.Steamworks.Win32.dll",
+        "Facepunch.Steamworks.Posix.dll",
+        "Newtonsoft.Json.dll"
+    ],
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [],

@@ -18,8 +18,8 @@ namespace PlayKit_SDK
         #region Inspector Fields
 
         [Header("Transcription Configuration")]
-        [Tooltip("Transcription model name (e.g., whisper-large) 语音转文字模型名称")]
-        [SerializeField] private string transcriptionModel = "whisper-large";
+        [Tooltip("Transcription model name. Leave empty to use default from PlayKitSettings. 语音转文字模型名称。留空使用PlayKitSettings中的默认值。")]
+        [SerializeField] private string transcriptionModel = "";
 
         [Tooltip("Default language code for transcription (e.g., 'zh', 'en') 默认语言代码")]
         [SerializeField] private string defaultLanguage = "zh";
@@ -138,7 +138,12 @@ namespace PlayKit_SDK
         {
             await UniTask.WaitUntil(() => PlayKit_SDK.IsReady());
 
-            _transcriptionClient = PlayKit_SDK.Factory.CreateTranscriptionClient(transcriptionModel);
+            // Use settings default if model not specified
+            var modelToUse = string.IsNullOrEmpty(transcriptionModel) 
+                ? PlayKitSettings.Instance?.DefaultTranscriptionModel ?? "default-transcription-model"
+                : transcriptionModel;
+
+            _transcriptionClient = PlayKit_SDK.Factory.CreateTranscriptionClient(modelToUse);
 
             if (_transcriptionClient == null)
             {

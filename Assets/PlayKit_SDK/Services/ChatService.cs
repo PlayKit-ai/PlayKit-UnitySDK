@@ -7,6 +7,7 @@ using System.Text; // MODIFIED: Added for StringBuilder
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using PlayKit_SDK.Provider.AI;
+using PlayKit_SDK.Public;
 
 namespace PlayKit_SDK.Services
 {
@@ -18,19 +19,60 @@ namespace PlayKit_SDK.Services
         {
             _chatProvider = chatProvider;
         }
-        public async UniTask<Public.PlayKit_AIResult<string>> RequestAsync(string model, Public.PlayKit_ChatConfig config, CancellationToken cancellationToken = default)
+
+        /// <summary>
+        /// Convert public message to internal message format, handling multimodal content
+        /// </summary>
+        private ChatMessage ConvertToInternalMessage(PlayKit_ChatMessage m)
         {
-            var internalMessages = config.Messages.Select(m => new ChatMessage { Role = m.Role, Content = m.Content }).ToList();
+            var internalMsg = new ChatMessage
+            {
+                Role = m.Role,
+                ToolCallId = m.ToolCallId,
+                ToolCalls = m.ToolCalls
+            };
+
+            // Check if message has images (multimodal)
+            if (m.HasImages)
+            {
+                // Build multimodal content
+                var base64List = new List<string>();
+                string detail = "auto";
+                
+                foreach (var img in m.Images)
+                {
+                    var base64 = img.GetBase64Data();
+                    if (!string.IsNullOrEmpty(base64))
+                    {
+                        base64List.Add(base64);
+                        detail = img.Detail ?? "auto";
+                    }
+                }
+                
+                internalMsg.SetMultimodalContent(m.Content, base64List, detail);
+            }
+            else
+            {
+                // Simple text content
+                internalMsg.SetTextContent(m.Content);
+            }
+
+            return internalMsg;
+        }
+
+        public async UniTask<PlayKit_AIResult<string>> RequestAsync(string model, PlayKit_ChatConfig config, CancellationToken cancellationToken = default)
+        {
+            var internalMessages = config.Messages.Select(ConvertToInternalMessage).ToList();
             var request = new ChatCompletionRequest { Model = model, Messages = internalMessages, Temperature = config.Temperature, Stream = false };
             var response = await _chatProvider.ChatCompletionAsync(request, cancellationToken);
-            if (response == null || response.Choices == null || response.Choices.Count == 0) return new Public.PlayKit_AIResult<string>("Failed to get a valid response from AI.");
-            return new Public.PlayKit_AIResult<string>(data: response.Choices[0].Message.Content);
+            if (response == null || response.Choices == null || response.Choices.Count == 0) return new PlayKit_AIResult<string>("Failed to get a valid response from AI.");
+            return new PlayKit_AIResult<string>(data: response.Choices[0].Message.GetTextContent());
         }
 
         // MODIFIED: Method signature changed to accept Action<string> for onConcluded.
-        public async UniTask RequestStreamAsync(string model, Public.PlayKit_ChatStreamConfig config, Action<string> onNewChunk, Action<string> onConcluded, CancellationToken cancellationToken = default)
+        public async UniTask RequestStreamAsync(string model, PlayKit_ChatStreamConfig config, Action<string> onNewChunk, Action<string> onConcluded, CancellationToken cancellationToken = default)
         {
-            var internalMessages = config.Messages.Select(m => new ChatMessage { Role = m.Role, Content = m.Content }).ToList();
+            var internalMessages = config.Messages.Select(ConvertToInternalMessage).ToList();
             var request = new ChatCompletionRequest { Model = model, Messages = internalMessages, Temperature = config.Temperature, Stream = true };
 
             // MODIFIED: StringBuilder to accumulate the full response.
@@ -88,18 +130,12 @@ namespace PlayKit_SDK.Services
         /// </summary>
         public async UniTask<ChatCompletionResponse> RequestWithToolsAsync(
             string model,
-            Public.PlayKit_ChatConfig config,
+            PlayKit_ChatConfig config,
             List<ChatTool> tools,
             object toolChoice,
             CancellationToken cancellationToken = default)
         {
-            var internalMessages = config.Messages.Select(m => new ChatMessage
-            {
-                Role = m.Role,
-                Content = m.Content,
-                ToolCallId = m.ToolCallId,
-                ToolCalls = m.ToolCalls
-            }).ToList();
+            var internalMessages = config.Messages.Select(ConvertToInternalMessage).ToList();
 
             var request = new ChatCompletionRequest
             {
@@ -120,20 +156,14 @@ namespace PlayKit_SDK.Services
         /// </summary>
         public async UniTask RequestWithToolsStreamAsync(
             string model,
-            Public.PlayKit_ChatStreamConfig config,
+            PlayKit_ChatStreamConfig config,
             List<ChatTool> tools,
             object toolChoice,
             Action<string> onTextChunk,
             Action<ChatCompletionResponse> onComplete,
             CancellationToken cancellationToken = default)
         {
-            var internalMessages = config.Messages.Select(m => new ChatMessage
-            {
-                Role = m.Role,
-                Content = m.Content,
-                ToolCallId = m.ToolCallId,
-                ToolCalls = m.ToolCalls
-            }).ToList();
+            var internalMessages = config.Messages.Select(ConvertToInternalMessage).ToList();
 
             var request = new ChatCompletionRequest
             {
@@ -165,7 +195,7 @@ namespace PlayKit_SDK.Services
                                 Message = new ChatMessage
                                 {
                                     Role = "assistant",
-                                    Content = fullResponseBuilder.ToString(),
+                                    Content = (object)fullResponseBuilder.ToString(),
                                     ToolCalls = accumulatedToolCalls.Count > 0 ? accumulatedToolCalls : null
                                 },
                                 FinishReason = accumulatedToolCalls.Count > 0 ? "tool_calls" : "stop"

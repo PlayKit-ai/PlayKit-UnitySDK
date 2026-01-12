@@ -13,8 +13,8 @@ namespace PlayKit_SDK
     public class PlayKit_NPC_VoiceModule : MonoBehaviour
     {
         [Header("Voice Transcription Configuration 语音转录配置")]
-        [Tooltip("Transcription model name (e.g., whisper-large) 转录模型名称（例如：whisper-large）")]
-        [SerializeField] private string transcriptionModel = "whisper-large";
+        [Tooltip("Transcription model name. Leave empty to use default from PlayKitSettings. 转录模型名称。留空使用PlayKitSettings中的默认值。")]
+        [SerializeField] private string transcriptionModel = "";
         [Tooltip("Default language code for transcription (e.g., 'zh', 'en') 默认转录语言代码（例如：'zh', 'en'）")]
         [SerializeField] private string defaultLanguage = "zh";
 
@@ -66,12 +66,15 @@ namespace PlayKit_SDK
             // Wait for NPCClient to be ready
             await UniTask.WaitUntil(() => _npcClient.IsReady);
 
-            // Create transcription client
+            // Create transcription client (use settings default if model not specified)
             try
             {
-                _transcriptionClient = PlayKit_SDK.CreateTranscriptionClient(transcriptionModel);
+                var modelToUse = string.IsNullOrEmpty(transcriptionModel) 
+                    ? PlayKitSettings.Instance?.DefaultTranscriptionModel ?? "default-transcription-model"
+                    : transcriptionModel;
+                _transcriptionClient = PlayKit_SDK.CreateTranscriptionClient(modelToUse);
                 _isReady = true;
-                Debug.Log($"[VoiceModule] Ready! Using transcription model '{transcriptionModel}' with NPC '{gameObject.name}'");
+                Debug.Log($"[VoiceModule] Ready! Using transcription model '{modelToUse}' with NPC '{gameObject.name}'");
             }
             catch (Exception ex)
             {

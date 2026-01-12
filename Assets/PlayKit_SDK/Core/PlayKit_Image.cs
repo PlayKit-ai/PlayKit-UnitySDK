@@ -422,7 +422,6 @@ namespace PlayKit_SDK
                     imageCount,
                     size ?? defaultSize,
                     null,
-                    null,
                     token
                 );
 
@@ -449,6 +448,311 @@ namespace PlayKit_SDK
                 }
 
                 OnError?.Invoke("Failed to generate images");
+                return null;
+            }
+            catch (OperationCanceledException)
+            {
+                if (logGeneration)
+                {
+                    Debug.Log("[PlayKit_Image] Generation cancelled");
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[PlayKit_Image] Error: {ex.Message}");
+                OnError?.Invoke(ex.Message);
+                return null;
+            }
+            finally
+            {
+                _isGenerating = false;
+                OnGenerationEnded?.Invoke();
+            }
+        }
+
+        #endregion
+
+        #region Public API - Image-to-Image Generation (img2img)
+
+        /// <summary>
+        /// Generate a single texture from a reference image (img2img)
+        /// </summary>
+        /// <param name="prompt">Text description of the desired image</param>
+        /// <param name="inputImage">Reference image to base generation on</param>
+        /// <param name="size">Output image size (optional)</param>
+        /// <param name="cancellationToken">Optional cancellation token</param>
+        /// <returns>Generated Texture2D</returns>
+        public async UniTask<Texture2D> GenerateTextureFromImageAsync(
+            string prompt,
+            Texture2D inputImage,
+            string size = null,
+            CancellationToken? cancellationToken = null)
+        {
+            return await GenerateTextureFromImagesAsync(prompt, new List<Texture2D> { inputImage }, size, cancellationToken);
+        }
+
+        /// <summary>
+        /// Generate a single texture from multiple reference images (img2img)
+        /// </summary>
+        /// <param name="prompt">Text description of the desired image</param>
+        /// <param name="inputImages">Reference images to base generation on</param>
+        /// <param name="size">Output image size (optional)</param>
+        /// <param name="cancellationToken">Optional cancellation token</param>
+        /// <returns>Generated Texture2D</returns>
+        public async UniTask<Texture2D> GenerateTextureFromImagesAsync(
+            string prompt,
+            List<Texture2D> inputImages,
+            string size = null,
+            CancellationToken? cancellationToken = null)
+        {
+            var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
+
+            if (!ValidateState(prompt))
+            {
+                return null;
+            }
+
+            if (inputImages == null || inputImages.Count == 0)
+            {
+                Debug.LogError("[PlayKit_Image] At least one input image is required for img2img");
+                OnError?.Invoke("Input image required");
+                return null;
+            }
+
+            _isGenerating = true;
+            OnGenerationStarted?.Invoke();
+
+            try
+            {
+                var result = await _imageClient.GenerateImageAsync(
+                    prompt,
+                    inputImages,
+                    size ?? defaultSize,
+                    null,
+                    token
+                );
+
+                if (result != null)
+                {
+                    var texture = result.ToTexture2D();
+
+                    if (texture != null)
+                    {
+                        _lastGeneratedTexture = texture;
+
+                        if (logGeneration)
+                        {
+                            Debug.Log($"[PlayKit_Image] Generated texture from {inputImages.Count} input image(s): {texture.width}x{texture.height}");
+                        }
+
+                        OnTextureGenerated?.Invoke(texture);
+                        return texture;
+                    }
+                }
+
+                OnError?.Invoke("Failed to generate image from input");
+                return null;
+            }
+            catch (OperationCanceledException)
+            {
+                if (logGeneration)
+                {
+                    Debug.Log("[PlayKit_Image] Generation cancelled");
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[PlayKit_Image] Error: {ex.Message}");
+                OnError?.Invoke(ex.Message);
+                return null;
+            }
+            finally
+            {
+                _isGenerating = false;
+                OnGenerationEnded?.Invoke();
+            }
+        }
+
+        /// <summary>
+        /// Generate a single sprite from a reference image (img2img)
+        /// </summary>
+        /// <param name="prompt">Text description of the desired image</param>
+        /// <param name="inputImage">Reference image to base generation on</param>
+        /// <param name="size">Output image size (optional)</param>
+        /// <param name="cancellationToken">Optional cancellation token</param>
+        /// <returns>Generated Sprite</returns>
+        public async UniTask<Sprite> GenerateSpriteFromImageAsync(
+            string prompt,
+            Texture2D inputImage,
+            string size = null,
+            CancellationToken? cancellationToken = null)
+        {
+            var texture = await GenerateTextureFromImageAsync(prompt, inputImage, size, cancellationToken);
+            return texture != null ? Texture2DToSprite(texture) : null;
+        }
+
+        /// <summary>
+        /// Generate a single image with metadata from reference images (img2img)
+        /// </summary>
+        /// <param name="prompt">Text description of the desired image</param>
+        /// <param name="inputImages">Reference images to base generation on</param>
+        /// <param name="size">Output image size (optional)</param>
+        /// <param name="seed">Seed for reproducible results (optional)</param>
+        /// <param name="cancellationToken">Optional cancellation token</param>
+        /// <returns>Generated image with metadata</returns>
+        public async UniTask<PlayKit_GeneratedImage> GenerateImageFromImagesAsync(
+            string prompt,
+            List<Texture2D> inputImages,
+            string size = null,
+            int? seed = null,
+            CancellationToken? cancellationToken = null)
+        {
+            var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
+
+            if (!ValidateState(prompt))
+            {
+                return null;
+            }
+
+            if (inputImages == null || inputImages.Count == 0)
+            {
+                Debug.LogError("[PlayKit_Image] At least one input image is required for img2img");
+                OnError?.Invoke("Input image required");
+                return null;
+            }
+
+            _isGenerating = true;
+            OnGenerationStarted?.Invoke();
+
+            try
+            {
+                var options = new PlayKit_ImageGenerationOptions
+                {
+                    Count = 1,
+                    Size = size ?? defaultSize,
+                    Seed = seed,
+                    InputImages = inputImages
+                };
+
+                var results = await _imageClient.GenerateImagesAsync(prompt, options, token);
+
+                if (results != null && results.Count > 0)
+                {
+                    var result = results[0];
+
+                    if (logGeneration)
+                    {
+                        Debug.Log($"[PlayKit_Image] Generated image from {inputImages.Count} reference(s)");
+                    }
+
+                    if (autoConvertToTexture)
+                    {
+                        var texture = result.ToTexture2D();
+                        if (texture != null)
+                        {
+                            _lastGeneratedTexture = texture;
+                            OnTextureGenerated?.Invoke(texture);
+                        }
+                    }
+
+                    return result;
+                }
+
+                OnError?.Invoke("Failed to generate image from input");
+                return null;
+            }
+            catch (OperationCanceledException)
+            {
+                if (logGeneration)
+                {
+                    Debug.Log("[PlayKit_Image] Generation cancelled");
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[PlayKit_Image] Error: {ex.Message}");
+                OnError?.Invoke(ex.Message);
+                return null;
+            }
+            finally
+            {
+                _isGenerating = false;
+                OnGenerationEnded?.Invoke();
+            }
+        }
+
+        /// <summary>
+        /// Generate multiple images from reference images (img2img)
+        /// Input image count and output image count are independent.
+        /// </summary>
+        /// <param name="prompt">Text description of the desired images</param>
+        /// <param name="inputImages">Reference images to base generation on (1 or more)</param>
+        /// <param name="outputCount">Number of output images to generate (uses defaultCount if 0)</param>
+        /// <param name="size">Output image size (optional)</param>
+        /// <param name="cancellationToken">Optional cancellation token</param>
+        /// <returns>List of generated images with metadata</returns>
+        public async UniTask<List<PlayKit_GeneratedImage>> GenerateImagesFromImagesAsync(
+            string prompt,
+            List<Texture2D> inputImages,
+            int outputCount = 0,
+            string size = null,
+            CancellationToken? cancellationToken = null)
+        {
+            var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
+
+            if (!ValidateState(prompt))
+            {
+                return null;
+            }
+
+            if (inputImages == null || inputImages.Count == 0)
+            {
+                Debug.LogError("[PlayKit_Image] At least one input image is required for img2img");
+                OnError?.Invoke("Input image required");
+                return null;
+            }
+
+            _isGenerating = true;
+            OnGenerationStarted?.Invoke();
+
+            try
+            {
+                int count = outputCount > 0 ? outputCount : defaultCount;
+
+                var results = await _imageClient.GenerateImagesAsync(
+                    prompt,
+                    inputImages,
+                    count,
+                    size ?? defaultSize,
+                    null,
+                    token
+                );
+
+                if (results != null && results.Count > 0)
+                {
+                    if (logGeneration)
+                    {
+                        Debug.Log($"[PlayKit_Image] Generated {results.Count} images from {inputImages.Count} reference(s)");
+                    }
+
+                    if (autoConvertToTexture && results.Count > 0)
+                    {
+                        var texture = results[0].ToTexture2D();
+                        if (texture != null)
+                        {
+                            _lastGeneratedTexture = texture;
+                            OnTextureGenerated?.Invoke(texture);
+                        }
+                    }
+
+                    OnImagesGenerated?.Invoke(results);
+                    return results;
+                }
+
+                OnError?.Invoke("Failed to generate images from input");
                 return null;
             }
             catch (OperationCanceledException)

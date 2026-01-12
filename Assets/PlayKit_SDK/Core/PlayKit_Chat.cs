@@ -33,7 +33,7 @@ namespace PlayKit_SDK
         [SerializeField] private float temperature = 0.7f;
 
         [Tooltip("Automatically maintain conversation history 自动管理对话历史")]
-        [SerializeField] private bool maintainHistory = true;
+        [SerializeField] private bool maintainHistory = false;
 
         [Header("Debug Options")]
         [Tooltip("Log chat messages to console 在控制台输出聊天消息")]
@@ -403,6 +403,254 @@ namespace PlayKit_SDK
                 _isProcessing = false;
                 OnRequestEnded?.Invoke();
             }
+        }
+
+        #endregion
+
+        #region Public API - Multimodal Chat Methods (with Images)
+
+        /// <summary>
+        /// Send a message with a single image and get a response (non-streaming)
+        /// </summary>
+        /// <param name="message">The text message to send</param>
+        /// <param name="image">The image to include in the message</param>
+        /// <param name="cancellationToken">Optional cancellation token</param>
+        /// <returns>The AI response</returns>
+        public async UniTask<string> ChatWithImageAsync(string message, Texture2D image, CancellationToken? cancellationToken = null)
+        {
+            return await ChatWithImagesAsync(message, new List<Texture2D> { image }, cancellationToken);
+        }
+
+        /// <summary>
+        /// Send a message with multiple images and get a response (non-streaming)
+        /// </summary>
+        /// <param name="message">The text message to send</param>
+        /// <param name="images">The images to include in the message</param>
+        /// <param name="cancellationToken">Optional cancellation token</param>
+        /// <returns>The AI response</returns>
+        public async UniTask<string> ChatWithImagesAsync(string message, List<Texture2D> images, CancellationToken? cancellationToken = null)
+        {
+            var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
+
+            if (!ValidateState(message))
+            {
+                return null;
+            }
+
+            _isProcessing = true;
+            OnRequestStarted?.Invoke();
+
+            try
+            {
+                // Build messages with images
+                var messages = BuildMessagesWithImages(message, images);
+
+                var config = new PlayKit_ChatConfig(messages)
+                {
+                    Temperature = temperature
+                };
+
+                var result = await _chatClient.TextGenerationAsync(config, token);
+
+                if (result.Success && !string.IsNullOrEmpty(result.Response))
+                {
+                    // Add to history if enabled (images are included in history)
+                    if (maintainHistory)
+                    {
+                        var userMsg = new PlayKit_ChatMessage
+                        {
+                            Role = "user",
+                            Content = message
+                        };
+                        // Add images to the user message
+                        foreach (var img in images)
+                        {
+                            if (img != null) userMsg.AddImage(img);
+                        }
+                        _conversationHistory.Add(userMsg);
+                        _conversationHistory.Add(new PlayKit_ChatMessage
+                        {
+                            Role = "assistant",
+                            Content = result.Response
+                        });
+                    }
+
+                    if (logMessages)
+                    {
+                        Debug.Log($"[PlayKit_Chat] User (with {images?.Count ?? 0} images): {message}");
+                        Debug.Log($"[PlayKit_Chat] Assistant: {result.Response}");
+                    }
+
+                    OnResponseReceived?.Invoke(result.Response);
+                    return result.Response;
+                }
+                else
+                {
+                    string error = result.ErrorMessage ?? "Unknown error";
+                    OnError?.Invoke(error);
+                    return null;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                if (logMessages)
+                {
+                    Debug.Log("[PlayKit_Chat] Request cancelled");
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[PlayKit_Chat] Error: {ex.Message}");
+                OnError?.Invoke(ex.Message);
+                return null;
+            }
+            finally
+            {
+                _isProcessing = false;
+                OnRequestEnded?.Invoke();
+            }
+        }
+
+        /// <summary>
+        /// Send a message with a single image and get a streaming response
+        /// </summary>
+        /// <param name="message">The text message to send</param>
+        /// <param name="image">The image to include in the message</param>
+        /// <param name="cancellationToken">Optional cancellation token</param>
+        public async UniTask ChatStreamWithImageAsync(string message, Texture2D image, CancellationToken? cancellationToken = null)
+        {
+            await ChatStreamWithImagesAsync(message, new List<Texture2D> { image }, cancellationToken);
+        }
+
+        /// <summary>
+        /// Send a message with multiple images and get a streaming response
+        /// </summary>
+        /// <param name="message">The text message to send</param>
+        /// <param name="images">The images to include in the message</param>
+        /// <param name="cancellationToken">Optional cancellation token</param>
+        public async UniTask ChatStreamWithImagesAsync(string message, List<Texture2D> images, CancellationToken? cancellationToken = null)
+        {
+            var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
+
+            if (!ValidateState(message))
+            {
+                return;
+            }
+
+            _isProcessing = true;
+            OnRequestStarted?.Invoke();
+
+            try
+            {
+                // Build messages with images
+                var messages = BuildMessagesWithImages(message, images);
+
+                var config = new PlayKit_ChatStreamConfig(messages)
+                {
+                    Temperature = temperature
+                };
+
+                await _chatClient.TextChatStreamAsync(
+                    config,
+                    chunk =>
+                    {
+                        OnStreamChunk?.Invoke(chunk);
+                    },
+                    complete =>
+                    {
+                        // Add to history if enabled
+                        if (maintainHistory)
+                        {
+                            var userMsg = new PlayKit_ChatMessage
+                            {
+                                Role = "user",
+                                Content = message
+                            };
+                            foreach (var img in images)
+                            {
+                                if (img != null) userMsg.AddImage(img);
+                            }
+                            _conversationHistory.Add(userMsg);
+                            _conversationHistory.Add(new PlayKit_ChatMessage
+                            {
+                                Role = "assistant",
+                                Content = complete
+                            });
+                        }
+
+                        if (logMessages)
+                        {
+                            Debug.Log($"[PlayKit_Chat] User (with {images?.Count ?? 0} images): {message}");
+                            Debug.Log($"[PlayKit_Chat] Assistant: {complete}");
+                        }
+
+                        OnStreamComplete?.Invoke(complete);
+                    },
+                    token
+                );
+            }
+            catch (OperationCanceledException)
+            {
+                if (logMessages)
+                {
+                    Debug.Log("[PlayKit_Chat] Stream cancelled");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[PlayKit_Chat] Stream error: {ex.Message}");
+                OnError?.Invoke(ex.Message);
+            }
+            finally
+            {
+                _isProcessing = false;
+                OnRequestEnded?.Invoke();
+            }
+        }
+
+        /// <summary>
+        /// Build messages list including images for multimodal requests
+        /// </summary>
+        private List<PlayKit_ChatMessage> BuildMessagesWithImages(string message, List<Texture2D> images)
+        {
+            var messages = new List<PlayKit_ChatMessage>();
+
+            // Copy conversation history
+            if (maintainHistory && _conversationHistory != null)
+            {
+                messages.AddRange(_conversationHistory);
+            }
+            else if (!string.IsNullOrEmpty(systemPrompt))
+            {
+                messages.Add(new PlayKit_ChatMessage
+                {
+                    Role = "system",
+                    Content = systemPrompt
+                });
+            }
+
+            // Add current user message with images
+            var userMessage = new PlayKit_ChatMessage
+            {
+                Role = "user",
+                Content = message
+            };
+
+            if (images != null)
+            {
+                foreach (var img in images)
+                {
+                    if (img != null)
+                    {
+                        userMessage.AddImage(img);
+                    }
+                }
+            }
+
+            messages.Add(userMessage);
+
+            return messages;
         }
 
         #endregion

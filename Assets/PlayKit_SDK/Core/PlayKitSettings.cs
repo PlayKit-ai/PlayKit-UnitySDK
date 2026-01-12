@@ -23,6 +23,12 @@ namespace PlayKit_SDK
         [Tooltip("Default image generation model. Leave empty to use server default.")]
         [SerializeField] private string defaultImageModel = "image-default";
 
+        [Tooltip("Default transcription (speech-to-text) model. Leave empty to use server default.")]
+        [SerializeField] private string defaultTranscriptionModel = "default-transcription-model";
+
+        [Tooltip("Default 3D model generation model. Leave empty to use server default.")]
+        [SerializeField] private string default3DModel = "default-3d-model";
+
         [Header("Development Options")]
         [Tooltip("When enabled, ignores developer tokens and forces player authentication flow")]
         [SerializeField] private bool ignoreDeveloperToken = false;
@@ -114,7 +120,7 @@ namespace PlayKit_SDK
         }
 
         // Constants
-        private const string DEFAULT_BASE_URL = "https://api.playkit.ai";
+        private const string DEFAULT_BASE_URL = "https://playkit.ai";
 
         // Public properties
         public string GameId
@@ -131,6 +137,8 @@ namespace PlayKit_SDK
 
         public string DefaultChatModel => defaultChatModel;
         public string DefaultImageModel => defaultImageModel;
+        public string DefaultTranscriptionModel => defaultTranscriptionModel;
+        public string Default3DModel => default3DModel;
         public bool IgnoreDeveloperToken => ignoreDeveloperToken;
 
         /// <summary>

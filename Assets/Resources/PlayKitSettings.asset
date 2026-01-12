@@ -15,6 +15,8 @@ MonoBehaviour:
   gameId: ef6eaf4b-39ae-4c76-bcf6-b07541cf0ccc
   defaultChatModel: deepseek-chat
   defaultImageModel: flux-1-schnell
+  defaultTranscriptionModel: default-transcription-model
+  default3DModel: default-3d-model
   ignoreDeveloperToken: 0
   customBaseUrl: 
   forceDeveloperTokenInBuild: 0
@@ -26,5 +28,5 @@ MonoBehaviour:
     keys:
     - steam
     values: 01
-  channelType: standalone
+  channelType: steam_demo
   enableDefaultRechargeHandler: 0

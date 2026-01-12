@@ -6,7 +6,7 @@ namespace PlayKit_SDK
 {
     public class PlayKit_SDK : MonoBehaviour
     {
-        public const string VERSION = "v0.2.3.0-canary";
+        public const string VERSION = "v0.2.1.0-canary.2";
 
         // Configuration is now loaded from PlayKitSettings ScriptableObject
         // No need to manually place prefabs in scenes - SDK initializes automatically at runtime

@@ -12,14 +12,74 @@ namespace PlayKit_SDK.Provider.AI
     // For now, we can use aliases to OpenAI compatible models
     // This allows us to extend in the future if AI endpoint adds platform-specific features
 
+    #region Multimodal Content Types
+
+    /// <summary>
+    /// Content part for multimodal messages (text or image)
+    /// </summary>
+    [System.Serializable]
+    public class ChatContentPart
+    {
+        [JsonProperty("type")]
+        public string Type { get; set; } // "text" or "image_url"
+
+        [JsonProperty("text", NullValueHandling = NullValueHandling.Ignore)]
+        public string Text { get; set; }
+
+        [JsonProperty("image_url", NullValueHandling = NullValueHandling.Ignore)]
+        public ChatImageUrl ImageUrl { get; set; }
+
+        /// <summary>
+        /// Create a text content part
+        /// </summary>
+        public static ChatContentPart CreateText(string text)
+        {
+            return new ChatContentPart { Type = "text", Text = text };
+        }
+
+        /// <summary>
+        /// Create an image content part from base64 data
+        /// </summary>
+        public static ChatContentPart CreateImage(string base64Data, string detail = "auto")
+        {
+            return new ChatContentPart
+            {
+                Type = "image_url",
+                ImageUrl = new ChatImageUrl
+                {
+                    Url = $"data:image/png;base64,{base64Data}",
+                    Detail = detail
+                }
+            };
+        }
+    }
+
+    /// <summary>
+    /// Image URL for multimodal chat messages
+    /// </summary>
+    [System.Serializable]
+    public class ChatImageUrl
+    {
+        [JsonProperty("url")]
+        public string Url { get; set; } // data:image/png;base64,... or URL
+
+        [JsonProperty("detail", NullValueHandling = NullValueHandling.Ignore)]
+        public string Detail { get; set; } // "auto", "low", "high"
+    }
+
+    #endregion
+
     [System.Serializable]
     public class ChatMessage
     {
         [JsonProperty("role")]
         public string Role { get; set; }
 
+        /// <summary>
+        /// Message content - can be string for text-only or List of ChatContentPart for multimodal
+        /// </summary>
         [JsonProperty("content")]
-        public string Content { get; set; }
+        public object Content { get; set; }
 
         [JsonProperty("name")]
         public string Name { get; set; }
@@ -29,6 +89,49 @@ namespace PlayKit_SDK.Provider.AI
 
         [JsonProperty("tool_call_id", NullValueHandling = NullValueHandling.Ignore)]
         public string ToolCallId { get; set; }
+
+        /// <summary>
+        /// Get content as string (for text-only messages)
+        /// </summary>
+        public string GetTextContent()
+        {
+            if (Content is string textContent)
+                return textContent;
+            return null;
+        }
+
+        /// <summary>
+        /// Set content as text string
+        /// </summary>
+        public void SetTextContent(string text)
+        {
+            Content = text;
+        }
+
+        /// <summary>
+        /// Set content as multimodal (text + images)
+        /// </summary>
+        public void SetMultimodalContent(string text, List<string> imageBase64List, string detail = "auto")
+        {
+            var parts = new List<ChatContentPart>();
+            
+            // Add text part first
+            if (!string.IsNullOrEmpty(text))
+            {
+                parts.Add(ChatContentPart.CreateText(text));
+            }
+            
+            // Add image parts
+            if (imageBase64List != null)
+            {
+                foreach (var base64 in imageBase64List)
+                {
+                    parts.Add(ChatContentPart.CreateImage(base64, detail));
+                }
+            }
+            
+            Content = parts;
+        }
     }
 
     #region Tool Calling Types

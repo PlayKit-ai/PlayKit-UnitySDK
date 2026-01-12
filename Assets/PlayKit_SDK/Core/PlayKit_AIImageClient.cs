@@ -1,16 +1,19 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using PlayKit_SDK.Provider;
 using PlayKit_SDK.Provider.AI;
+using PlayKit_SDK.Public;
 
 namespace PlayKit_SDK
 {
     /// <summary>
     /// Client for AI image generation using platform-hosted models
     /// Provides simple interface for generating images from text prompts
+    /// Supports both text-to-image and image-to-image (img2img) generation
     /// </summary>
     public class PlayKit_AIImageClient
     {
@@ -22,6 +25,8 @@ namespace PlayKit_SDK
             _modelName = modelName;
             _imageProvider = imageProvider;
         }
+
+        #region Text-to-Image Generation
 
         /// <summary>
         /// Generate a single image from a text prompt
@@ -36,7 +41,7 @@ namespace PlayKit_SDK
             int? seed = null,
             CancellationToken cancellationToken = default)
         {
-            var results = await GenerateImagesAsync(prompt, 1, size, null, seed, cancellationToken);
+            var results = await GenerateImagesAsync(prompt, 1, size, seed, cancellationToken);
             return results?.Count > 0 ? results[0] : null;
         }
 
@@ -64,14 +69,12 @@ namespace PlayKit_SDK
         /// <param name="prompt">Text description of the desired images</param>
         /// <param name="count">Number of images to generate (1-10)</param>
         /// <param name="size">Image size (e.g., "1024x1024", "1792x1024", "1024x1792")</param>
-        /// <param name="aspectRatio">Aspect ratio (e.g., "16:9", "1:1", "9:16") - alternative to size</param>
         /// <param name="seed">Optional seed for reproducible results</param>
         /// <returns>List of generated images with metadata</returns>
         public async UniTask<List<PlayKit_GeneratedImage>> GenerateImagesAsync(
             string prompt,
             int count = 1,
             string size = "1024x1024",
-            string aspectRatio = null,
             int? seed = null,
             CancellationToken cancellationToken = default)
         {
@@ -114,7 +117,9 @@ namespace PlayKit_SDK
                         ImageBase64 = imageData.B64Json,
                         RevisedPrompt = imageData.RevisedPrompt,
                         OriginalPrompt = prompt,
-                        GeneratedAt = DateTimeOffset.FromUnixTimeSeconds(response.Created).DateTime
+                        GeneratedAt = DateTimeOffset.FromUnixTimeSeconds(response.Created).DateTime,
+                        OriginalImageBase64 = imageData.B64JsonOriginal,
+                        TransparentSuccess = imageData.TransparentSuccess
                     });
                 }
 
@@ -149,7 +154,7 @@ namespace PlayKit_SDK
         /// Generate images with advanced provider-specific options
         /// </summary>
         /// <param name="prompt">Text description of the desired images</param>
-        /// <param name="options">Advanced generation options</param>
+        /// <param name="options">Advanced generation options (can include input images for img2img)</param>
         /// <returns>List of generated images with metadata</returns>
         public async UniTask<List<PlayKit_GeneratedImage>> GenerateImagesAsync(string prompt, PlayKit_ImageGenerationOptions options, CancellationToken cancellationToken = default)
         {
@@ -165,7 +170,9 @@ namespace PlayKit_SDK
                 N = options.Count,
                 Size = options.Size,
                 Seed = options.Seed,
-                ProviderOptions = options.ProviderOptions
+                ProviderOptions = options.ProviderOptions,
+                Transparent = options.Transparent ? true : null,
+                Images = options.GetInputImagesBase64()
             };
 
             try
@@ -186,7 +193,9 @@ namespace PlayKit_SDK
                         ImageBase64 = imageData.B64Json,
                         RevisedPrompt = imageData.RevisedPrompt,
                         OriginalPrompt = prompt,
-                        GeneratedAt = DateTimeOffset.FromUnixTimeSeconds(response.Created).DateTime
+                        GeneratedAt = DateTimeOffset.FromUnixTimeSeconds(response.Created).DateTime,
+                        OriginalImageBase64 = imageData.B64JsonOriginal,
+                        TransparentSuccess = imageData.TransparentSuccess
                     });
                 }
 
@@ -215,6 +224,97 @@ namespace PlayKit_SDK
                 throw new PlayKitException("Unexpected error during image generation", ex);
             }
         }
+
+        #endregion
+
+        #region Image-to-Image Generation (img2img)
+
+        /// <summary>
+        /// Generate a single image using input reference images (img2img)
+        /// </summary>
+        /// <param name="prompt">Text description of the desired image</param>
+        /// <param name="inputImages">One or more input reference images</param>
+        /// <param name="size">Output image size (e.g., "1024x1024")</param>
+        /// <param name="seed">Optional seed for reproducible results</param>
+        /// <returns>Generated image with metadata, or null if generation failed</returns>
+        public async UniTask<PlayKit_GeneratedImage> GenerateImageAsync(
+            string prompt,
+            List<Texture2D> inputImages,
+            string size = "1024x1024",
+            int? seed = null,
+            CancellationToken cancellationToken = default)
+        {
+            var results = await GenerateImagesAsync(prompt, inputImages, 1, size, seed, cancellationToken);
+            return results?.Count > 0 ? results[0] : null;
+        }
+
+        /// <summary>
+        /// Generate a single image using a single input reference image (img2img)
+        /// Convenience overload for single input image
+        /// </summary>
+        public async UniTask<PlayKit_GeneratedImage> GenerateImageAsync(
+            string prompt,
+            Texture2D inputImage,
+            string size = "1024x1024",
+            int? seed = null,
+            CancellationToken cancellationToken = default)
+        {
+            return await GenerateImageAsync(prompt, new List<Texture2D> { inputImage }, size, seed, cancellationToken);
+        }
+
+        /// <summary>
+        /// Generate multiple images using input reference images (img2img)
+        /// Input images and output count are independent parameters.
+        /// </summary>
+        /// <param name="prompt">Text description of the desired images</param>
+        /// <param name="inputImages">One or more input reference images</param>
+        /// <param name="count">Number of output images to generate (1-10)</param>
+        /// <param name="size">Output image size (e.g., "1024x1024")</param>
+        /// <param name="seed">Optional seed for reproducible results</param>
+        /// <returns>List of generated images with metadata</returns>
+        public async UniTask<List<PlayKit_GeneratedImage>> GenerateImagesAsync(
+            string prompt,
+            List<Texture2D> inputImages,
+            int count = 1,
+            string size = "1024x1024",
+            int? seed = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (inputImages == null || inputImages.Count == 0)
+            {
+                Debug.LogError("[PlayKit_AIImageClient] At least one input image is required for img2img");
+                return null;
+            }
+
+            var options = new PlayKit_ImageGenerationOptions
+            {
+                Count = count,
+                Size = size,
+                Seed = seed,
+                InputImages = inputImages
+            };
+
+            return await GenerateImagesAsync(prompt, options, cancellationToken);
+        }
+
+        /// <summary>
+        /// Generate multiple images using a single input reference image (img2img)
+        /// Convenience overload for single input image
+        /// </summary>
+        public async UniTask<List<PlayKit_GeneratedImage>> GenerateImagesAsync(
+            string prompt,
+            Texture2D inputImage,
+            int count = 1,
+            string size = "1024x1024",
+            int? seed = null,
+            CancellationToken cancellationToken = default)
+        {
+            return await GenerateImagesAsync(prompt, new List<Texture2D> { inputImage }, count, size, seed, cancellationToken);
+        }
+
+        #endregion
+
+        #region Utility Methods
 
         /// <summary>
         /// Convert base64 image data to Unity Texture2D
@@ -276,6 +376,8 @@ namespace PlayKit_SDK
                 return null;
             }
         }
+
+        #endregion
     }
 
     /// <summary>
@@ -285,7 +387,7 @@ namespace PlayKit_SDK
     public class PlayKit_GeneratedImage
     {
         /// <summary>
-        /// Base64 encoded image data
+        /// Base64 encoded image data (background removed if transparent=true and successful)
         /// </summary>
         public string ImageBase64 { get; set; }
 
@@ -303,6 +405,16 @@ namespace PlayKit_SDK
         /// When the image was generated
         /// </summary>
         public DateTime GeneratedAt { get; set; }
+        
+        /// <summary>
+        /// Original image before background removal (only present when transparent=true)
+        /// </summary>
+        public string OriginalImageBase64 { get; set; }
+        
+        /// <summary>
+        /// Whether background removal was successful (only present when transparent=true)
+        /// </summary>
+        public bool? TransparentSuccess { get; set; }
 
         /// <summary>
         /// Convert to Unity Texture2D
@@ -310,6 +422,14 @@ namespace PlayKit_SDK
         public Texture2D ToTexture2D()
         {
             return PlayKit_AIImageClient.Base64ToTexture2D(ImageBase64);
+        }
+        
+        /// <summary>
+        /// Convert original image (before background removal) to Unity Texture2D
+        /// </summary>
+        public Texture2D OriginalToTexture2D()
+        {
+            return PlayKit_AIImageClient.Base64ToTexture2D(OriginalImageBase64);
         }
         
         /// <summary>
@@ -325,17 +445,19 @@ namespace PlayKit_SDK
 
     /// <summary>
     /// Advanced options for image generation
+    /// Supports both text-to-image and image-to-image (img2img) generation
     /// </summary>
     [System.Serializable]
     public class PlayKit_ImageGenerationOptions
     {
         /// <summary>
-        /// Number of images to generate (1-10)
+        /// Number of output images to generate (1-10)
+        /// This is independent from the number of input images
         /// </summary>
         public int Count { get; set; } = 1;
 
         /// <summary>
-        /// Image size (e.g., "1024x1024", "1792x1024", "1024x1792")
+        /// Output image size (e.g., "1024x1024", "1792x1024", "1024x1792")
         /// </summary>
         public string Size { get; set; } = "1024x1024";
         
@@ -348,5 +470,55 @@ namespace PlayKit_SDK
         /// Provider-specific options (e.g., for OpenAI: {"openai": {"style": "vivid", "quality": "hd"}})
         /// </summary>
         public Dictionary<string, object> ProviderOptions { get; set; }
+        
+        /// <summary>
+        /// If true, automatically remove background from generated images.
+        /// When enabled, ImageBase64 contains the transparent image and OriginalImageBase64 contains the original.
+        /// </summary>
+        public bool Transparent { get; set; } = false;
+
+        /// <summary>
+        /// Input reference images for img2img generation (optional)
+        /// When provided, the model will use these as reference for generation
+        /// Can provide 1 or more images; the output count is independent
+        /// </summary>
+        public List<Texture2D> InputImages { get; set; }
+
+        /// <summary>
+        /// Check if this is an img2img request (has input images)
+        /// </summary>
+        public bool HasInputImages => InputImages != null && InputImages.Count > 0;
+
+        /// <summary>
+        /// Add an input image for img2img generation
+        /// </summary>
+        public void AddInputImage(Texture2D texture)
+        {
+            if (InputImages == null) InputImages = new List<Texture2D>();
+            InputImages.Add(texture);
+        }
+
+        /// <summary>
+        /// Get input images as base64 encoded strings (internal use)
+        /// </summary>
+        internal List<string> GetInputImagesBase64()
+        {
+            if (!HasInputImages) return null;
+
+            var base64List = new List<string>();
+            foreach (var texture in InputImages)
+            {
+                if (texture != null)
+                {
+                    var base64 = PlayKit_ImageUtils.Texture2DToBase64(texture);
+                    if (!string.IsNullOrEmpty(base64))
+                    {
+                        base64List.Add(base64);
+                    }
+                }
+            }
+
+            return base64List.Count > 0 ? base64List : null;
+        }
     }
 }

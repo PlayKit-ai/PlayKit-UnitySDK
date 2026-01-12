@@ -28,6 +28,18 @@ namespace PlayKit_SDK.Provider.AI
         
         [JsonProperty("provider_options")]
         public Dictionary<string, object> ProviderOptions { get; set; }
+        
+        /// <summary>
+        /// If true, automatically remove background from generated images
+        /// </summary>
+        [JsonProperty("transparent")]
+        public bool? Transparent { get; set; }
+        
+        /// <summary>
+        /// Input images for img2img generation (base64 encoded)
+        /// </summary>
+        [JsonProperty("images", NullValueHandling = NullValueHandling.Ignore)]
+        public List<string> Images { get; set; }
     }
 
     [System.Serializable]
@@ -48,5 +60,17 @@ namespace PlayKit_SDK.Provider.AI
         
         [JsonProperty("revised_prompt")]
         public string RevisedPrompt { get; set; }
+        
+        /// <summary>
+        /// Original image before background removal (only present when transparent=true)
+        /// </summary>
+        [JsonProperty("b64_json_original")]
+        public string B64JsonOriginal { get; set; }
+        
+        /// <summary>
+        /// Whether background removal was successful (only present when transparent=true)
+        /// </summary>
+        [JsonProperty("transparent_success")]
+        public bool? TransparentSuccess { get; set; }
     }
 }

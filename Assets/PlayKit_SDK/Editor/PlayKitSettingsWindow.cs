@@ -52,10 +52,16 @@ namespace PlayKit_SDK
         // Models list state
         private List<ModelInfo> _textModelsList = new List<ModelInfo>();
         private List<ModelInfo> _imageModelsList = new List<ModelInfo>();
+        private List<ModelInfo> _transcriptionModelsList = new List<ModelInfo>();
+        private List<ModelInfo> _3dModelsList = new List<ModelInfo>();
         private string[] _textModelsDisplayNames = new string[0];
         private string[] _imageModelsDisplayNames = new string[0];
+        private string[] _transcriptionModelsDisplayNames = new string[0];
+        private string[] _3dModelsDisplayNames = new string[0];
         private int _selectedTextModelIndex = -1;
         private int _selectedImageModelIndex = -1;
+        private int _selectedTranscriptionModelIndex = -1;
+        private int _selected3DModelIndex = -1;
         private bool _isLoadingModels = false;
         private string _modelsLoadError = "";
 
@@ -410,6 +416,58 @@ namespace PlayKit_SDK
                     EditorGUILayout.LabelField(L10n.Get("config.models.image.label"), L10n.Get("config.models.none_available"));
                 }
 
+                EditorGUILayout.Space(5);
+
+                // Transcription Model Dropdown
+                if (_transcriptionModelsList.Count > 0)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    _selectedTranscriptionModelIndex = EditorGUILayout.Popup(
+                        new GUIContent(L10n.Get("config.models.transcription.label"), L10n.Get("config.models.transcription.tooltip")),
+                        _selectedTranscriptionModelIndex,
+                        _transcriptionModelsDisplayNames
+                    );
+
+                    if (EditorGUI.EndChangeCheck() && _selectedTranscriptionModelIndex >= 0 && _selectedTranscriptionModelIndex < _transcriptionModelsList.Count)
+                    {
+                        var selectedModel = _transcriptionModelsList[_selectedTranscriptionModelIndex];
+                        SerializedProperty transcriptionModelProp = serializedSettings.FindProperty("defaultTranscriptionModel");
+                        transcriptionModelProp.stringValue = selectedModel.id;
+                        serializedSettings.ApplyModifiedProperties();
+                        EditorUtility.SetDirty(settings);
+                    }
+                }
+                else
+                {
+                    EditorGUILayout.LabelField(L10n.Get("config.models.transcription.label"), L10n.Get("config.models.none_available"));
+                }
+
+                EditorGUILayout.Space(5);
+
+                // 3D Model Dropdown
+                if (_3dModelsList.Count > 0)
+                {
+                    EditorGUI.BeginChangeCheck();
+                    _selected3DModelIndex = EditorGUILayout.Popup(
+                        new GUIContent(L10n.Get("config.models.3d.label"), L10n.Get("config.models.3d.tooltip")),
+                        _selected3DModelIndex,
+                        _3dModelsDisplayNames
+                    );
+
+                    if (EditorGUI.EndChangeCheck() && _selected3DModelIndex >= 0 && _selected3DModelIndex < _3dModelsList.Count)
+                    {
+                        var selectedModel = _3dModelsList[_selected3DModelIndex];
+                        SerializedProperty model3dProp = serializedSettings.FindProperty("default3DModel");
+                        model3dProp.stringValue = selectedModel.id;
+                        serializedSettings.ApplyModifiedProperties();
+                        EditorUtility.SetDirty(settings);
+                    }
+                }
+                else
+                {
+                    EditorGUILayout.LabelField(L10n.Get("config.models.3d.label"), L10n.Get("config.models.none_available"));
+                }
+
                 // Refresh button
                 EditorGUILayout.Space(5);
                 EditorGUILayout.BeginHorizontal();
@@ -456,10 +514,16 @@ namespace PlayKit_SDK
                         // Clear models list
                         _textModelsList.Clear();
                         _imageModelsList.Clear();
+                        _transcriptionModelsList.Clear();
+                        _3dModelsList.Clear();
                         _textModelsDisplayNames = new string[0];
                         _imageModelsDisplayNames = new string[0];
+                        _transcriptionModelsDisplayNames = new string[0];
+                        _3dModelsDisplayNames = new string[0];
                         _selectedTextModelIndex = -1;
                         _selectedImageModelIndex = -1;
+                        _selectedTranscriptionModelIndex = -1;
+                        _selected3DModelIndex = -1;
                         _modelsLoadError = "";
                         settings.GameId = "";
                         Repaint();
@@ -1500,12 +1564,20 @@ namespace PlayKit_SDK
                             // Separate models by type
                             _textModelsList = response.models.Where(m => m.type == "text").ToList();
                             _imageModelsList = response.models.Where(m => m.type == "image").ToList();
+                            _transcriptionModelsList = response.models.Where(m => m.type == "transcription").ToList();
+                            _3dModelsList = response.models.Where(m => m.type == "3d").ToList();
 
                             // Build display names (show recommended tag)
                             _textModelsDisplayNames = _textModelsList.Select(m =>
                                 m.is_recommended ? $"{m.name} (Recommended)" : m.name
                             ).ToArray();
                             _imageModelsDisplayNames = _imageModelsList.Select(m =>
+                                m.is_recommended ? $"{m.name} (Recommended)" : m.name
+                            ).ToArray();
+                            _transcriptionModelsDisplayNames = _transcriptionModelsList.Select(m =>
+                                m.is_recommended ? $"{m.name} (Recommended)" : m.name
+                            ).ToArray();
+                            _3dModelsDisplayNames = _3dModelsList.Select(m =>
                                 m.is_recommended ? $"{m.name} (Recommended)" : m.name
                             ).ToArray();
 
@@ -1547,6 +1619,48 @@ namespace PlayKit_SDK
                                     SerializedObject serializedSettings = new SerializedObject(settings);
                                     SerializedProperty imageModelProp = serializedSettings.FindProperty("defaultImageModel");
                                     imageModelProp.stringValue = "image-model";
+                                    serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+                                }
+                            }
+
+                            // Find current selection for transcription model
+                            if (!string.IsNullOrEmpty(settings.DefaultTranscriptionModel))
+                            {
+                                _selectedTranscriptionModelIndex = _transcriptionModelsList.FindIndex(m => m.id == settings.DefaultTranscriptionModel);
+                            }
+
+                            // Auto-select default-transcription-model if no selection and it exists
+                            if (_selectedTranscriptionModelIndex < 0)
+                            {
+                                int transcriptionModelIndex = _transcriptionModelsList.FindIndex(m => m.id == "default-transcription-model");
+                                if (transcriptionModelIndex >= 0)
+                                {
+                                    _selectedTranscriptionModelIndex = transcriptionModelIndex;
+                                    // Save to settings
+                                    SerializedObject serializedSettings = new SerializedObject(settings);
+                                    SerializedProperty transcriptionModelProp = serializedSettings.FindProperty("defaultTranscriptionModel");
+                                    transcriptionModelProp.stringValue = "default-transcription-model";
+                                    serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+                                }
+                            }
+
+                            // Find current selection for 3D model
+                            if (!string.IsNullOrEmpty(settings.Default3DModel))
+                            {
+                                _selected3DModelIndex = _3dModelsList.FindIndex(m => m.id == settings.Default3DModel);
+                            }
+
+                            // Auto-select default-3d-model if no selection and it exists
+                            if (_selected3DModelIndex < 0)
+                            {
+                                int model3dIndex = _3dModelsList.FindIndex(m => m.id == "default-3d-model");
+                                if (model3dIndex >= 0)
+                                {
+                                    _selected3DModelIndex = model3dIndex;
+                                    // Save to settings
+                                    SerializedObject serializedSettings = new SerializedObject(settings);
+                                    SerializedProperty model3dProp = serializedSettings.FindProperty("default3DModel");
+                                    model3dProp.stringValue = "default-3d-model";
                                     serializedSettings.ApplyModifiedPropertiesWithoutUndo();
                                 }
                             }

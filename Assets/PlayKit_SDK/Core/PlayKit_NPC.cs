@@ -139,6 +139,12 @@ namespace PlayKit_SDK
         /// <returns>The NPC's text response</returns>
         public async UniTask<string> Talk(string message, CancellationToken? cancellationToken = null)
         {
+            if (_isTalking)
+            {
+                Debug.LogWarning("[NPCClient] Already processing a request.");
+                return null;
+            }
+
             var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
             _isTalking = true;
 
@@ -186,6 +192,12 @@ namespace PlayKit_SDK
         /// <param name="cancellationToken">Cancellation token (defaults to OnDestroyCancellationToken)</param>
         public async UniTask TalkStream(string message, Action<string> onChunk, Action<string> onComplete, CancellationToken? cancellationToken = null)
         {
+            if (_isTalking)
+            {
+                Debug.LogWarning("[NPCClient] Already processing a request.");
+                return;
+            }
+
             var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
             _isTalking = true;
 
@@ -216,6 +228,137 @@ namespace PlayKit_SDK
             else
             {
                 await TalkSimpleStreamInternal(message, onChunk, onComplete, token);
+            }
+        }
+
+        #endregion
+
+        #region Main API - Multimodal Talk Methods (with Images)
+
+        /// <summary>
+        /// Send a message with a single image to the NPC and get a response.
+        /// Useful for asking the NPC about visual content or providing context through images.
+        /// </summary>
+        /// <param name="message">The text message to send to the NPC</param>
+        /// <param name="image">The image to include with the message</param>
+        /// <param name="cancellationToken">Cancellation token (defaults to OnDestroyCancellationToken)</param>
+        /// <returns>The NPC's text response</returns>
+        public async UniTask<string> Talk(string message, Texture2D image, CancellationToken? cancellationToken = null)
+        {
+            return await Talk(message, new List<Texture2D> { image }, cancellationToken);
+        }
+
+        /// <summary>
+        /// Send a message with multiple images to the NPC and get a response.
+        /// Useful for asking the NPC about visual content or providing context through images.
+        /// </summary>
+        /// <param name="message">The text message to send to the NPC</param>
+        /// <param name="images">The images to include with the message</param>
+        /// <param name="cancellationToken">Cancellation token (defaults to OnDestroyCancellationToken)</param>
+        /// <returns>The NPC's text response</returns>
+        public async UniTask<string> Talk(string message, List<Texture2D> images, CancellationToken? cancellationToken = null)
+        {
+            if (_isTalking)
+            {
+                Debug.LogWarning("[NPCClient] Already processing a request.");
+                return null;
+            }
+
+            var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
+            _isTalking = true;
+
+            if (_chatClient == null)
+            {
+                Debug.LogError("[NPCClient] Chat client not initialized. Please call PlayKit_SDK.InitializeAsync() first.");
+                _isTalking = false;
+                return null;
+            }
+
+            await UniTask.WaitUntil(() => IsReady);
+
+            if (!gameObject.activeInHierarchy)
+            {
+                Debug.LogError("[NPCClient] NPC client is not active");
+                _isTalking = false;
+                return null;
+            }
+
+            if (string.IsNullOrEmpty(message))
+            {
+                _isTalking = false;
+                return null;
+            }
+
+            // Check if we should use actions
+            if (HasEnabledActions)
+            {
+                return await TalkWithActionsAndImagesInternal(message, images, token);
+            }
+            else
+            {
+                return await TalkSimpleWithImagesInternal(message, images, token);
+            }
+        }
+
+        /// <summary>
+        /// Send a message with a single image to the NPC and get a streaming response.
+        /// </summary>
+        /// <param name="message">The text message to send to the NPC</param>
+        /// <param name="image">The image to include with the message</param>
+        /// <param name="onChunk">Called for each piece of the response as it streams in</param>
+        /// <param name="onComplete">Called when the complete response is ready</param>
+        /// <param name="cancellationToken">Cancellation token (defaults to OnDestroyCancellationToken)</param>
+        public async UniTask TalkStream(string message, Texture2D image, Action<string> onChunk, Action<string> onComplete, CancellationToken? cancellationToken = null)
+        {
+            await TalkStream(message, new List<Texture2D> { image }, onChunk, onComplete, cancellationToken);
+        }
+
+        /// <summary>
+        /// Send a message with multiple images to the NPC and get a streaming response.
+        /// </summary>
+        /// <param name="message">The text message to send to the NPC</param>
+        /// <param name="images">The images to include with the message</param>
+        /// <param name="onChunk">Called for each piece of the response as it streams in</param>
+        /// <param name="onComplete">Called when the complete response is ready</param>
+        /// <param name="cancellationToken">Cancellation token (defaults to OnDestroyCancellationToken)</param>
+        public async UniTask TalkStream(string message, List<Texture2D> images, Action<string> onChunk, Action<string> onComplete, CancellationToken? cancellationToken = null)
+        {
+            if (_isTalking)
+            {
+                Debug.LogWarning("[NPCClient] Already processing a request.");
+                return;
+            }
+
+            var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
+            _isTalking = true;
+
+            if (_chatClient == null)
+            {
+                Debug.LogError("[NPCClient] Chat client not initialized. Please call PlayKit_SDK.InitializeAsync() first.");
+                _isTalking = false;
+                onChunk?.Invoke(null);
+                onComplete?.Invoke(null);
+                return;
+            }
+
+            await UniTask.WaitUntil(() => IsReady);
+
+            if (string.IsNullOrEmpty(message))
+            {
+                _isTalking = false;
+                onChunk?.Invoke(null);
+                onComplete?.Invoke(null);
+                return;
+            }
+
+            // Check if we should use actions
+            if (HasEnabledActions)
+            {
+                await TalkWithActionsAndImagesStreamInternal(message, images, onChunk, onComplete, token);
+            }
+            else
+            {
+                await TalkSimpleWithImagesStreamInternal(message, images, onChunk, onComplete, token);
             }
         }
 
@@ -304,7 +447,7 @@ namespace PlayKit_SDK
                 if (result.Success && result.Response?.Choices?.Count > 0)
                 {
                     var choice = result.Response.Choices[0];
-                    var responseText = choice.Message?.Content ?? "";
+                    var responseText = choice.Message?.GetTextContent() ?? "";
 
                     // Add assistant response to history
                     _conversationHistory.Add(new PlayKit_ChatMessage
@@ -396,6 +539,293 @@ namespace PlayKit_SDK
             }
         }
 
+        #region Internal Implementation - Multimodal (with Images)
+
+        /// <summary>
+        /// Simple talk with images (no actions)
+        /// </summary>
+        private async UniTask<string> TalkSimpleWithImagesInternal(string message, List<Texture2D> images, CancellationToken token)
+        {
+            // Record conversation with AIContextManager
+            AIContextManager.Instance?.RecordConversation(this);
+
+            // Add user message with images to history
+            var userMsg = new PlayKit_ChatMessage
+            {
+                Role = "user",
+                Content = message
+            };
+            if (images != null)
+            {
+                foreach (var img in images)
+                {
+                    if (img != null) userMsg.AddImage(img);
+                }
+            }
+            _conversationHistory.Add(userMsg);
+
+            try
+            {
+                var config = new PlayKit_ChatConfig(_conversationHistory.ToList());
+                var result = await _chatClient.TextGenerationAsync(config, token);
+
+                if (result.Success && !string.IsNullOrEmpty(result.Response))
+                {
+                    _conversationHistory.Add(new PlayKit_ChatMessage
+                    {
+                        Role = "assistant",
+                        Content = result.Response
+                    });
+                    _isTalking = false;
+
+                    // Trigger reply prediction generation (fire and forget)
+                    if (generateReplyPrediction)
+                    {
+                        TriggerReplyPredictionAsync(token).Forget();
+                    }
+
+                    return result.Response;
+                }
+                else
+                {
+                    _isTalking = false;
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                _isTalking = false;
+                Debug.LogError($"[NPCClient] Error in Talk with images: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Talk with actions and images
+        /// </summary>
+        private async UniTask<string> TalkWithActionsAndImagesInternal(string message, List<Texture2D> images, CancellationToken token)
+        {
+            // Record conversation with AIContextManager
+            AIContextManager.Instance?.RecordConversation(this);
+
+            // Add user message with images to history
+            var userMsg = new PlayKit_ChatMessage
+            {
+                Role = "user",
+                Content = message
+            };
+            if (images != null)
+            {
+                foreach (var img in images)
+                {
+                    if (img != null) userMsg.AddImage(img);
+                }
+            }
+            _conversationHistory.Add(userMsg);
+
+            try
+            {
+                // Get enabled actions from ActionsModule
+                var actions = _actionsModule.EnabledActions;
+                var tools = actions
+                    .Where(a => a != null && a.enabled)
+                    .Select(a => a.ToTool())
+                    .ToList();
+
+                var config = new PlayKit_ChatConfig(_conversationHistory.ToList());
+                var result = await _chatClient.TextGenerationWithToolsAsync(config, tools, "auto", token);
+
+                if (result.Success && result.Response?.Choices?.Count > 0)
+                {
+                    var choice = result.Response.Choices[0];
+                    var responseText = choice.Message?.GetTextContent() ?? "";
+
+                    // Add assistant response to history
+                    _conversationHistory.Add(new PlayKit_ChatMessage
+                    {
+                        Role = "assistant",
+                        Content = responseText,
+                        ToolCalls = choice.Message?.ToolCalls
+                    });
+
+                    // Process action calls
+                    if (choice.Message?.ToolCalls != null)
+                    {
+                        ProcessActionCalls(choice.Message.ToolCalls);
+                    }
+
+                    _isTalking = false;
+
+                    // Trigger reply prediction generation (fire and forget)
+                    if (generateReplyPrediction)
+                    {
+                        TriggerReplyPredictionAsync(token).Forget();
+                    }
+
+                    return responseText;
+                }
+                else
+                {
+                    _isTalking = false;
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                _isTalking = false;
+                Debug.LogError($"[NPCClient] Error in Talk with actions and images: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Simple streaming talk with images (no actions)
+        /// </summary>
+        private async UniTask TalkSimpleWithImagesStreamInternal(string message, List<Texture2D> images, Action<string> onChunk, Action<string> onComplete, CancellationToken token)
+        {
+            // Record conversation with AIContextManager
+            AIContextManager.Instance?.RecordConversation(this);
+
+            // Add user message with images to history
+            var userMsg = new PlayKit_ChatMessage
+            {
+                Role = "user",
+                Content = message
+            };
+            if (images != null)
+            {
+                foreach (var img in images)
+                {
+                    if (img != null) userMsg.AddImage(img);
+                }
+            }
+            _conversationHistory.Add(userMsg);
+
+            try
+            {
+                var config = new PlayKit_ChatStreamConfig(_conversationHistory.ToList());
+
+                await _chatClient.TextChatStreamAsync(config,
+                    chunk => onChunk?.Invoke(chunk),
+                    completeResponse =>
+                    {
+                        _isTalking = false;
+                        if (!string.IsNullOrEmpty(completeResponse))
+                        {
+                            _conversationHistory.Add(new PlayKit_ChatMessage
+                            {
+                                Role = "assistant",
+                                Content = completeResponse
+                            });
+
+                            // Trigger reply prediction generation (fire and forget)
+                            if (generateReplyPrediction)
+                            {
+                                TriggerReplyPredictionAsync(token).Forget();
+                            }
+                        }
+                        onComplete?.Invoke(completeResponse);
+                    },
+                    token
+                );
+            }
+            catch (Exception ex)
+            {
+                _isTalking = false;
+                Debug.LogError($"[NPCClient] Error in streaming Talk with images: {ex.Message}");
+                onChunk?.Invoke(null);
+                onComplete?.Invoke(null);
+            }
+        }
+
+        /// <summary>
+        /// Streaming talk with actions and images
+        /// </summary>
+        private async UniTask TalkWithActionsAndImagesStreamInternal(string message, List<Texture2D> images, Action<string> onChunk, Action<string> onComplete, CancellationToken token)
+        {
+            // Record conversation with AIContextManager
+            AIContextManager.Instance?.RecordConversation(this);
+
+            // Add user message with images to history
+            var userMsg = new PlayKit_ChatMessage
+            {
+                Role = "user",
+                Content = message
+            };
+            if (images != null)
+            {
+                foreach (var img in images)
+                {
+                    if (img != null) userMsg.AddImage(img);
+                }
+            }
+            _conversationHistory.Add(userMsg);
+
+            try
+            {
+                var actions = _actionsModule.EnabledActions;
+                var tools = actions
+                    .Where(a => a != null && a.enabled)
+                    .Select(a => a.ToTool())
+                    .ToList();
+
+                var config = new PlayKit_ChatStreamConfig(_conversationHistory.ToList());
+
+                await _chatClient.TextGenerationWithToolsStreamAsync(
+                    config,
+                    tools,
+                    chunk => onChunk?.Invoke(chunk),
+                    completionResponse =>
+                    {
+                        _isTalking = false;
+
+                        if (completionResponse?.Choices?.Count > 0)
+                        {
+                            var choice = completionResponse.Choices[0];
+                            var responseText = choice.Message?.GetTextContent() ?? "";
+
+                            // Add assistant response to history
+                            _conversationHistory.Add(new PlayKit_ChatMessage
+                            {
+                                Role = "assistant",
+                                Content = responseText,
+                                ToolCalls = choice.Message?.ToolCalls
+                            });
+
+                            // Process action calls
+                            if (choice.Message?.ToolCalls != null)
+                            {
+                                ProcessActionCalls(choice.Message.ToolCalls);
+                            }
+
+                            // Trigger reply prediction generation (fire and forget)
+                            if (generateReplyPrediction)
+                            {
+                                TriggerReplyPredictionAsync(token).Forget();
+                            }
+
+                            onComplete?.Invoke(responseText);
+                        }
+                        else
+                        {
+                            onComplete?.Invoke(null);
+                        }
+                    },
+                    "auto",
+                    token
+                );
+            }
+            catch (Exception ex)
+            {
+                _isTalking = false;
+                Debug.LogError($"[NPCClient] Error in streaming Talk with actions and images: {ex.Message}");
+                onChunk?.Invoke(null);
+                onComplete?.Invoke(null);
+            }
+        }
+
+        #endregion
+
         /// <summary>
         /// Streaming talk with actions
         /// </summary>
@@ -432,7 +862,7 @@ namespace PlayKit_SDK
                         if (completionResponse?.Choices?.Count > 0)
                         {
                             var choice = completionResponse.Choices[0];
-                            var responseText = choice.Message?.Content ?? "";
+                            var responseText = choice.Message?.GetTextContent() ?? "";
 
                             // Add assistant response to history
                             _conversationHistory.Add(new PlayKit_ChatMessage
