@@ -20,11 +20,15 @@ namespace PlayKit_SDK.Editor
         private const string OPENUPM_INSTALL_GUIDE =
             "https://github.com/Cysharp/UniTask#install-via-upm";
 
+        private const string NEWTONSOFT_PACKAGE_ID = "com.unity.nuget.newtonsoft-json";
+        private const string NEWTONSOFT_VERSION = "3.2.1";
+
         private const string SKIP_CHECK_KEY = "PlayKit_SDK_SkipDependencyCheck";
         private const string LAST_CHECK_KEY = "PlayKit_SDK_LastDependencyCheck";
 
         private static AddRequest _addRequest;
         private static bool _isInstalling;
+        private static string _installingPackage;
 
         static PlayKit_DependencyChecker()
         {
@@ -50,7 +54,7 @@ namespace PlayKit_SDK.Editor
                     if ((DateTime.Now - lastCheck).TotalMinutes < 1)
                     {
                         // Already checked this session, do quick type check
-                        if (IsUniTaskAvailable())
+                        if (IsUniTaskAvailable() && IsNewtonsoftAvailable())
                         {
                             return;
                         }
@@ -97,23 +101,34 @@ namespace PlayKit_SDK.Editor
         {
             EditorPrefs.SetString(LAST_CHECK_KEY, DateTime.Now.ToString());
 
-            // Check if UniTask is available
-            if (IsUniTaskAvailable())
+            bool hasUniTask = IsUniTaskAvailable();
+            bool hasNewtonsoft = IsNewtonsoftAvailable();
+
+            // All dependencies installed
+            if (hasUniTask && hasNewtonsoft)
             {
                 if (isManual)
                 {
                     EditorUtility.DisplayDialog(
                         "PlayKit SDK - Dependencies",
                         "All required dependencies are installed.\n\n" +
-                        "- UniTask: Installed",
+                        "- UniTask: Installed\n" +
+                        "- Newtonsoft.Json: Installed",
                         "OK"
                     );
                 }
                 return;
             }
 
-            // UniTask not found, show installation dialog
-            ShowUniTaskInstallDialog();
+            // Check which dependencies are missing
+            if (!hasUniTask)
+            {
+                ShowUniTaskInstallDialog();
+            }
+            else if (!hasNewtonsoft)
+            {
+                ShowNewtonsoftInstallDialog();
+            }
         }
 
         /// <summary>
@@ -143,6 +158,42 @@ namespace PlayKit_SDK.Editor
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 if (assembly.GetName().Name == "UniTask")
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Quick check if Newtonsoft.Json is available
+        /// </summary>
+        private static bool IsNewtonsoftAvailable()
+        {
+            // Check if Newtonsoft.Json package is listed in Package Manager
+            var listRequest = Client.List(true);
+            while (!listRequest.IsCompleted)
+            {
+                System.Threading.Thread.Sleep(10);
+            }
+
+            if (listRequest.Status == StatusCode.Success)
+            {
+                foreach (var package in listRequest.Result)
+                {
+                    if (package.name == NEWTONSOFT_PACKAGE_ID)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            // Fallback: check assemblies
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (assembly.GetName().Name == "Newtonsoft.Json" ||
+                    assembly.GetName().Name == "Unity.Newtonsoft.Json")
                 {
                     return true;
                 }
@@ -321,7 +372,133 @@ namespace PlayKit_SDK.Editor
             }
 
             _addRequest = null;
+            _installingPackage = null;
         }
+
+        #region Newtonsoft.Json Installation
+
+        private static void ShowNewtonsoftInstallDialog()
+        {
+            int option = EditorUtility.DisplayDialogComplex(
+                "PlayKit SDK - Missing Dependency",
+                "PlayKit SDK requires Newtonsoft.Json for JSON serialization.\n\n" +
+                "Newtonsoft.Json is not installed in your project.\n\n" +
+                "Click 'Install Now' to automatically install from Unity Package Manager.",
+                "Install Now",           // 0 - Returns 0
+                "Don't Show Again",      // 1 - Returns 1
+                "Cancel"                 // 2 - Returns 2
+            );
+
+            switch (option)
+            {
+                case 0: // Install Now
+                    InstallNewtonsoft();
+                    break;
+                case 1: // Don't show again
+                    EditorPrefs.SetBool(SKIP_CHECK_KEY, true);
+                    Debug.LogWarning(
+                        "[PlayKit SDK] Dependency check disabled. " +
+                        "Re-enable via: PlayKit SDK > Reset Dependency Check"
+                    );
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Install Newtonsoft.Json via Package Manager API
+        /// </summary>
+        private static void InstallNewtonsoft()
+        {
+            if (_isInstalling)
+            {
+                Debug.LogWarning("[PlayKit SDK] Installation already in progress.");
+                return;
+            }
+
+            _isInstalling = true;
+            _installingPackage = "Newtonsoft.Json";
+            Debug.Log("[PlayKit SDK] Installing Newtonsoft.Json...");
+
+            // Show progress bar
+            EditorUtility.DisplayProgressBar(
+                "PlayKit SDK",
+                "Installing Newtonsoft.Json...",
+                0.3f
+            );
+
+            try
+            {
+                _addRequest = Client.Add($"{NEWTONSOFT_PACKAGE_ID}@{NEWTONSOFT_VERSION}");
+                EditorApplication.update += OnNewtonsoftInstallProgress;
+            }
+            catch (Exception ex)
+            {
+                EditorUtility.ClearProgressBar();
+                _isInstalling = false;
+                _installingPackage = null;
+                Debug.LogError($"[PlayKit SDK] Failed to start Newtonsoft.Json installation: {ex.Message}");
+                EditorUtility.DisplayDialog(
+                    "Installation Failed",
+                    $"Failed to start Newtonsoft.Json installation:\n\n{ex.Message}\n\n" +
+                    "Please try manual installation via Package Manager.",
+                    "OK"
+                );
+            }
+        }
+
+        private static void OnNewtonsoftInstallProgress()
+        {
+            if (_addRequest == null || !_addRequest.IsCompleted)
+            {
+                // Still in progress, update progress bar
+                EditorUtility.DisplayProgressBar(
+                    "PlayKit SDK",
+                    "Installing Newtonsoft.Json...",
+                    0.5f
+                );
+                return;
+            }
+
+            // Completed, clean up
+            EditorApplication.update -= OnNewtonsoftInstallProgress;
+            EditorUtility.ClearProgressBar();
+            _isInstalling = false;
+            _installingPackage = null;
+
+            if (_addRequest.Status == StatusCode.Success)
+            {
+                Debug.Log($"[PlayKit SDK] Newtonsoft.Json installed successfully: {_addRequest.Result.packageId}");
+                EditorUtility.DisplayDialog(
+                    "Installation Successful",
+                    "Newtonsoft.Json has been installed successfully!\n\n" +
+                    "Unity will now recompile scripts. " +
+                    "PlayKit SDK is ready to use after recompilation.",
+                    "OK"
+                );
+
+                // Force script recompilation
+                AssetDatabase.Refresh();
+            }
+            else
+            {
+                string errorMessage = _addRequest.Error?.message ?? "Unknown error";
+                Debug.LogError($"[PlayKit SDK] Failed to install Newtonsoft.Json: {errorMessage}");
+
+                EditorUtility.DisplayDialog(
+                    "Installation Failed",
+                    $"Failed to install Newtonsoft.Json:\n\n{errorMessage}\n\n" +
+                    "Please install manually via Package Manager:\n" +
+                    "Window > Package Manager > + > Add package by name\n" +
+                    $"Name: {NEWTONSOFT_PACKAGE_ID}\n" +
+                    $"Version: {NEWTONSOFT_VERSION}",
+                    "OK"
+                );
+            }
+
+            _addRequest = null;
+        }
+
+        #endregion
 
         /// <summary>
         /// Reset the skip preference (useful for testing or re-enabling check)

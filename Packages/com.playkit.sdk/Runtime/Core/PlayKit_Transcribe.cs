@@ -136,14 +136,14 @@ namespace PlayKit_SDK
 
         private async UniTask Initialize()
         {
-            await UniTask.WaitUntil(() => PlayKit_SDK.IsReady());
+            await UniTask.WaitUntil(() => PlayKitSDK.IsReady());
 
             // Use settings default if model not specified
             var modelToUse = string.IsNullOrEmpty(transcriptionModel) 
                 ? PlayKitSettings.Instance?.DefaultTranscriptionModel ?? "default-transcription-model"
                 : transcriptionModel;
 
-            _transcriptionClient = PlayKit_SDK.Factory.CreateTranscriptionClient(modelToUse);
+            _transcriptionClient = PlayKitSDK.Factory.CreateTranscriptionClient(modelToUse);
 
             if (_transcriptionClient == null)
             {

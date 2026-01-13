@@ -40,6 +40,29 @@ namespace PlayKit_SDK.Steam.Editor
             public string description;
             public int price_cents;
             public string currency;
+
+            /// <summary>
+            /// Get localized name, parsing i18n JSON if present
+            /// </summary>
+            public string LocalizedName => PlayKit_SDK.Recharge.IAPProduct.GetLocalizedTextStatic(name, GetEditorLanguageCode());
+
+            /// <summary>
+            /// Get localized description, parsing i18n JSON if present
+            /// </summary>
+            public string LocalizedDescription => PlayKit_SDK.Recharge.IAPProduct.GetLocalizedTextStatic(description, GetEditorLanguageCode());
+
+            private static string GetEditorLanguageCode()
+            {
+                // Use EditorLocalization's current language if available
+                try
+                {
+                    return PlayKit.SDK.Editor.EditorLocalization.GetCurrentLanguage() ?? "en-US";
+                }
+                catch
+                {
+                    return "en-US";
+                }
+            }
         }
 
         [System.Serializable]
@@ -290,12 +313,13 @@ namespace PlayKit_SDK.Steam.Editor
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
 
-            // Product info
+            // Product info - use localized name/description
             EditorGUILayout.BeginVertical();
-            GUILayout.Label(product.name ?? product.sku, EditorStyles.boldLabel);
-            if (!string.IsNullOrEmpty(product.description))
+            GUILayout.Label(product.LocalizedName ?? product.sku, EditorStyles.boldLabel);
+            string localizedDesc = product.LocalizedDescription;
+            if (!string.IsNullOrEmpty(localizedDesc))
             {
-                GUILayout.Label(product.description, EditorStyles.miniLabel);
+                GUILayout.Label(localizedDesc, EditorStyles.miniLabel);
             }
             GUILayout.Label(string.Format(L10n.Get("steam.products.sku"), product.sku), EditorStyles.miniLabel);
             EditorGUILayout.EndVertical();
@@ -345,7 +369,7 @@ namespace PlayKit_SDK.Steam.Editor
                 string[] productNames = new string[_products.Count];
                 for (int i = 0; i < _products.Count; i++)
                 {
-                    productNames[i] = $"{_products[i].name ?? _products[i].sku} ({_products[i].sku})";
+                    productNames[i] = $"{_products[i].LocalizedName ?? _products[i].sku} ({_products[i].sku})";
                 }
 
                 int selectedIndex = -1;
@@ -422,7 +446,7 @@ namespace PlayKit_SDK.Steam.Editor
 
                 // Get BaseUrl
                 var baseUrlProp = settings.GetType().GetProperty("BaseUrl");
-                string baseUrl = baseUrlProp?.GetValue(settings) as string ?? "https://playkit.ai";
+                string baseUrl = baseUrlProp?.GetValue(settings) as string ?? "https://api.playkit.ai";
 
                 // Get developer token
                 string developerToken = PlayKitSettings.LocalDeveloperToken;
@@ -502,7 +526,7 @@ namespace PlayKit_SDK.Steam.Editor
                 }
 
                 var baseUrlProp = settings.GetType().GetProperty("BaseUrl");
-                string baseUrl = baseUrlProp?.GetValue(settings) as string ?? "https://playkit.ai";
+                string baseUrl = baseUrlProp?.GetValue(settings) as string ?? "https://api.playkit.ai";
 
                 // Get developer token
                 string developerToken = PlayKitSettings.LocalDeveloperToken;

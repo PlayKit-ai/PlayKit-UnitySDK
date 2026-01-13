@@ -114,7 +114,7 @@
   "config.advanced.title": "高度な設定",
   "config.advanced.info": "これらの設定は、理解している場合のみ変更してください。",
   "config.advanced.custom_url.label": "カスタム Base URL",
-  "config.advanced.custom_url.tooltip": "デフォルトの API ベース URL をオーバーライドします。デフォルト (https://playkit.ai) を使用するには空白のままにしてください。",
+  "config.advanced.custom_url.tooltip": "デフォルトの API ベース URL をオーバーライドします。デフォルト (https://api.playkit.ai) を使用するには空白のままにしてください。",
   "config.advanced.effective_url": "有効な URL：",
 
   "config.build_token.title": "⚠️ 危険ゾーン - ビルド時のトークン注入",

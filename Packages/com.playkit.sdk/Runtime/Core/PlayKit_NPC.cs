@@ -105,7 +105,7 @@ namespace PlayKit_SDK
 
         private async UniTask Initialize()
         {
-            await UniTask.WaitUntil(() => PlayKit_SDK.IsReady());
+            await UniTask.WaitUntil(() => PlayKitSDK.IsReady());
 
             // Auto-detect ActionsModule on same GameObject
             _actionsModule = GetComponent<PlayKit_NPC_ActionsModule>();
@@ -119,11 +119,11 @@ namespace PlayKit_SDK
 
             if (!string.IsNullOrEmpty(chatModel))
             {
-                PlayKit_SDK.Populate.CreateNpc(this, chatModel);
+                PlayKitSDK.Populate.CreateNpc(this, chatModel);
             }
             else
             {
-                PlayKit_SDK.Populate.CreateNpc(this);
+                PlayKitSDK.Populate.CreateNpc(this);
             }
         }
 
@@ -1034,7 +1034,7 @@ Output ONLY a JSON array of {predictionNum} strings, nothing else:
 
                 // Use fast model for prediction
                 var settings = PlayKitSettings.Instance;
-                var chatClient = PlayKit_SDK.Factory.CreateChatClient(settings?.FastModel ?? "default-chat-fast");
+                var chatClient = PlayKitSDK.Factory.CreateChatClient(settings?.FastModel ?? "default-chat-fast");
 
                 if (chatClient == null)
                 {

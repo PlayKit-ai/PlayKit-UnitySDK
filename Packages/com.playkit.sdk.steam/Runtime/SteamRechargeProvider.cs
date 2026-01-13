@@ -55,10 +55,13 @@ namespace PlayKit_SDK.Steam
         {
             if (string.IsNullOrEmpty(sku))
             {
-                // No SKU provided - this is expected when no products are configured
+                // Use warning instead of error - SKU might intentionally not be configured
+                Debug.LogWarning("[SteamRechargeProvider] SKU is required for Steam purchases. " +
+                    "Please configure IAP products in PlayKit Dashboard and pass a valid SKU.");
                 return new RechargeResult
                 {
-                    Initiated = true
+                    Initiated = false,
+                    Error = "SKU is required for Steam purchases"
                 };
             }
 

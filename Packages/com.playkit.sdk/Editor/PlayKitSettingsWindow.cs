@@ -755,11 +755,41 @@ namespace PlayKit_SDK
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
+            // Channel Type (Read-Only - auto-synced from selected game)
+            SerializedProperty channelTypeProp = serializedSettings.FindProperty("channelType");
+            string channelType = channelTypeProp.stringValue;
+
+            // Display channel type as read-only label
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.PrefixLabel(new GUIContent(
+                L10n.Get("config.recharge.channel_type"),
+                L10n.Get("config.recharge.channel_type.tooltip")
+            ));
+            EditorGUILayout.SelectableLabel(
+                string.IsNullOrEmpty(channelType) ? L10n.Get("config.recharge.channel_type.not_set") : channelType,
+                EditorStyles.textField,
+                GUILayout.Height(EditorGUIUtility.singleLineHeight)
+            );
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.HelpBox(L10n.Get("config.recharge.channel_type.auto_sync"), MessageType.Info);
+
+            EditorGUILayout.Space(10);
+
             // Enable Default Recharge Handler
             SerializedProperty enableHandlerProp = serializedSettings.FindProperty("enableDefaultRechargeHandler");
             EditorGUILayout.PropertyField(enableHandlerProp, new GUIContent(
                 L10n.Get("config.recharge.enable_default_handler"),
                 L10n.Get("config.recharge.enable_default_handler.tooltip")
+            ));
+
+            EditorGUILayout.Space(10);
+
+            // Show Balance Change Popup
+            SerializedProperty showBalancePopupProp = serializedSettings.FindProperty("showBalanceChangePopup");
+            EditorGUILayout.PropertyField(showBalancePopupProp, new GUIContent(
+                L10n.Get("config.recharge.show_balance_popup"),
+                L10n.Get("config.recharge.show_balance_popup.tooltip")
             ));
 
             EditorGUILayout.EndVertical();
@@ -1248,7 +1278,7 @@ namespace PlayKit_SDK
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            EditorGUILayout.LabelField(L10n.Get("about.version.sdk"), global::PlayKit_SDK.PlayKit_SDK.VERSION);
+            EditorGUILayout.LabelField(L10n.Get("about.version.sdk"), global::PlayKit_SDK.PlayKitSDK.VERSION);
             EditorGUILayout.LabelField(L10n.Get("about.version.unity"), Application.unityVersion);
 
             EditorGUILayout.Space(5);
@@ -1440,7 +1470,7 @@ namespace PlayKit_SDK
                     return;
                 }
 
-                var baseUrl = PlayKitSettings.Instance?.BaseUrl ?? "https://playkit.ai";
+                var baseUrl = PlayKitSettings.Instance?.BaseUrl ?? "https://api.playkit.ai";
                 var endpoint = $"{baseUrl}/api/external/developer-games";
 
                 using (var webRequest = UnityWebRequest.Get(endpoint))
@@ -1521,7 +1551,7 @@ namespace PlayKit_SDK
                     return;
                 }
 
-                var baseUrl = PlayKitSettings.Instance?.BaseUrl ?? "https://playkit.ai";
+                var baseUrl = PlayKitSettings.Instance?.BaseUrl ?? "https://api.playkit.ai";
                 var endpoint = $"{baseUrl}/ai/{settings.GameId}/models";
 
                 using (var webRequest = UnityWebRequest.Get(endpoint))
@@ -1566,17 +1596,17 @@ namespace PlayKit_SDK
                                 _selectedTextModelIndex = _textModelsList.FindIndex(m => m.id == settings.DefaultChatModel);
                             }
 
-                            // Auto-select chat-model if no selection and it exists
+                            // Auto-select default-chat if no selection and it exists
                             if (_selectedTextModelIndex < 0)
                             {
-                                int chatModelIndex = _textModelsList.FindIndex(m => m.id == "chat-model");
+                                int chatModelIndex = _textModelsList.FindIndex(m => m.id == "default-chat");
                                 if (chatModelIndex >= 0)
                                 {
                                     _selectedTextModelIndex = chatModelIndex;
                                     // Save to settings
                                     SerializedObject serializedSettings = new SerializedObject(settings);
                                     SerializedProperty chatModelProp = serializedSettings.FindProperty("defaultChatModel");
-                                    chatModelProp.stringValue = "chat-model";
+                                    chatModelProp.stringValue = "default-chat";
                                     serializedSettings.ApplyModifiedPropertiesWithoutUndo();
                                 }
                             }
@@ -1587,17 +1617,17 @@ namespace PlayKit_SDK
                                 _selectedImageModelIndex = _imageModelsList.FindIndex(m => m.id == settings.DefaultImageModel);
                             }
 
-                            // Auto-select image-model if no selection and it exists
+                            // Auto-select default-image if no selection and it exists
                             if (_selectedImageModelIndex < 0)
                             {
-                                int imageModelIndex = _imageModelsList.FindIndex(m => m.id == "image-model");
+                                int imageModelIndex = _imageModelsList.FindIndex(m => m.id == "default-image");
                                 if (imageModelIndex >= 0)
                                 {
                                     _selectedImageModelIndex = imageModelIndex;
                                     // Save to settings
                                     SerializedObject serializedSettings = new SerializedObject(settings);
                                     SerializedProperty imageModelProp = serializedSettings.FindProperty("defaultImageModel");
-                                    imageModelProp.stringValue = "image-model";
+                                    imageModelProp.stringValue = "default-image";
                                     serializedSettings.ApplyModifiedPropertiesWithoutUndo();
                                 }
                             }

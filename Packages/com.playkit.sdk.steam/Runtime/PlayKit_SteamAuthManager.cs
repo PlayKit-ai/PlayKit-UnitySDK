@@ -218,7 +218,7 @@ namespace PlayKit_SDK.Steam
             // Use reflection to get BaseUrl and GameId from settings
             var settingsType = settings.GetType();
 
-            string baseUrl = "https://playkit.ai";
+            string baseUrl = "https://api.playkit.ai";
             string gameId = null;
 
             // Try to get BaseUrl

@@ -1,6 +1,6 @@
 {
     "name": "com.playkit.sdk",
-    "displayName": "PlayKit SDK",
+    "displayName": "PlayKitSDK",
     "version": "0.2.3",
     "unity": "2020.3",
     "description": "PlayKit SDK for Unity - AI-powered game development toolkit with NPC conversations, image generation, and more.",
@@ -8,7 +8,10 @@
         "name": "PlayKit",
         "url": "https://playkit.ai"
     },
-    "dependencies": {},
+    "dependencies": {
+        "com.unity.nuget.newtonsoft-json": "3.2.1",
+        "com.cysharp.unitask": "2.5.0"
+    },
     "keywords": [
         "ai",
         "npc",

@@ -53,7 +53,7 @@ namespace PlayKit_SDK
         private async UniTask Initialize()
         {
             // Wait for SDK to be ready
-            await UniTask.WaitUntil(() => PlayKit_SDK.IsReady());
+            await UniTask.WaitUntil(() => PlayKitSDK.IsReady());
 
             // Auto-find NPCClient on the same GameObject
             _npcClient = GetComponent<PlayKit_NPC>();
@@ -72,7 +72,7 @@ namespace PlayKit_SDK
                 var modelToUse = string.IsNullOrEmpty(transcriptionModel) 
                     ? PlayKitSettings.Instance?.DefaultTranscriptionModel ?? "default-transcription-model"
                     : transcriptionModel;
-                _transcriptionClient = PlayKit_SDK.CreateTranscriptionClient(modelToUse);
+                _transcriptionClient = PlayKitSDK.CreateTranscriptionClient(modelToUse);
                 _isReady = true;
                 Debug.Log($"[VoiceModule] Ready! Using transcription model '{modelToUse}' with NPC '{gameObject.name}'");
             }

@@ -218,7 +218,7 @@ Conversation:
 
                 // Use fast model for summarization
                 var settings = PlayKitSettings.Instance;
-                var chatClient = PlayKit_SDK.Factory.CreateChatClient(settings?.FastModel ?? "default-chat-fast");
+                var chatClient = PlayKitSDK.Factory.CreateChatClient(settings?.FastModel ?? "default-chat-fast");
 
                 var config = new PlayKit_ChatConfig(new List<PlayKit_ChatMessage>
                 {

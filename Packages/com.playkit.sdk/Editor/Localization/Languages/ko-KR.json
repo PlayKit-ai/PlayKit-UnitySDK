@@ -102,7 +102,7 @@
   "config.advanced.title": "고급 설정",
   "config.advanced.info": "이 설정은 이해하는 경우에만 수정하세요.",
   "config.advanced.custom_url.label": "사용자 지정 Base URL",
-  "config.advanced.custom_url.tooltip": "기본 API 기본 URL을 재정의합니다. 기본값 (https://playkit.ai)을 사용하려면 비워 두세요.",
+  "config.advanced.custom_url.tooltip": "기본 API 기본 URL을 재정의합니다. 기본값 (https://api.playkit.ai)을 사용하려면 비워 두세요.",
   "config.advanced.effective_url": "유효한 URL：",
 
   "config.build_token.title": "⚠️ 위험 구역 - 빌드 시 토큰 주입",

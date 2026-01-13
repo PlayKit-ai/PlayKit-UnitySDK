@@ -4,15 +4,15 @@ using UnityEngine;
 
 namespace PlayKit_SDK
 {
-    public class PlayKit_SDK : MonoBehaviour
+    public class PlayKitSDK : MonoBehaviour
     {
-        public const string VERSION = "v0.2.3.3";
+        public const string VERSION = "v0.2.3.4";
 
         // Configuration is now loaded from PlayKitSettings ScriptableObject
         // No need to manually place prefabs in scenes - SDK initializes automatically at runtime
         // Configure via: Tools > PlayKit SDK > Settings
 
-        public static PlayKit_SDK Instance { get; private set; }
+        public static PlayKitSDK Instance { get; private set; }
 
         // Auth manager is created dynamically instead of being serialized
         private Auth.PlayKit_AuthManager authManager;
@@ -42,7 +42,7 @@ namespace PlayKit_SDK
             
             // AddComponent<PlayKit_SDK>() triggers Awake() synchronously
             // Awake() will add AIContextManager and set Instance
-            sdkObject.AddComponent<PlayKit_SDK>();
+            sdkObject.AddComponent<PlayKitSDK>();
             
             DontDestroyOnLoad(sdkObject);
 

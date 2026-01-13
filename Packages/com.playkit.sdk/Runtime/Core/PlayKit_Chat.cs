@@ -130,10 +130,10 @@ namespace PlayKit_SDK
 
         private async UniTask Initialize()
         {
-            await UniTask.WaitUntil(() => PlayKit_SDK.IsReady());
+            await UniTask.WaitUntil(() => PlayKitSDK.IsReady());
 
             string model = string.IsNullOrEmpty(chatModel) ? null : chatModel;
-            _chatClient = PlayKit_SDK.Factory.CreateChatClient(model);
+            _chatClient = PlayKitSDK.Factory.CreateChatClient(model);
 
             if (_chatClient == null)
             {

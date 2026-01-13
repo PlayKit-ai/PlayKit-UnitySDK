@@ -68,6 +68,8 @@
   "config.recharge.channel_type.auto_sync": "💡 Distribution channel is automatically synced when you select a game. No manual configuration needed.",
   "config.recharge.enable_default_handler": "Enable Default Recharge Handler",
   "config.recharge.enable_default_handler.tooltip": "Enable SDK's built-in recharge UI (shows when balance is low). Disable to implement your own custom recharge flow.",
+  "config.recharge.show_balance_popup": "Show Balance Change Popup",
+  "config.recharge.show_balance_popup.tooltip": "Automatically show a popup when balance changes (consumption or recharge).",
 
   "about.version.title": "Version Information",
   "about.version.sdk": "SDK Version:",
@@ -110,7 +112,7 @@
   "config.advanced.title": "Advanced Settings",
   "config.advanced.info": "Only modify these settings if you know what you're doing.",
   "config.advanced.custom_url.label": "Custom Base URL",
-  "config.advanced.custom_url.tooltip": "Override the default API base URL. Leave empty to use default (https://playkit.ai).",
+  "config.advanced.custom_url.tooltip": "Override the default API base URL. Leave empty to use default (https://api.playkit.ai).",
   "config.advanced.effective_url": "Effective URL:",
 
   "config.build_token.title": "⚠️ DANGER ZONE - Build Token Injection",

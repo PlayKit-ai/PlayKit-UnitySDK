@@ -115,7 +115,7 @@ namespace PlayKit_SDK
         private async UniTask Initialize()
         {
             // Wait for SDK to be ready
-            await UniTask.WaitUntil(() => PlayKit_SDK.IsReady());
+            await UniTask.WaitUntil(() => PlayKitSDK.IsReady());
 
             // Auto-find NPCClient on the same GameObject
             _npcClient = GetComponent<PlayKit_NPC>();

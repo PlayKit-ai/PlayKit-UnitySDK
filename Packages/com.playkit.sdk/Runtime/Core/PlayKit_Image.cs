@@ -142,10 +142,10 @@ namespace PlayKit_SDK
 
         private async UniTask Initialize()
         {
-            await UniTask.WaitUntil(() => PlayKit_SDK.IsReady());
+            await UniTask.WaitUntil(() => PlayKitSDK.IsReady());
 
             string model = string.IsNullOrEmpty(imageModel) ? null : imageModel;
-            _imageClient = PlayKit_SDK.Factory.CreateImageClient(model);
+            _imageClient = PlayKitSDK.Factory.CreateImageClient(model);
 
             if (_imageClient == null)
             {

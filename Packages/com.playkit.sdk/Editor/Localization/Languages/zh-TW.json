@@ -128,7 +128,7 @@
   "config.advanced.title": "進階設定",
   "config.advanced.info": "除非你知道自己在做什麼，否則不要修改這些設定。",
   "config.advanced.custom_url.label": "自訂 Base URL",
-  "config.advanced.custom_url.tooltip": "覆蓋預設的 API 基礎 URL。留空使用預設值 (https://playkit.ai)。",
+  "config.advanced.custom_url.tooltip": "覆蓋預設的 API 基礎 URL。留空使用預設值 (https://api.playkit.ai)。",
   "config.advanced.effective_url": "目前生效 URL：",
 
   "config.build_token.title": "⚠️ 危險區域 - 建置時注入令牌",

@@ -95,7 +95,7 @@ namespace PlayKit_SDK.Editor
                         return;
                     }
 
-                    string currentVersion = PlayKit_SDK.VERSION;
+                    string currentVersion = PlayKitSDK.VERSION;
                     string latestVersion = response.version;
 
                     // Check if user has chosen to skip this version

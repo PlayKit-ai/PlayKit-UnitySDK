@@ -18,10 +18,10 @@ namespace PlayKit_SDK
 
         [Header("AI Model Defaults")]
         [Tooltip("Default chat model. Leave empty to use server default.")]
-        [SerializeField] private string defaultChatModel = "chat-default";
+        [SerializeField] private string defaultChatModel = "default-chat";
 
         [Tooltip("Default image generation model. Leave empty to use server default.")]
-        [SerializeField] private string defaultImageModel = "image-default";
+        [SerializeField] private string defaultImageModel = "default-image";
 
         [Tooltip("Default transcription (speech-to-text) model. Leave empty to use server default.")]
         [SerializeField] private string defaultTranscriptionModel = "default-transcription-model";
@@ -34,7 +34,7 @@ namespace PlayKit_SDK
         [SerializeField] private bool ignoreDeveloperToken = false;
 
         [Header("Advanced Settings")]
-        [Tooltip("Override the default API base URL. Leave empty to use default (https://playkit.ai).")]
+        [Tooltip("Override the default API base URL. Leave empty to use default (https://api.playkit.ai).")]
         [SerializeField] private string customBaseUrl = "";
 
         [Header("Build Token Injection")]
@@ -59,11 +59,15 @@ namespace PlayKit_SDK
         [SerializeField] private SerializableDictionary<string, bool> enabledAddons = new SerializableDictionary<string, bool>();
 
         [Header("Recharge Configuration")]
-        [HideInInspector]
+        [Tooltip("Distribution channel type (e.g., 'standalone', 'steam_release', 'ios', 'android')")]
         [SerializeField] private string channelType = "standalone";
 
         [Tooltip("Enable SDK's default recharge handler (shows UI when balance is low). Disable to implement custom recharge flow.")]
         [SerializeField] private bool enableDefaultRechargeHandler = true;
+
+        [Header("Balance UI")]
+        [Tooltip("Automatically show balance change popup when balance updates")]
+        [SerializeField] private bool showBalanceChangePopup = true;
 
         // Singleton instance
         private static PlayKitSettings _instance;
@@ -120,7 +124,7 @@ namespace PlayKit_SDK
         }
 
         // Constants
-        private const string DEFAULT_BASE_URL = "https://playkit.ai";
+        private const string DEFAULT_BASE_URL = "https://api.playkit.ai";
 
         // Public properties
         public string GameId
@@ -160,9 +164,12 @@ namespace PlayKit_SDK
         public string ChannelType => channelType;
         public bool EnableDefaultRechargeHandler => enableDefaultRechargeHandler;
 
+        // Balance UI
+        public bool ShowBalanceChangePopup => showBalanceChangePopup;
+
         /// <summary>
         /// Gets the effective base URL for API calls.
-        /// Returns custom URL if set, otherwise returns the default (https://playkit.ai).
+        /// Returns custom URL if set, otherwise returns the default (https://api.playkit.ai).
         /// </summary>
         public string BaseUrl
         {

@@ -1,6 +1,6 @@
 {
   "name": "com.playkit.sdk.steam",
-  "displayName": "PlayKit SDK - Steam Addon",
+  "displayName": "PlayKitSDKSteamAddon",
   "version": "0.2.3",
   "unity": "2020.3",
   "description": "Steam authentication addon for PlayKit SDK. Provides seamless Steam login integration using Facepunch.Steamworks.",
