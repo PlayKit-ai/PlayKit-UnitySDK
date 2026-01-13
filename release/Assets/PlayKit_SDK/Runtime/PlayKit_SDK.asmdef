@@ -1,0 +1,31 @@
+{
+    "name": "PlayKit_SDK",
+    "rootNamespace": "PlayKit_SDK",
+    "references": [
+        "UniTask",
+        "Unity.Newtonsoft.Json"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "PLAYKIT_UNITASK_SUPPORT",
+        "PLAYKIT_NEWTONSOFT_SUPPORT"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.cysharp.unitask",
+            "expression": "",
+            "define": "PLAYKIT_UNITASK_SUPPORT"
+        },
+        {
+            "name": "com.unity.nuget.newtonsoft-json",
+            "expression": "",
+            "define": "PLAYKIT_NEWTONSOFT_SUPPORT"
+        }
+    ],
+    "noEngineReferences": false
+}

@@ -1,0 +1,40 @@
+{
+    "name": "PlayKit.Steam.Editor",
+    "rootNamespace": "PlayKit_SDK.Steam.Editor",
+    "references": [
+        "PlayKit.Steam",
+        "PlayKit_SDK",
+        "PlayKit_SDK.Editor",
+        "UniTask"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Facepunch.Steamworks.Win64.dll",
+        "Facepunch.Steamworks.Win32.dll",
+        "Facepunch.Steamworks.Posix.dll",
+        "Newtonsoft.Json.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "PLAYKIT_UNITASK_SUPPORT",
+        "PLAYKIT_NEWTONSOFT_SUPPORT"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.cysharp.unitask",
+            "expression": "",
+            "define": "PLAYKIT_UNITASK_SUPPORT"
+        },
+        {
+            "name": "com.unity.nuget.newtonsoft-json",
+            "expression": "",
+            "define": "PLAYKIT_NEWTONSOFT_SUPPORT"
+        }
+    ],
+    "noEngineReferences": false
+}

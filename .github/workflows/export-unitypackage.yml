@@ -1,0 +1,57 @@
+name: Export UnityPackage
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v0.2.3)'
+        required: true
+        default: 'v0.0.0'
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Export PlayKit SDK
+        uses: natsuneko-laboratory/create-unitypackage@v2
+        with:
+          meta: release/Assets/PlayKit_SDK.meta
+          output: PlayKit_SDK_${{ steps.version.outputs.version }}.unitypackage
+
+      - name: Export PlayKit SDK Steam Addon
+        uses: natsuneko-laboratory/create-unitypackage@v2
+        with:
+          meta: release/Assets/PlayKit_SDK.SteamAddon.meta
+          output: PlayKit_SDK_SteamAddon_${{ steps.version.outputs.version }}.unitypackage
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: unitypackages-${{ steps.version.outputs.version }}
+          path: |
+            PlayKit_SDK_${{ steps.version.outputs.version }}.unitypackage
+            PlayKit_SDK_SteamAddon_${{ steps.version.outputs.version }}.unitypackage
+
+      - name: Upload to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            PlayKit_SDK_${{ steps.version.outputs.version }}.unitypackage
+            PlayKit_SDK_SteamAddon_${{ steps.version.outputs.version }}.unitypackage
