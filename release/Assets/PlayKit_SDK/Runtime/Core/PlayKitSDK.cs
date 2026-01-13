@@ -221,7 +221,7 @@ namespace PlayKit_SDK
             else
             {
                 // No platform addon - use default browser authentication
-                Debug.Log("[PlayKit SDK] No platform addon found, using default browser authentication");
+                Debug.Log("[PlayKit SDK] Using default browser authentication");
                 authSuccess = await PlayKitAuthManager.AuthenticateAsync();
 
                 if (!authSuccess)
@@ -316,7 +316,11 @@ namespace PlayKit_SDK
                 }
             }
 
-            Debug.Log($"[PlayKit SDK] No platform addon found for channel: {channelType}");
+            // standalone channel doesn't need any addon, so don't log warning
+            if (channelType != "standalone")
+            {
+                Debug.Log($"[PlayKit SDK] No platform addon found for channel: {channelType}");
+            }
             return null;
         }
 
