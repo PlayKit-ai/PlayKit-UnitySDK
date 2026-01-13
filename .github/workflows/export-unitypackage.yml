@@ -13,7 +13,7 @@ on:
 
 jobs:
   export:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,17 +28,31 @@ jobs:
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Export PlayKit SDK
-        uses: natsuneko-laboratory/create-unitypackage@v2
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
-          meta: release/Assets/PlayKit_SDK.meta
-          output: PlayKit_SDK_${{ steps.version.outputs.version }}.unitypackage
+          dotnet-version: |
+            3.1.x
+            8.0.x
+
+      - name: Install Unity Package Exporter
+        run: |
+          git clone https://github.com/Lachee/Unity-Package-Exporter.git "../tools/unity-package-exporter"
+          dotnet publish -c Release -o ../tools "../tools/unity-package-exporter/UnityPackageExporter"
+
+      - name: Export PlayKit SDK
+        run: |
+          dotnet ../tools/UnityPackageExporter.dll \
+            release/Assets/PlayKit_SDK \
+            PlayKit_SDK_${{ steps.version.outputs.version }}.unitypackage \
+            --asset-root release/Assets/PlayKit_SDK
 
       - name: Export PlayKit SDK Steam Addon
-        uses: natsuneko-laboratory/create-unitypackage@v2
-        with:
-          meta: release/Assets/PlayKit_SDK.SteamAddon.meta
-          output: PlayKit_SDK_SteamAddon_${{ steps.version.outputs.version }}.unitypackage
+        run: |
+          dotnet ../tools/UnityPackageExporter.dll \
+            release/Assets/PlayKit_SDK.SteamAddon \
+            PlayKit_SDK_SteamAddon_${{ steps.version.outputs.version }}.unitypackage \
+            --asset-root release/Assets/PlayKit_SDK.SteamAddon
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
