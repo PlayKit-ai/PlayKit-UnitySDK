@@ -13,30 +13,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get version from tag
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
       - name: Create PlayKit SDK package
-        uses: natsuneko-laboratory/create-unitypackage@v3
+        uses: pCYSl5EDgo/create-unitypackage@v1
         with:
-          files-glob: |
-            Packages/com.playkit.sdk/**/*
-          dest: PlayKitSDK_v${{ steps.get_version.outputs.VERSION }}.unitypackage
+          package-path: PlayKitSDK.unitypackage
+          include-files: |
+            Packages/com.playkit.sdk
 
       - name: Create Steam Addon package
-        uses: natsuneko-laboratory/create-unitypackage@v3
+        uses: pCYSl5EDgo/create-unitypackage@v1
         with:
-          files-glob: |
-            Packages/com.playkit.sdk.steam/**/*
-          dest: PlayKitSDK-Steam_v${{ steps.get_version.outputs.VERSION }}.unitypackage
+          package-path: PlayKitSDK-Steam.unitypackage
+          include-files: |
+            Packages/com.playkit.sdk.steam
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            PlayKitSDK_v${{ steps.get_version.outputs.VERSION }}.unitypackage
-            PlayKitSDK-Steam_v${{ steps.get_version.outputs.VERSION }}.unitypackage
+            PlayKitSDK.unitypackage
+            PlayKitSDK-Steam.unitypackage
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
