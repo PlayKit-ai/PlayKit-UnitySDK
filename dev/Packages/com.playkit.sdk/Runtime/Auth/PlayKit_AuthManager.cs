@@ -50,20 +50,40 @@ namespace PlayKit_SDK.Auth
             }
             if (standaloneLoadingObject == null)
             {
-                var loginWebPrefab = Resources.Load<GameObject>("Loading");
-                standaloneLoadingObject = Instantiate(loginWebPrefab).GetComponent<LoadingSpinner>();
+                var loadingPrefab = Resources.Load<GameObject>("Loading");
+                if (loadingPrefab != null)
+                {
+                    var instance = Instantiate(loadingPrefab);
+                    if (instance != null)
+                    {
+                        standaloneLoadingObject = instance.GetComponent<LoadingSpinner>();
+                    }
+                }
+
+                if (standaloneLoadingObject == null)
+                {
+                    Debug.LogWarning("[PlayKit SDK] Loading prefab not found or missing LoadingSpinner component. Auth will proceed without loading UI.");
+                }
+            }
+        }
+
+        private void SetLoadingVisible(bool visible)
+        {
+            if (standaloneLoadingObject != null)
+            {
+                standaloneLoadingObject.gameObject.SetActive(visible);
             }
         }
 
         public async UniTask<bool> AuthenticateAsync()
         {
-            standaloneLoadingObject.gameObject.SetActive(true);
+            SetLoadingVisible(true);
             
             // If using a developer token, authentication is always considered successful.
             if (IsDeveloperToken)
             {
                 Debug.Log("[PlayKit SDK] Using developer token. Authentication successful.");
-                standaloneLoadingObject.gameObject.SetActive(false);
+                SetLoadingVisible(false);
                 return true;
             }
             
@@ -79,7 +99,7 @@ namespace PlayKit_SDK.Auth
                     Debug.Log("[PlayKit SDK] Token expired or expiring soon, attempting refresh...");
                     if (await TryRefreshTokenAsync())
                     {
-                        standaloneLoadingObject.gameObject.SetActive(false);
+                        SetLoadingVisible(false);
                         Debug.Log("[PlayKit SDK] Token refreshed successfully.");
                         return true;
                     }
@@ -91,7 +111,7 @@ namespace PlayKit_SDK.Auth
                     // Token not expired, verify with API
                     if (await IsTokenValidWithAPICheck())
                     {
-                        standaloneLoadingObject.gameObject.SetActive(false);
+                        SetLoadingVisible(false);
                         Debug.Log("[PlayKit SDK] Existing valid player token found and verified.");
                         return true;
                     }
@@ -100,7 +120,7 @@ namespace PlayKit_SDK.Auth
                     Debug.Log("[PlayKit SDK] Token invalid, attempting refresh...");
                     if (await TryRefreshTokenAsync())
                     {
-                        standaloneLoadingObject.gameObject.SetActive(false);
+                        SetLoadingVisible(false);
                         Debug.Log("[PlayKit SDK] Token refreshed successfully after API check failure.");
                         return true;
                     }
@@ -109,7 +129,7 @@ namespace PlayKit_SDK.Auth
 
             // Step 3: No valid tokens, initiate login process
             Debug.Log("[PlayKit SDK] No valid player token found. Initiating login process.");
-            standaloneLoadingObject.gameObject.SetActive(false);
+            SetLoadingVisible(false);
 
             return await ShowLoginWebAsync();
         }
@@ -128,7 +148,7 @@ namespace PlayKit_SDK.Auth
                 return false;
             }
 
-            standaloneLoadingObject.gameObject.SetActive(true);
+            SetLoadingVisible(true);
 
             try
             {
@@ -146,7 +166,7 @@ namespace PlayKit_SDK.Auth
                 if (result == null || !result.Success)
                 {
                     Debug.LogError($"[PlayKit SDK] Provider authentication failed: {result?.Error ?? "Unknown error"}");
-                    standaloneLoadingObject.gameObject.SetActive(false);
+                    SetLoadingVisible(false);
                     return false;
                 }
 
@@ -154,7 +174,7 @@ namespace PlayKit_SDK.Auth
                 if (string.IsNullOrEmpty(result.PlayerToken))
                 {
                     Debug.LogError("[PlayKit SDK] Provider returned no player token");
-                    standaloneLoadingObject.gameObject.SetActive(false);
+                    SetLoadingVisible(false);
                     return false;
                 }
 
@@ -185,14 +205,14 @@ namespace PlayKit_SDK.Auth
                 }
 
                 Debug.Log($"[PlayKit SDK] Provider authentication successful. User: {result.UserId}");
-                standaloneLoadingObject.gameObject.SetActive(false);
+                SetLoadingVisible(false);
                 return true;
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[PlayKit SDK] Provider authentication exception: {ex.Message}");
                 provider.OnStatusChanged -= OnProviderStatusChanged;
-                standaloneLoadingObject.gameObject.SetActive(false);
+                SetLoadingVisible(false);
                 return false;
             }
         }
