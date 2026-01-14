@@ -53,8 +53,8 @@ namespace PlayKit_SDK.Examples
         void Start()
         {
             // Get SDK references
-            playerClient = PlayKit_SDK.GetPlayerClient();
-            rechargeManager = PlayKit_SDK.GetRechargeManager();
+            playerClient = PlayKitSDK.GetPlayerClient();
+            rechargeManager = PlayKitSDK.GetRechargeManager();
             currentChannelType = PlayKitSettings.Instance.ChannelType ?? "standalone";
             isStandaloneChannel = currentChannelType == "standalone";
 

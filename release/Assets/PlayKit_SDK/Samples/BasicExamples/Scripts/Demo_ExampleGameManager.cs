@@ -25,7 +25,7 @@ public class Demo_ExampleGameManager : MonoBehaviour
          Call InitializeAsync() before using any features. It loads configuration (Tools > PlayKit SDK > Settings)
          and handles player authentication. If not logged in, it will automatically show the login modal.
          */
-        var result = await PlayKit_SDK.PlayKit_SDK.InitializeAsync();
+        var result = await PlayKitSDK.InitializeAsync();
 
         if(!result)
         {
@@ -42,7 +42,7 @@ public class Demo_ExampleGameManager : MonoBehaviour
 
     async UniTask StandardImageGen()
     {
-        var imageGen = PlayKit_SDK.PlayKit_SDK.Factory.CreateImageClient();
+        var imageGen = PlayKitSDK.Factory.CreateImageClient();
         var genResult = await imageGen.GenerateImageAsync("a futuristic city","1024x1024");
         _image.sprite =  genResult.ToSprite();
     }
@@ -60,7 +60,7 @@ public class Demo_ExampleGameManager : MonoBehaviour
             Role = "user",
             Content = "你的工作是什么"
         });
-        var chat = PlayKit_SDK.PlayKit_SDK.Factory.CreateChatClient();//新建一个对话客户端
+        var chat = PlayKitSDK.Factory.CreateChatClient();//新建一个对话客户端
         var result = await chat.TextGenerationAsync(new PlayKit_ChatConfig(_selfManagedHistory));//对话
         _selfManagedHistory.Add(new PlayKit_ChatMessage()
         {
@@ -104,7 +104,7 @@ public class Demo_ExampleGameManager : MonoBehaviour
     async UniTask StandardChatStream()
     {
 
-        var chat = PlayKit_SDK.PlayKit_SDK.Factory.CreateChatClient();
+        var chat = PlayKitSDK.Factory.CreateChatClient();
         _selfManagedHistory.Add(new PlayKit_ChatMessage()
         {
             Role = "system",

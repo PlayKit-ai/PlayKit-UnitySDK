@@ -32,7 +32,7 @@ namespace PlayKit_SDK.Example
              * and if there is not, it will automatically start up the login modal.
              * If you pass in your developer key, the sdk skips player validation.
              */
-            var result = await PlayKit_SDK.InitializeAsync();
+            var result = await PlayKitSDK.InitializeAsync();
 
             if (!result)
             {

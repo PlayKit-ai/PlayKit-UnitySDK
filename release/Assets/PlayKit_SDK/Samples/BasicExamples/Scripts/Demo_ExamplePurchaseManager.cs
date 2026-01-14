@@ -32,7 +32,7 @@ public class Demo_ExamplePurchaseManager : MonoBehaviour
     {
         SetUIEnabled(false);
         UpdateStatus("Waiting for SDK initialization...");
-        var result = await PlayKit_SDK.PlayKit_SDK.InitializeAsync();
+        var result = await PlayKitSDK.InitializeAsync();
 
         if (!result)
         {
@@ -46,7 +46,7 @@ public class Demo_ExamplePurchaseManager : MonoBehaviour
         await WaitForSDKInitialization();
 
         // Get RechargeManager
-        rechargeManager = PlayKit_SDK.PlayKit_SDK.GetRechargeManager();
+        rechargeManager = PlayKitSDK.GetRechargeManager();
         if (rechargeManager == null)
         {
             UpdateStatus("Error: RechargeManager not available");
@@ -78,7 +78,7 @@ public class Demo_ExamplePurchaseManager : MonoBehaviour
     private async UniTask WaitForSDKInitialization()
     {
         // Wait until SDK is ready
-        while (!PlayKit_SDK.PlayKit_SDK.IsReady())
+        while (!PlayKitSDK.IsReady())
         {
             await UniTask.Delay(100);
         }

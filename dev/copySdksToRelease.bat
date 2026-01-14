@@ -16,16 +16,28 @@ if not exist "%TARGET_DIR%" (
 echo Copying com.playkit.sdk...
 robocopy "%SOURCE_DIR%\com.playkit.sdk" "%TARGET_DIR%\PlayKit_SDK" /E /NFL /NDL /NJH /NJS /NC /NS /NP
 
+:: Rename Samples~ to Samples for PlayKit SDK
+if exist "%TARGET_DIR%\PlayKit_SDK\Samples~" (
+    if exist "%TARGET_DIR%\PlayKit_SDK\Samples" rmdir /s /q "%TARGET_DIR%\PlayKit_SDK\Samples"
+    ren "%TARGET_DIR%\PlayKit_SDK\Samples~" "Samples"
+    echo   Renamed Samples~ to Samples
+)
+
 :: Copy Steam Addon (including .meta files)
 echo Copying com.playkit.sdk.steam...
 robocopy "%SOURCE_DIR%\com.playkit.sdk.steam" "%TARGET_DIR%\PlayKit_SDK.SteamAddon" /E /NFL /NDL /NJH /NJS /NC /NS /NP
+
+:: Rename Samples~ to Samples for Steam Addon
+if exist "%TARGET_DIR%\PlayKit_SDK.SteamAddon\Samples~" (
+    if exist "%TARGET_DIR%\PlayKit_SDK.SteamAddon\Samples" rmdir /s /q "%TARGET_DIR%\PlayKit_SDK.SteamAddon\Samples"
+    ren "%TARGET_DIR%\PlayKit_SDK.SteamAddon\Samples~" "Samples"
+    echo   Renamed Samples~ to Samples
+)
 
 echo.
 echo Done! SDKs copied to release/Assets/
 echo - PlayKit_SDK
 echo - PlayKit_SDK.SteamAddon
-echo.
-echo NOTE: Open release project in Unity to generate/update .meta files
 
 endlocal
 pause

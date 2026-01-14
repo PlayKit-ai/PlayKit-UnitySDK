@@ -203,14 +203,14 @@ namespace PlayKit_SDK.Example
              * and if there is not, it will automatically start up the login modal.
              * If you pass in your developer key, the sdk skips player validation.
              */
-            var result = await PlayKit_SDK.InitializeAsync();
+            var result = await PlayKitSDK.InitializeAsync();
 
             if (!result)
             {
                 Debug.LogError("initialization failed. You should ask us for help. Look for community banner at the dashboard. 初始化失败，你可以联系我们寻求帮助。你可以在控制台找到社群链接。");
                 return;
             }
-            _aiChatClient = PlayKit_SDK.Factory.CreateChatClient(); 
+            _aiChatClient = PlayKitSDK.Factory.CreateChatClient(); 
             npcSettingField.text = _npcClient.CharacterDesign;
 
 
