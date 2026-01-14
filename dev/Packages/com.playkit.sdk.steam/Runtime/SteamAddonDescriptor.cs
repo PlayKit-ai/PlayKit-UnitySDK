@@ -12,7 +12,7 @@ namespace PlayKit_SDK.Steam
         public string AddonId => "steam";
         public string DisplayName => "Steam Integration";
         public string Description => "Provides Steam platform integration including authentication and in-app purchases via Steam overlay.";
-        public string Version => "1.0.0";
+        public string Version => "0.2.3.12";
         public string ExclusionGroup => "distribution-channel";
         public string[] RequiredChannelTypes => new[] { "steam_*" };
 
