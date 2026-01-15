@@ -18,6 +18,7 @@ namespace PlayKit_SDK.Steam
         private string _baseUrl;
         private string _gameId;
         private Func<string> _getPlayerToken;
+        private SteamRechargeModalProvider _modalProvider;
 
         public string RechargeMethod => "steam";
 
@@ -394,5 +395,18 @@ namespace PlayKit_SDK.Steam
         }
 
         #endregion
+
+        /// <summary>
+        /// Get the modal provider for Steam recharge.
+        /// Returns a SteamRechargeModalProvider that shows product selection.
+        /// </summary>
+        public IRechargeModalProvider GetModalProvider()
+        {
+            if (_modalProvider == null)
+            {
+                _modalProvider = new SteamRechargeModalProvider(this);
+            }
+            return _modalProvider;
+        }
     }
 }

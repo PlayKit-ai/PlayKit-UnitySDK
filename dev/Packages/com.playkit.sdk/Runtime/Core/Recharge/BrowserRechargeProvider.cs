@@ -16,6 +16,7 @@ namespace PlayKit_SDK.Recharge
         private string _gameId;
         private Func<string> _getPlayerToken;
         private Func<float> _getCurrentBalance;
+        private BrowserRechargeModalProvider _modalProvider;
 
         /// <summary>
         /// Custom recharge portal URL (optional, uses default if not set)
@@ -70,6 +71,7 @@ namespace PlayKit_SDK.Recharge
         /// </summary>
         public string GetRechargeUrl()
         {
+            // Default recharge portal path is /recharge
             string baseRechargeUrl = RechargePortalUrl ?? $"{_baseUrl}/recharge";
             string playerToken = _getPlayerToken?.Invoke();
 
@@ -79,9 +81,9 @@ namespace PlayKit_SDK.Recharge
                 return baseRechargeUrl;
             }
 
-            // Build URL with query parameters
+            // Build URL with playerToken parameter
             string separator = baseRechargeUrl.Contains("?") ? "&" : "?";
-            return $"{baseRechargeUrl}{separator}token={Uri.EscapeDataString(playerToken)}&gameId={Uri.EscapeDataString(_gameId)}";
+            return $"{baseRechargeUrl}{separator}playerToken={Uri.EscapeDataString(playerToken)}";
         }
 
         public async UniTask<RechargeResult> RechargeAsync(string sku = null)
@@ -91,7 +93,10 @@ namespace PlayKit_SDK.Recharge
             string channelType = PlayKitSettings.Instance?.ChannelType ?? "standalone";
             if (channelType.StartsWith("steam"))
             {
-                string errorMsg = "Browser recharge not available for Steam channel. Steam games must use Steam overlay for purchases.";
+                string errorMsg = $"Browser recharge not available for Steam channel ('{channelType}'). " +
+                    "Steam addon is not configured or not enabled. " +
+                    "Please enable Steam addon in PlayKitSettings (Tools > PlayKit SDK > Settings > Addon Management), " +
+                    "or change Channel Type to 'standalone' for testing.";
                 Debug.LogError($"[BrowserRechargeProvider] {errorMsg}");
 
                 return new RechargeResult
@@ -216,6 +221,19 @@ namespace PlayKit_SDK.Recharge
             [JsonProperty("success")] public bool Success { get; set; }
             [JsonProperty("products")] public System.Collections.Generic.List<IAPProduct> Products { get; set; }
             [JsonProperty("error")] public string Error { get; set; }
+        }
+
+        /// <summary>
+        /// Get the modal provider for browser recharge.
+        /// Returns a BrowserRechargeModalProvider that shows a simple confirmation dialog.
+        /// </summary>
+        public IRechargeModalProvider GetModalProvider()
+        {
+            if (_modalProvider == null)
+            {
+                _modalProvider = new BrowserRechargeModalProvider(this);
+            }
+            return _modalProvider;
         }
     }
 }

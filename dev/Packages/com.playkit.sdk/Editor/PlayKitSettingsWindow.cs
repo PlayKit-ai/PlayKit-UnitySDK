@@ -792,6 +792,13 @@ namespace PlayKit_SDK
                 L10n.Get("config.recharge.show_balance_popup.tooltip")
             ));
 
+            // Keep Balance Popup Persistent
+            SerializedProperty keepPersistentProp = serializedSettings.FindProperty("keepBalancePopupPersistent");
+            EditorGUILayout.PropertyField(keepPersistentProp, new GUIContent(
+                L10n.Get("config.recharge.keep_balance_persistent"),
+                L10n.Get("config.recharge.keep_balance_persistent.tooltip")
+            ));
+
             EditorGUILayout.EndVertical();
         }
 

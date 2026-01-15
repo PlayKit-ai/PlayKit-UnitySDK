@@ -76,5 +76,13 @@ namespace PlayKit_SDK.Recharge
         /// </summary>
         /// <returns>Product list result, or null if not supported</returns>
         UniTask<ProductListResult> GetAvailableProductsAsync();
+
+        /// <summary>
+        /// Get the modal provider for this recharge provider.
+        /// Returns null to use the default modal behavior.
+        /// Different channels can override this to customize the recharge modal.
+        /// </summary>
+        /// <returns>Modal provider, or null for default behavior</returns>
+        IRechargeModalProvider GetModalProvider();
     }
 }

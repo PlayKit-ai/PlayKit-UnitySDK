@@ -70,6 +70,8 @@
   "config.recharge.enable_default_handler.tooltip": "Enable SDK's built-in recharge UI (shows when balance is low). Disable to implement your own custom recharge flow.",
   "config.recharge.show_balance_popup": "Show Balance Change Popup",
   "config.recharge.show_balance_popup.tooltip": "Automatically show a popup when balance changes (consumption or recharge).",
+  "config.recharge.keep_balance_persistent": "Keep Balance Popup Persistent",
+  "config.recharge.keep_balance_persistent.tooltip": "Keep the balance popup always visible on screen instead of auto-hiding after showing changes.",
 
   "about.version.title": "Version Information",
   "about.version.sdk": "SDK Version:",

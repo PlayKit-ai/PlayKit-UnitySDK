@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using PlayKit_SDK.Recharge;
+using PlayKit_SDK.UI;
 using UnityEngine;
 
 namespace PlayKit_SDK
@@ -228,6 +229,79 @@ namespace PlayKit_SDK
 
             Debug.Log($"[PlayKit_RechargeManager] Initiating recharge via {CurrentRechargeMethod}");
             return await _currentProvider.RechargeAsync(sku);
+        }
+
+        /// <summary>
+        /// Initiate a recharge operation using the modal provider system.
+        /// This method uses the IRechargeModalProvider from the current provider
+        /// to show a customized modal dialog before initiating recharge.
+        ///
+        /// The modal can show:
+        /// - Browser: Simple confirmation dialog
+        /// - Steam: Product selection with SKU list
+        /// - iOS/Android: Platform-specific product selection
+        /// </summary>
+        /// <returns>Result of the recharge operation</returns>
+        public async UniTask<RechargeResult> RechargeWithModalAsync()
+        {
+            if (_currentProvider == null)
+            {
+                Debug.LogError("[PlayKit_RechargeManager] No recharge provider available");
+                return new RechargeResult
+                {
+                    Initiated = false,
+                    Error = "No recharge provider initialized"
+                };
+            }
+
+            // Get modal provider from current provider
+            var modalProvider = _currentProvider.GetModalProvider();
+            if (modalProvider == null)
+            {
+                // Fallback to direct recharge without modal
+                Debug.Log($"[PlayKit_RechargeManager] No modal provider for {CurrentRechargeMethod}, using direct recharge");
+                return await _currentProvider.RechargeAsync(null);
+            }
+
+            // Get current balance
+            float currentBalance = _getCurrentBalance?.Invoke() ?? 0f;
+
+            Debug.Log($"[PlayKit_RechargeManager] Showing recharge modal via {CurrentRechargeMethod}");
+
+            // Show modal and wait for user response
+            var modalResult = await PlayKit_RechargeModalManager.Instance.ShowModalAsync(
+                modalProvider,
+                currentBalance
+            );
+
+            if (!modalResult.Confirmed)
+            {
+                Debug.Log("[PlayKit_RechargeManager] User cancelled recharge via modal");
+                OnRechargeCancelled?.Invoke();
+                return new RechargeResult
+                {
+                    Initiated = false,
+                    Error = modalResult.Error ?? "User cancelled"
+                };
+            }
+
+            // Modal provider handles the actual recharge in HandleUserConfirmAsync
+            // The result is already returned from the modal
+            return new RechargeResult
+            {
+                Initiated = true,
+                Data = modalResult.SelectedSku
+            };
+        }
+
+        /// <summary>
+        /// Get the modal provider for the current recharge provider.
+        /// This can be used to customize modal behavior externally.
+        /// </summary>
+        /// <returns>Modal provider, or null if not available</returns>
+        public IRechargeModalProvider GetCurrentModalProvider()
+        {
+            return _currentProvider?.GetModalProvider();
         }
 
         /// <summary>

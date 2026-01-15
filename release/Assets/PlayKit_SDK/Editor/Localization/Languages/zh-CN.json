@@ -264,6 +264,8 @@
   "config.recharge.enable_default_handler.tooltip": "启用 SDK 内置的充值 UI（余额不足时显示）。禁用以实现自定义充值流程。",
   "config.recharge.show_balance_popup": "自动展示余额变化",
   "config.recharge.show_balance_popup.tooltip": "余额发生变化时（消费或充值）自动显示弹窗提示。",
+  "config.recharge.keep_balance_persistent": "保持余额弹窗常驻",
+  "config.recharge.keep_balance_persistent.tooltip": "让余额弹窗始终显示在屏幕上，而不是显示变化后自动隐藏。",
 
   "config.build_token.title": "⚠️ 危险区域 - 构建时注入令牌",
   "config.build_token.warning": "警告：将开发者令牌注入到构建中。令牌会被嵌入到构建文件中，可通过反编译提取。仅用于内部测试构建，绝对不要用于正式环境！",

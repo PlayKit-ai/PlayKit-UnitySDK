@@ -69,6 +69,9 @@ namespace PlayKit_SDK
         [Tooltip("Automatically show balance change popup when balance updates")]
         [SerializeField] private bool showBalanceChangePopup = true;
 
+        [Tooltip("Keep balance popup visible at all times (persistent mode). When enabled, the popup shows from game start and never auto-hides.")]
+        [SerializeField] private bool keepBalancePopupPersistent = false;
+
         // Singleton instance
         private static PlayKitSettings _instance;
 
@@ -166,6 +169,7 @@ namespace PlayKit_SDK
 
         // Balance UI
         public bool ShowBalanceChangePopup => showBalanceChangePopup;
+        public bool KeepBalancePopupPersistent => keepBalancePopupPersistent;
 
         /// <summary>
         /// Gets the effective base URL for API calls.

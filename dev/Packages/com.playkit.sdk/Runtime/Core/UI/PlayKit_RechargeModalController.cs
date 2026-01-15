@@ -1,55 +1,55 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using PlayKit_SDK.Recharge;
 
 namespace PlayKit_SDK.UI
 {
     /// <summary>
     /// Controller for the Recharge Modal UI prefab.
-    /// Prefab location: Resources/PlayKit/UI/RechargeModal.prefab
+    /// Prefab location: Resources/RechargeModal.prefab
     ///
-    /// Required UI elements:
-    /// - modalRoot (GameObject) - Root object to show/hide
-    /// - titleText (Text) - Modal title
-    /// - messageText (Text) - Message text
-    /// - balanceLabelText (Text) - "Current Balance:" label
-    /// - balanceValueText (Text) - Balance value
-    /// - rechargeButton (Button) - Recharge button
-    /// - cancelButton (Button) - Cancel button
+    /// Shows a product list where each product has its own purchase button.
+    /// Balance is displayed via PlayKit_BalancePopupManager (persistent mode).
     /// </summary>
     public class PlayKit_RechargeModalController : MonoBehaviour
     {
         [Header("UI References")]
-        [Tooltip("Root GameObject to show/hide the modal")]
+        [Tooltip("Root GameObject to show/hide the modal content")]
         public GameObject modalRoot;
+
+        [Tooltip("Loading spinner - shown during network requests")]
+        public GameObject spinner;
 
         [Tooltip("Modal title text")]
         public Text titleText;
 
-        [Tooltip("Main message text")]
-        public Text messageText;
-
-        [Tooltip("'Current Balance:' label")]
-        public Text balanceLabelText;
-
-        [Tooltip("Balance value display")]
-        public Text balanceValueText;
-
-        [Tooltip("Recharge button")]
+        [Tooltip("Recharge button (shown when no product list)")]
         public Button rechargeButton;
 
         [Tooltip("Cancel button")]
         public Button cancelButton;
 
-        [Header("Optional - Recharge Button Text")]
-        [Tooltip("Optional: Text on recharge button to update text")]
+        [Header("Optional - Button Text")]
+        [Tooltip("Optional: Text on recharge button")]
         public Text rechargeButtonText;
 
-        [Tooltip("Optional: Text on cancel button to update text")]
+        [Tooltip("Optional: Text on cancel button")]
         public Text cancelButtonText;
 
+        [Header("Product List")]
+        [Tooltip("Root container for product list")]
+        public GameObject productListRoot;
+
+        [Tooltip("Parent transform for product items")]
+        public Transform productListContent;
+
+        [Tooltip("Prefab for individual product items")]
+        public GameObject productItemPrefab;
+
         /// <summary>
-        /// Event fired when recharge button is clicked
+        /// Event fired when recharge button is clicked (for simple mode without products)
         /// </summary>
         public event Action OnRechargeClicked;
 
@@ -57,6 +57,14 @@ namespace PlayKit_SDK.UI
         /// Event fired when cancel button is clicked
         /// </summary>
         public event Action OnCancelClicked;
+
+        /// <summary>
+        /// Event fired when a product's purchase button is clicked
+        /// </summary>
+        public event Action<string> OnProductPurchaseClicked;
+
+        private List<ProductItemController> _productItems = new List<ProductItemController>();
+        private string _purchaseButtonText = "Purchase";
 
         private void Awake()
         {
@@ -77,20 +85,109 @@ namespace PlayKit_SDK.UI
                 });
             }
 
-            // Hide modal by default
+            // Hide everything by default
             if (modalRoot != null)
             {
                 modalRoot.SetActive(false);
             }
+
+            if (spinner != null)
+            {
+                spinner.SetActive(false);
+            }
         }
 
         /// <summary>
-        /// Show the modal with localized text and balance
+        /// Show the loading spinner and hide modal content
         /// </summary>
-        /// <param name="balance">Current balance to display</param>
+        public void ShowLoading()
+        {
+            if (modalRoot != null)
+            {
+                modalRoot.SetActive(false);
+            }
+
+            if (spinner != null)
+            {
+                spinner.SetActive(true);
+            }
+        }
+
+        /// <summary>
+        /// Hide the loading spinner
+        /// </summary>
+        public void HideLoading()
+        {
+            if (spinner != null)
+            {
+                spinner.SetActive(false);
+            }
+        }
+
+        /// <summary>
+        /// Show the modal with content from IRechargeModalProvider
+        /// </summary>
+        /// <param name="content">Modal content to display</param>
+        public void Show(RechargeModalContent content)
+        {
+            // Hide spinner, show modal content
+            HideLoading();
+
+            if (modalRoot != null)
+            {
+                modalRoot.SetActive(true);
+            }
+
+            // Title
+            if (titleText != null)
+            {
+                titleText.text = content.Title ?? "";
+            }
+
+            // Button text
+            if (rechargeButtonText != null)
+            {
+                rechargeButtonText.text = content.ConfirmButtonText ?? "Confirm";
+            }
+
+            if (cancelButtonText != null)
+            {
+                cancelButtonText.text = content.CancelButtonText ?? "Cancel";
+            }
+
+            // Store purchase button text for product items
+            _purchaseButtonText = content.PurchaseButtonText ?? "Purchase";
+
+            // Product list
+            bool showProducts = content.ShowProductList && content.Products != null && content.Products.Count > 0;
+
+            if (productListRoot != null)
+            {
+                productListRoot.SetActive(showProducts);
+
+                if (showProducts)
+                {
+                    PopulateProductList(content.Products);
+                }
+            }
+
+            // Hide main recharge button when showing product list (each product has its own button)
+            if (rechargeButton != null)
+            {
+                rechargeButton.gameObject.SetActive(!showProducts);
+            }
+        }
+
+        /// <summary>
+        /// Show the modal with localized text (legacy method for backward compatibility)
+        /// </summary>
+        /// <param name="balance">Current balance (not displayed, for compatibility)</param>
         /// <param name="language">Language code (e.g., "en-US", "zh-CN")</param>
         public void Show(float balance, string language = "en-US")
         {
+            // Hide spinner, show modal content
+            HideLoading();
+
             if (modalRoot != null)
             {
                 modalRoot.SetActive(true);
@@ -105,21 +202,6 @@ namespace PlayKit_SDK.UI
                 titleText.text = localizedStrings.Title;
             }
 
-            if (messageText != null)
-            {
-                messageText.text = localizedStrings.Message;
-            }
-
-            if (balanceLabelText != null)
-            {
-                balanceLabelText.text = localizedStrings.BalanceLabel;
-            }
-
-            if (balanceValueText != null)
-            {
-                balanceValueText.text = balance.ToString("F2");
-            }
-
             if (rechargeButtonText != null)
             {
                 rechargeButtonText.text = localizedStrings.RechargeButtonText;
@@ -129,10 +211,22 @@ namespace PlayKit_SDK.UI
             {
                 cancelButtonText.text = localizedStrings.CancelButtonText;
             }
+
+            // Show recharge button in legacy mode
+            if (rechargeButton != null)
+            {
+                rechargeButton.gameObject.SetActive(true);
+            }
+
+            // Hide product list for legacy mode
+            if (productListRoot != null)
+            {
+                productListRoot.SetActive(false);
+            }
         }
 
         /// <summary>
-        /// Hide the modal
+        /// Hide the modal completely (including spinner)
         /// </summary>
         public void Hide()
         {
@@ -140,6 +234,60 @@ namespace PlayKit_SDK.UI
             {
                 modalRoot.SetActive(false);
             }
+
+            if (spinner != null)
+            {
+                spinner.SetActive(false);
+            }
+        }
+
+        private void PopulateProductList(List<IAPProduct> products)
+        {
+            // Clear existing items
+            ClearProductItems();
+
+            if (productListContent == null || productItemPrefab == null)
+            {
+                Debug.LogWarning("[PlayKit_RechargeModalController] Product list content or prefab not set");
+                return;
+            }
+
+            // Create product items
+            foreach (var product in products)
+            {
+                var itemObj = Instantiate(productItemPrefab, productListContent);
+                var itemController = itemObj.GetComponent<ProductItemController>();
+
+                if (itemController != null)
+                {
+                    // Setup with direct purchase callback
+                    itemController.Setup(product, OnProductItemPurchaseClicked);
+                    itemController.SetPurchaseButtonText(_purchaseButtonText);
+                    _productItems.Add(itemController);
+                }
+                else
+                {
+                    Debug.LogWarning("[PlayKit_RechargeModalController] Product item prefab missing ProductItemController");
+                }
+            }
+        }
+
+        private void ClearProductItems()
+        {
+            foreach (var item in _productItems)
+            {
+                if (item != null)
+                {
+                    Destroy(item.gameObject);
+                }
+            }
+            _productItems.Clear();
+        }
+
+        private void OnProductItemPurchaseClicked(string sku)
+        {
+            Debug.Log($"[PlayKit_RechargeModalController] Product purchase clicked: {sku}");
+            OnProductPurchaseClicked?.Invoke(sku);
         }
 
         /// <summary>
@@ -152,9 +300,7 @@ namespace PlayKit_SDK.UI
                 case "zh-cn":
                     return new LocalizedStrings
                     {
-                        Title = "充值提示",
-                        Message = "您的余额不足，是否前往充值？",
-                        BalanceLabel = "当前余额：",
+                        Title = "充值",
                         RechargeButtonText = "立即充值",
                         CancelButtonText = "取消"
                     };
@@ -162,9 +308,7 @@ namespace PlayKit_SDK.UI
                 case "zh-tw":
                     return new LocalizedStrings
                     {
-                        Title = "儲值提示",
-                        Message = "您的餘額不足，是否前往儲值？",
-                        BalanceLabel = "目前餘額：",
+                        Title = "儲值",
                         RechargeButtonText = "立即儲值",
                         CancelButtonText = "取消"
                     };
@@ -172,9 +316,7 @@ namespace PlayKit_SDK.UI
                 case "ja-jp":
                     return new LocalizedStrings
                     {
-                        Title = "チャージ確認",
-                        Message = "残高が不足しています。チャージしますか？",
-                        BalanceLabel = "現在の残高：",
+                        Title = "チャージ",
                         RechargeButtonText = "チャージする",
                         CancelButtonText = "キャンセル"
                     };
@@ -182,9 +324,7 @@ namespace PlayKit_SDK.UI
                 case "ko-kr":
                     return new LocalizedStrings
                     {
-                        Title = "충전 확인",
-                        Message = "잔액이 부족합니다. 충전하시겠습니까？",
-                        BalanceLabel = "현재 잔액：",
+                        Title = "충전",
                         RechargeButtonText = "충전하기",
                         CancelButtonText = "취소"
                     };
@@ -192,9 +332,7 @@ namespace PlayKit_SDK.UI
                 default: // en-US
                     return new LocalizedStrings
                     {
-                        Title = "Recharge Confirmation",
-                        Message = "Your balance is low. Would you like to recharge?",
-                        BalanceLabel = "Current Balance:",
+                        Title = "Recharge",
                         RechargeButtonText = "Recharge Now",
                         CancelButtonText = "Cancel"
                     };
@@ -204,14 +342,14 @@ namespace PlayKit_SDK.UI
         private struct LocalizedStrings
         {
             public string Title;
-            public string Message;
-            public string BalanceLabel;
             public string RechargeButtonText;
             public string CancelButtonText;
         }
 
         private void OnDestroy()
         {
+            ClearProductItems();
+
             // Unsubscribe from button clicks
             if (rechargeButton != null)
             {
