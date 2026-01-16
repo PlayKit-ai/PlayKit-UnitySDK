@@ -287,9 +287,20 @@ namespace PlayKit_SDK
                 OnError?.Invoke(error);
                 return new ApiResult<PlayerInfo> { Success = false, Error = error };
             }
-            
+
             string url = $"{BaseUrl}/api/external/player-info";
-            var result = await GetRequestAsync<PlayerInfo>(url, authToken, cancellationToken);
+
+            // Add X-Game-Id header to support Global Developer Token
+            // When using a Global Developer Token (without game_id), the server needs
+            // to know which game's owner wallet to query
+            var headers = new System.Collections.Generic.Dictionary<string, string>();
+            var gameId = PlayKitSettings.Instance?.GameId;
+            if (!string.IsNullOrEmpty(gameId))
+            {
+                headers["X-Game-Id"] = gameId;
+            }
+
+            var result = await GetRequestAsync<PlayerInfo>(url, authToken, cancellationToken, headers.Count > 0 ? headers : null);
             
             if (result.Success)
             {
@@ -583,7 +594,8 @@ namespace PlayKit_SDK
         private async UniTask<ApiResult<TResponse>> GetRequestAsync<TResponse>(
             string url,
             string authToken,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            System.Collections.Generic.Dictionary<string, string> additionalHeaders = null)
         {
             int attempt = 0;
             while (attempt < maxRetryCount)
@@ -592,6 +604,15 @@ namespace PlayKit_SDK
                 {
                     request.downloadHandler = new DownloadHandlerBuffer();
                     request.SetRequestHeader("Authorization", $"Bearer {authToken}");
+
+                    // Add additional headers if provided
+                    if (additionalHeaders != null)
+                    {
+                        foreach (var header in additionalHeaders)
+                        {
+                            request.SetRequestHeader(header.Key, header.Value);
+                        }
+                    }
 
                     var operation = request.SendWebRequest();
                     float timer = 0f;

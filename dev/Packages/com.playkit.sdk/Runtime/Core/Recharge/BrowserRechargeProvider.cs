@@ -67,7 +67,7 @@ namespace PlayKit_SDK.Recharge
         }
 
         /// <summary>
-        /// Get the recharge URL with authentication token
+        /// Get the recharge URL with authentication token and gameId
         /// </summary>
         public string GetRechargeUrl()
         {
@@ -81,9 +81,18 @@ namespace PlayKit_SDK.Recharge
                 return baseRechargeUrl;
             }
 
-            // Build URL with playerToken parameter
+            // Build URL with playerToken and gameId parameters
+            // gameId is used by the recharge page to fetch the correct owner's wallet
             string separator = baseRechargeUrl.Contains("?") ? "&" : "?";
-            return $"{baseRechargeUrl}{separator}playerToken={Uri.EscapeDataString(playerToken)}";
+            string url = $"{baseRechargeUrl}{separator}playerToken={Uri.EscapeDataString(playerToken)}";
+
+            // Add gameId if available
+            if (!string.IsNullOrEmpty(_gameId))
+            {
+                url += $"&gameId={Uri.EscapeDataString(_gameId)}";
+            }
+
+            return url;
         }
 
         public async UniTask<RechargeResult> RechargeAsync(string sku = null)
