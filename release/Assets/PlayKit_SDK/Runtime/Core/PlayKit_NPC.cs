@@ -37,7 +37,7 @@ namespace PlayKit_SDK
         public string CharacterDesign => characterDesign;
 
         private PlayKit_AIChatClient _chatClient;
-        private List<PlayKit_ChatMessage> _conversationHistory;
+        private List<PlayKit_ChatMessage> _conversationHistory = new List<PlayKit_ChatMessage>();
         private string _currentCharacterDesign;
         private Dictionary<string, string> _memories = new Dictionary<string, string>();
         private bool _isTalking;
@@ -93,7 +93,6 @@ namespace PlayKit_SDK
 
         private void Start()
         {
-            _conversationHistory = new List<PlayKit_ChatMessage>();
             Initialize().Forget();
         }
 

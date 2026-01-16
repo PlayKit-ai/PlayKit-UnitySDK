@@ -305,7 +305,7 @@ namespace PlayKit_SDK
             if (result.Success)
             {
                 cachedPlayerInfo = result.Data;
-                Debug.Log($"Player info updated: {cachedPlayerInfo.UserId} has {cachedPlayerInfo.Credits} credits.");
+                Debug.Log($"Player info updated: {cachedPlayerInfo.UserId} has {cachedPlayerInfo.Balance} credits.");
                 OnPlayerInfoUpdated?.Invoke(cachedPlayerInfo);
 
                 // Fire daily refresh event if credits were refreshed
