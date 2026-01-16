@@ -12,20 +12,20 @@ namespace PlayKit_SDK.Example
     {
         async void Start()
         {
-            /* 初始化 PlayKit SDK。
-             * 这是使用SDK任何功能之前都必须调用的第一步，这会开始读取本地的玩家信息，如果未登录则自动打开登录窗口。
-             * 如果传入您的开发者密钥（Developer Key），则会跳过任何鉴权。
-             * Initialize PlayKit SDK.
-             * This must be called before everything, and it will start to read local player information
-             * and if there is not, it will automatically start up the login modal.
-             * If you pass in your developer key, the sdk skips player validation.
+            /* PlayKit SDK 现在会在游戏启动时自动初始化。
+             * 调用 InitializeAsync() 等待初始化完成 - 如果已完成会立即返回。
+             * 配置请在 Tools > PlayKit SDK > Settings 中设置。
+             *
+             * PlayKit SDK now auto-initializes at game startup.
+             * Call InitializeAsync() to wait for completion - returns immediately if already done.
+             * Configure via Tools > PlayKit SDK > Settings.
              */
             var result = await PlayKitSDK.InitializeAsync();
 
             if (!result)
             {
                 Debug.LogError(
-                    "initialization failed, you should place a sdk object first, then fill in your gameId in the sdk object. 初始化失败，你需要放置一个sdk prefab，然后将你的游戏Id填写到sdk里");
+                    "SDK initialization failed. Please check your configuration in Tools > PlayKit SDK > Settings");
                 return;
             }
 

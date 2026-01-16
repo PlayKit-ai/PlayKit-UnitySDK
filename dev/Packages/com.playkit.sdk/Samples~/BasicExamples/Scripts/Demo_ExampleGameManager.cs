@@ -15,15 +15,13 @@ public class Demo_ExampleGameManager : MonoBehaviour
     [SerializeField] private Image _image;
     async void Start()
     {
-        /* 初始化 PlayKit SDK。
-         SDK 会自动创建，无需在场景中拖入 Prefab。
-         在使用任何功能前调用 InitializeAsync()，它会读取配置（Tools > PlayKit SDK > Settings）并处理玩家认证。
-         如果未登录，会自动打开登录窗口。
-
-         Initialize PlayKit SDK.
-         The SDK instance is created automatically - no need to drag prefabs into scenes.
-         Call InitializeAsync() before using any features. It loads configuration (Tools > PlayKit SDK > Settings)
-         and handles player authentication. If not logged in, it will automatically show the login modal.
+        /* PlayKit SDK 现在会在游戏启动时自动初始化。
+         * 你可以直接调用 InitializeAsync() 来等待初始化完成 - 如果已完成会立即返回，
+         * 如果正在进行中则会等待完成。这保证了向后兼容性。
+         *
+         * PlayKit SDK now auto-initializes at game startup.
+         * You can call InitializeAsync() to wait for initialization to complete - it returns immediately
+         * if already done, or waits if initialization is in progress. This ensures backward compatibility.
          */
         var result = await PlayKitSDK.InitializeAsync();
 

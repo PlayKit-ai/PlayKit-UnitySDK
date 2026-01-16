@@ -6,7 +6,7 @@ namespace PlayKit_SDK
 {
     public class PlayKitSDK : MonoBehaviour
     {
-        public const string VERSION = "v0.2.3.17";
+        public const string VERSION = "v0.2.4.0";
 
         // Configuration is now loaded from PlayKitSettings ScriptableObject
         // No need to manually place prefabs in scenes - SDK initializes automatically at runtime
@@ -39,17 +39,20 @@ namespace PlayKit_SDK
 
             // Create SDK GameObject automatically
             GameObject sdkObject = new GameObject("PlayKit_SDK");
-            
+
             // AddComponent<PlayKit_SDK>() triggers Awake() synchronously
             // Awake() will add AIContextManager and set Instance
             sdkObject.AddComponent<PlayKitSDK>();
-            
+
             DontDestroyOnLoad(sdkObject);
 
             // Clear flag after initialization
             _isAutoInitializing = false;
 
-            Debug.Log("[PlayKit SDK] SDK initialized. Configure via Tools > PlayKit SDK > Settings");
+            Debug.Log("[PlayKit SDK] SDK instance created. Starting async initialization...");
+
+            // Automatically trigger async initialization (fire-and-forget)
+            InitializeAsync().Forget();
         }
 
         private void Awake()
@@ -88,6 +91,8 @@ namespace PlayKit_SDK
         }
 
         private static bool _isInitialized = false;
+        private static bool _isInitializing = false;
+        private static UniTaskCompletionSource<bool> _initializationTask;
         private static Auth.PlayKit_AuthManager PlayKitAuthManager => Instance.authManager;
         private static Provider.IChatProvider _chatProvider;
         private static Provider.IImageProvider _imageProvider;
@@ -99,6 +104,10 @@ namespace PlayKit_SDK
         /// Asynchronously initializes the SDK. This must complete successfully before creating clients.
         /// It handles configuration loading and user authentication.
         /// Configuration is loaded from PlayKitSettings (Tools > PlayKit SDK > Settings).
+        ///
+        /// Note: SDK now auto-initializes at startup. You can still call this method explicitly -
+        /// it will return immediately if already initialized, or wait for ongoing initialization to complete.
+        /// This ensures backward compatibility with existing code.
         /// </summary>
         /// <param name="developerToken">Optional developer token. If not provided, uses token from EditorPrefs (editor only).</param>
         /// <returns>True if initialization and authentication were successful, otherwise false.</returns>
@@ -110,9 +119,41 @@ namespace PlayKit_SDK
                 return false;
             }
 
-            Debug.Log("[PlayKit SDK] Initializing...");
+            // Already initialized - return immediately (backward compatible)
             if (_isInitialized) return true;
 
+            // Another initialization is in progress - wait for it to complete
+            if (_isInitializing && _initializationTask != null)
+            {
+                Debug.Log("[PlayKit SDK] Initialization already in progress, waiting...");
+                return await _initializationTask.Task;
+            }
+
+            // Start initialization
+            _isInitializing = true;
+            _initializationTask = new UniTaskCompletionSource<bool>();
+            Debug.Log("[PlayKit SDK] Initializing...");
+
+            bool success = false;
+            try
+            {
+                success = await DoInitializeAsync(developerToken);
+            }
+            finally
+            {
+                _isInitialized = success;
+                _isInitializing = false;
+                _initializationTask.TrySetResult(success);
+            }
+
+            return success;
+        }
+
+        /// <summary>
+        /// Internal initialization logic. Called by InitializeAsync with proper concurrency handling.
+        /// </summary>
+        private static async UniTask<bool> DoInitializeAsync(string developerToken)
+        {
             // Load settings from PlayKitSettings ScriptableObject
             var settings = PlayKitSettings.Instance;
             if (settings == null)
@@ -265,7 +306,6 @@ namespace PlayKit_SDK
                 playerClient.AutoPromptRecharge = settings.EnableDefaultRechargeHandler;
             }
 
-            _isInitialized = true;
             Debug.Log("[PlayKit SDK] PlayKit_SDK Initialized Successfully");
             return true;
         }
