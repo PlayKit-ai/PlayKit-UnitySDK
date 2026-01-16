@@ -67,7 +67,7 @@ namespace PlayKit_SDK
         #region Private Fields
 
         private PlayKit_AIChatClient _chatClient;
-        private List<PlayKit_ChatMessage> _conversationHistory;
+        private List<PlayKit_ChatMessage> _conversationHistory = new List<PlayKit_ChatMessage>();
         private bool _isReady;
         private bool _isProcessing;
 
@@ -119,7 +119,6 @@ namespace PlayKit_SDK
 
         private void Start()
         {
-            _conversationHistory = new List<PlayKit_ChatMessage>();
             Initialize().Forget();
         }
 
