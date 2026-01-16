@@ -6,7 +6,7 @@ namespace PlayKit_SDK
 {
     public class PlayKitSDK : MonoBehaviour
     {
-        public const string VERSION = "v0.2.4.1";
+        public const string VERSION = "v0.2.4.2";
 
         // Configuration is now loaded from PlayKitSettings ScriptableObject
         // No need to manually place prefabs in scenes - SDK initializes automatically at runtime
