@@ -80,7 +80,7 @@ namespace PlayKit_SDK.Steam
                 case "zh-cn":
                     return new LocalizedStrings
                     {
-                        Title = "Steam充值",
+                        Title = "您的余额低",
                         ConfirmText = "确定",
                         CancelText = "取消",
                         PurchaseButtonText = "购买"
@@ -89,7 +89,7 @@ namespace PlayKit_SDK.Steam
                 case "zh-tw":
                     return new LocalizedStrings
                     {
-                        Title = "Steam儲值",
+                        Title = "您的餘額低",
                         ConfirmText = "確定",
                         CancelText = "取消",
                         PurchaseButtonText = "購買"
@@ -98,7 +98,7 @@ namespace PlayKit_SDK.Steam
                 case "ja-jp":
                     return new LocalizedStrings
                     {
-                        Title = "Steamチャージ",
+                        Title = "残高が不足しています",
                         ConfirmText = "OK",
                         CancelText = "キャンセル",
                         PurchaseButtonText = "購入"
@@ -107,7 +107,7 @@ namespace PlayKit_SDK.Steam
                 case "ko-kr":
                     return new LocalizedStrings
                     {
-                        Title = "Steam 충전",
+                        Title = "잔액이 부족합니다",
                         ConfirmText = "확인",
                         CancelText = "취소",
                         PurchaseButtonText = "구매"
@@ -116,7 +116,7 @@ namespace PlayKit_SDK.Steam
                 default: // en-US
                     return new LocalizedStrings
                     {
-                        Title = "Steam Recharge",
+                        Title = "Your balance is low",
                         ConfirmText = "OK",
                         CancelText = "Cancel",
                         PurchaseButtonText = "Purchase"

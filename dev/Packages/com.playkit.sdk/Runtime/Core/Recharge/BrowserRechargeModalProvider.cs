@@ -85,7 +85,7 @@ namespace PlayKit_SDK.Recharge
                 case "zh-cn":
                     return new LocalizedStrings
                     {
-                        Title = "充值",
+                        Title = "您的余额低，在下方购买余额来继续游玩",
                         ConfirmText = "立即充值",
                         CancelText = "取消",
                         PurchaseButtonText = "购买"
@@ -94,7 +94,7 @@ namespace PlayKit_SDK.Recharge
                 case "zh-tw":
                     return new LocalizedStrings
                     {
-                        Title = "儲值",
+                        Title = "您的餘額低，在下方購買餘額來繼續遊玩",
                         ConfirmText = "立即儲值",
                         CancelText = "取消",
                         PurchaseButtonText = "購買"
@@ -103,7 +103,7 @@ namespace PlayKit_SDK.Recharge
                 case "ja-jp":
                     return new LocalizedStrings
                     {
-                        Title = "チャージ",
+                        Title = "残高が不足しています。下記から購入して続けてください",
                         ConfirmText = "チャージする",
                         CancelText = "キャンセル",
                         PurchaseButtonText = "購入"
@@ -112,7 +112,7 @@ namespace PlayKit_SDK.Recharge
                 case "ko-kr":
                     return new LocalizedStrings
                     {
-                        Title = "충전",
+                        Title = "잔액이 부족합니다. 아래에서 구매하여 계속 플레이하세요",
                         ConfirmText = "충전하기",
                         CancelText = "취소",
                         PurchaseButtonText = "구매"
@@ -121,7 +121,7 @@ namespace PlayKit_SDK.Recharge
                 default: // en-US
                     return new LocalizedStrings
                     {
-                        Title = "Recharge",
+                        Title = "Your balance is low. Purchase below to continue playing",
                         ConfirmText = "Recharge Now",
                         CancelText = "Cancel",
                         PurchaseButtonText = "Purchase"
