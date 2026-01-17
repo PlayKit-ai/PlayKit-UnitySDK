@@ -61,7 +61,7 @@ namespace PlayKit_SDK
             if (Instance == null)
             {
                 Instance = this;
-
+                
                 // Only call DontDestroyOnLoad if not already called in AutoInitialize
                 if (!_isAutoInitializing)
                 {
@@ -87,22 +87,6 @@ namespace PlayKit_SDK
             if (GetComponent<AIContextManager>() == null)
             {
                 gameObject.AddComponent<AIContextManager>();
-            }
-        }
-
-        private void OnEnable()
-        {
-            // Handle domain reload: static variables are reset but GameObject persists
-            if (Instance == null)
-            {
-                Instance = this;
-                Debug.Log("[PlayKit SDK] Recovering from domain reload...");
-
-                // Re-initialize if not already initializing
-                if (!_isInitialized && !_isInitializing)
-                {
-                    InitializeAsync().Forget();
-                }
             }
         }
 

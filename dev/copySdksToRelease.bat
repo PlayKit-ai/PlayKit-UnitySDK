@@ -16,6 +16,16 @@ if not exist "%TARGET_DIR%" (
 echo Copying com.playkit.sdk...
 robocopy "%SOURCE_DIR%\com.playkit.sdk" "%TARGET_DIR%\PlayKit_SDK" /E /NFL /NDL /NJH /NJS /NC /NS /NP
 
+:: Rename Samples~ to Samples (remove ~ suffix so Unity compiles the scripts)
+if exist "%TARGET_DIR%\PlayKit_SDK\Samples~" (
+    if exist "%TARGET_DIR%\PlayKit_SDK\Samples" (
+        echo Removing old Samples folder...
+        rmdir /S /Q "%TARGET_DIR%\PlayKit_SDK\Samples"
+    )
+    echo Renaming Samples~ to Samples...
+    ren "%TARGET_DIR%\PlayKit_SDK\Samples~" "Samples"
+)
+
 :: Copy Steam Addon (including .meta files)
 echo Copying com.playkit.sdk.steam...
 robocopy "%SOURCE_DIR%\com.playkit.sdk.steam" "%TARGET_DIR%\PlayKit_SDK.SteamAddon" /E /NFL /NDL /NJH /NJS /NC /NS /NP
