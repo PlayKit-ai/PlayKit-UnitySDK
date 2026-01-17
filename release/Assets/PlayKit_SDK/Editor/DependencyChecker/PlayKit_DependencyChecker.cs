@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using UnityEditor;
 using UnityEditor.PackageManager;
 using UnityEditor.PackageManager.Requests;
@@ -9,16 +10,17 @@ namespace PlayKit_SDK.Editor
     /// <summary>
     /// Checks for required dependencies on Unity Editor startup
     /// and provides one-click installation for missing packages.
+    ///
+    /// UniTask: Uses embedded .unitypackage for offline installation
+    /// Newtonsoft.Json: Installed via Unity Package Manager
     /// </summary>
     [InitializeOnLoad]
     public static class PlayKit_DependencyChecker
     {
-        private const string UNITASK_GIT_URL =
-            "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask";
+        // Embedded UniTask package path (relative to this script)
+        private const string UNITASK_PACKAGE_FILENAME = "UniTask.unitypackage";
         private const string UNITASK_ASSET_STORE_URL =
             "https://assetstore.unity.com/packages/tools/integration/unitask-async-await-integration-for-unity-206367";
-        private const string OPENUPM_INSTALL_GUIDE =
-            "https://github.com/Cysharp/UniTask#install-via-upm";
 
         private const string NEWTONSOFT_PACKAGE_ID = "com.unity.nuget.newtonsoft-json";
         private const string NEWTONSOFT_VERSION = "3.2.1";
@@ -28,7 +30,6 @@ namespace PlayKit_SDK.Editor
 
         private static AddRequest _addRequest;
         private static bool _isInstalling;
-        private static string _installingPackage;
 
         static PlayKit_DependencyChecker()
         {
@@ -42,13 +43,6 @@ namespace PlayKit_SDK.Editor
             if (EditorPrefs.GetBool(SKIP_CHECK_KEY, false))
             {
                 return;
-            }
-
-            // Always ensure scripting define symbols are set for manual installs
-            // This handles the case where user manually installed UniTask
-            if (!IsUniTaskInstalledViaPackageManager() && IsUniTaskAssemblyAvailable())
-            {
-                EnsureScriptingDefineSymbols();
             }
 
             // Only check once per session (check timestamp)
@@ -72,76 +66,22 @@ namespace PlayKit_SDK.Editor
             CheckDependencies();
         }
 
-        // [MenuItem("PlayKit SDK/Check Dependencies")]
-        // public static void CheckDependenciesManual()
-        // {
-        //     CheckDependencies(isManual: true);
-        // }
-
-        [MenuItem("PlayKit SDK/Install UniTask")]
-        public static void InstallUniTaskManual()
-        {
-            if (_isInstalling)
-            {
-                EditorUtility.DisplayDialog(
-                    "Installation in Progress",
-                    "UniTask installation is already in progress. Please wait...",
-                    "OK"
-                );
-                return;
-            }
-
-            // Check if already installed (via PM or manually)
-            bool installedViaPM = IsUniTaskInstalledViaPackageManager();
-            bool installedManually = IsUniTaskAssemblyAvailable();
-
-            if (installedViaPM || installedManually)
-            {
-                // Ensure scripting define symbols are set for manual installs
-                if (!installedViaPM && installedManually)
-                {
-                    EnsureScriptingDefineSymbols();
-                }
-
-                string status = installedViaPM ? "via Package Manager" : "manually (scripting symbols configured)";
-                EditorUtility.DisplayDialog(
-                    "UniTask Already Installed",
-                    $"UniTask is already installed {status}.",
-                    "OK"
-                );
-                return;
-            }
-
-            InstallUniTask();
-        }
-
         private static void CheckDependencies(bool isManual = false)
         {
             EditorPrefs.SetString(LAST_CHECK_KEY, DateTime.Now.ToString());
 
-            bool hasUniTaskViaPM = IsUniTaskInstalledViaPackageManager();
-            bool hasUniTaskAssembly = IsUniTaskAssemblyAvailable();
+            bool hasUniTask = IsUniTaskAvailable();
             bool hasNewtonsoft = IsNewtonsoftAvailable();
-
-            // Check if UniTask is available (either via PM or manual install)
-            bool hasUniTask = hasUniTaskViaPM || hasUniTaskAssembly;
-
-            // If manually installed, ensure scripting define symbols are set
-            if (!hasUniTaskViaPM && hasUniTaskAssembly)
-            {
-                EnsureScriptingDefineSymbols();
-            }
 
             // All dependencies installed
             if (hasUniTask && hasNewtonsoft)
             {
                 if (isManual)
                 {
-                    string uniTaskStatus = hasUniTaskViaPM ? "Installed (via Package Manager)" : "Installed (manual)";
                     EditorUtility.DisplayDialog(
                         "PlayKit SDK - Dependencies",
                         "All required dependencies are installed.\n\n" +
-                        $"- UniTask: {uniTaskStatus}\n" +
+                        "- UniTask: Installed\n" +
                         "- Newtonsoft.Json: Installed",
                         "OK"
                     );
@@ -149,12 +89,11 @@ namespace PlayKit_SDK.Editor
                 return;
             }
 
-            // UniTask not installed at all
+            // Check which dependencies are missing
             if (!hasUniTask)
             {
                 ShowUniTaskInstallDialog();
             }
-            // UniTask OK, check Newtonsoft
             else if (!hasNewtonsoft)
             {
                 ShowNewtonsoftInstallDialog();
@@ -162,87 +101,10 @@ namespace PlayKit_SDK.Editor
         }
 
         /// <summary>
-        /// Ensure scripting define symbols are set for manually installed packages.
-        /// This is needed because versionDefines only work with Package Manager installations.
+        /// Check if UniTask is available by checking loaded assemblies.
+        /// This works regardless of how UniTask was installed (PM, Asset Store, or manual).
         /// </summary>
-        private static void EnsureScriptingDefineSymbols()
-        {
-            var buildTargetGroup = EditorUserBuildSettings.selectedBuildTargetGroup;
-            if (buildTargetGroup == BuildTargetGroup.Unknown)
-                return;
-
-            string defines = PlayerSettings.GetScriptingDefineSymbolsForGroup(buildTargetGroup);
-            var defineList = new System.Collections.Generic.List<string>(defines.Split(';'));
-            bool changed = false;
-
-            // Add PLAYKIT_UNITASK_SUPPORT if UniTask assembly is available
-            if (IsUniTaskAssemblyAvailable() && !defineList.Contains("PLAYKIT_UNITASK_SUPPORT"))
-            {
-                defineList.Add("PLAYKIT_UNITASK_SUPPORT");
-                changed = true;
-                Debug.Log("[PlayKit SDK] Added PLAYKIT_UNITASK_SUPPORT scripting define symbol for manually installed UniTask.");
-            }
-
-            // Add PLAYKIT_NEWTONSOFT_SUPPORT if Newtonsoft assembly is available
-            if (IsNewtonsoftAssemblyAvailable() && !defineList.Contains("PLAYKIT_NEWTONSOFT_SUPPORT"))
-            {
-                defineList.Add("PLAYKIT_NEWTONSOFT_SUPPORT");
-                changed = true;
-                Debug.Log("[PlayKit SDK] Added PLAYKIT_NEWTONSOFT_SUPPORT scripting define symbol.");
-            }
-
-            if (changed)
-            {
-                PlayerSettings.SetScriptingDefineSymbolsForGroup(buildTargetGroup, string.Join(";", defineList));
-            }
-        }
-
-        /// <summary>
-        /// Check if Newtonsoft.Json assembly exists
-        /// </summary>
-        private static bool IsNewtonsoftAssemblyAvailable()
-        {
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                var name = assembly.GetName().Name;
-                if (name == "Newtonsoft.Json" || name == "Unity.Newtonsoft.Json")
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /// <summary>
-        /// Check if UniTask is properly installed via Package Manager.
-        /// This is required for versionDefines to work and define PLAYKIT_UNITASK_SUPPORT.
-        /// </summary>
-        private static bool IsUniTaskInstalledViaPackageManager()
-        {
-            var listRequest = Client.List(true);
-            while (!listRequest.IsCompleted)
-            {
-                System.Threading.Thread.Sleep(10);
-            }
-
-            if (listRequest.Status == StatusCode.Success)
-            {
-                foreach (var package in listRequest.Result)
-                {
-                    if (package.name == "com.cysharp.unitask")
-                    {
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Check if UniTask assembly exists (may be manually installed)
-        /// </summary>
-        private static bool IsUniTaskAssemblyAvailable()
+        private static bool IsUniTaskAvailable()
         {
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
@@ -255,37 +117,10 @@ namespace PlayKit_SDK.Editor
         }
 
         /// <summary>
-        /// Quick check if UniTask is available (via PM or manual install)
-        /// </summary>
-        private static bool IsUniTaskAvailable()
-        {
-            return IsUniTaskInstalledViaPackageManager() || IsUniTaskAssemblyAvailable();
-        }
-
-        /// <summary>
-        /// Quick check if Newtonsoft.Json is available
+        /// Check if Newtonsoft.Json is available
         /// </summary>
         private static bool IsNewtonsoftAvailable()
         {
-            // Check if Newtonsoft.Json package is listed in Package Manager
-            var listRequest = Client.List(true);
-            while (!listRequest.IsCompleted)
-            {
-                System.Threading.Thread.Sleep(10);
-            }
-
-            if (listRequest.Status == StatusCode.Success)
-            {
-                foreach (var package in listRequest.Result)
-                {
-                    if (package.name == NEWTONSOFT_PACKAGE_ID)
-                    {
-                        return true;
-                    }
-                }
-            }
-
-            // Fallback: check assemblies
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 if (assembly.GetName().Name == "Newtonsoft.Json" ||
@@ -294,27 +129,86 @@ namespace PlayKit_SDK.Editor
                     return true;
                 }
             }
-
             return false;
+        }
+
+        /// <summary>
+        /// Get the path to the embedded UniTask.unitypackage
+        /// </summary>
+        private static string GetEmbeddedUniTaskPackagePath()
+        {
+            // Find this script's directory
+            string[] guids = AssetDatabase.FindAssets("PlayKit_DependencyChecker t:Script");
+            foreach (string guid in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                if (path.Contains("PlayKit_DependencyChecker"))
+                {
+                    string directory = Path.GetDirectoryName(path);
+                    string packagePath = Path.Combine(directory, UNITASK_PACKAGE_FILENAME);
+
+                    // Normalize path separators
+                    packagePath = packagePath.Replace("\\", "/");
+
+                    if (File.Exists(packagePath))
+                    {
+                        return packagePath;
+                    }
+                }
+            }
+
+            // Also check in Dependencies folder
+            string dependenciesPath = "Packages/com.playkit.sdk/Editor/Dependencies/" + UNITASK_PACKAGE_FILENAME;
+            if (File.Exists(dependenciesPath))
+            {
+                return dependenciesPath;
+            }
+
+            return null;
         }
 
         private static void ShowUniTaskInstallDialog()
         {
+            string embeddedPackagePath = GetEmbeddedUniTaskPackagePath();
+            bool hasEmbeddedPackage = !string.IsNullOrEmpty(embeddedPackagePath);
+
+            string message;
+            string button0;
+
+            if (hasEmbeddedPackage)
+            {
+                message = "PlayKit SDK requires UniTask for async/await support.\n\n" +
+                          "UniTask is not installed in your project.\n\n" +
+                          "Click 'Import UniTask' to import the embedded UniTask package.";
+                button0 = "Import UniTask";
+            }
+            else
+            {
+                message = "PlayKit SDK requires UniTask for async/await support.\n\n" +
+                          "UniTask is not installed in your project.\n\n" +
+                          "Please download UniTask from the Asset Store (free) and import it.";
+                button0 = "Open Asset Store";
+            }
+
             int option = EditorUtility.DisplayDialogComplex(
                 "PlayKit SDK - Missing Dependency",
-                "PlayKit SDK requires UniTask for async/await support.\n\n" +
-                "UniTask is not installed in your project.\n\n" +
-                "Click 'Install Now' to automatically install UniTask via Git URL.\n" +
-                "This will download and install UniTask from GitHub.",
-                "Install Now",           // 0 - Returns 0
-                "Don't Show Again",      // 1 - Returns 1
-                "Manual Install..."      // 2 - Returns 2
+                message,
+                button0,                 // 0
+                "Don't Show Again",      // 1
+                "Cancel"                 // 2
             );
 
             switch (option)
             {
-                case 0: // Install Now
-                    InstallUniTask();
+                case 0: // Import or Open Asset Store
+                    if (hasEmbeddedPackage)
+                    {
+                        ImportUniTaskPackage(embeddedPackagePath);
+                    }
+                    else
+                    {
+                        Application.OpenURL(UNITASK_ASSET_STORE_URL);
+                    }
                     break;
                 case 1: // Don't show again
                     EditorPrefs.SetBool(SKIP_CHECK_KEY, true);
@@ -323,152 +217,71 @@ namespace PlayKit_SDK.Editor
                         "Re-enable via: PlayKit SDK > Reset Dependency Check"
                     );
                     break;
-                case 2: // Manual Install
-                    ShowManualInstallOptions();
-                    break;
-            }
-        }
-
-        private static void ShowManualInstallOptions()
-        {
-            int option = EditorUtility.DisplayDialogComplex(
-                "UniTask Installation Options",
-                "Choose an installation method:\n\n" +
-                "Git URL (Recommended):\n" +
-                "Window > Package Manager > + > Add package from git URL\n" +
-                "Paste: " + UNITASK_GIT_URL + "\n\n" +
-                "OpenUPM:\n" +
-                "Add to manifest.json scopedRegistries and dependencies\n\n" +
-                "Asset Store:\n" +
-                "Download from Unity Asset Store",
-                "Copy Git URL",         // 0
-                "Close",                 // 1
-                "Open Asset Store"       // 2
-            );
-
-            switch (option)
-            {
-                case 0: // Copy Git URL
-                    GUIUtility.systemCopyBuffer = UNITASK_GIT_URL;
-                    EditorUtility.DisplayDialog(
-                        "Git URL Copied",
-                        "Git URL has been copied to clipboard.\n\n" +
-                        "Steps:\n" +
-                        "1. Window > Package Manager\n" +
-                        "2. Click '+' button\n" +
-                        "3. Select 'Add package from git URL...'\n" +
-                        "4. Paste the URL (Ctrl+V) and click 'Add'",
-                        "Open Package Manager"
-                    );
-                    UnityEditor.PackageManager.UI.Window.Open("");
-                    break;
-                case 2: // Asset Store
-                    Application.OpenURL(UNITASK_ASSET_STORE_URL);
-                    break;
             }
         }
 
         /// <summary>
-        /// Install UniTask via Package Manager API
+        /// Import the embedded UniTask.unitypackage
         /// </summary>
-        private static void InstallUniTask()
+        private static void ImportUniTaskPackage(string packagePath)
         {
-            if (_isInstalling)
-            {
-                Debug.LogWarning("[PlayKit SDK] Installation already in progress.");
-                return;
-            }
-
-            _isInstalling = true;
-            Debug.Log("[PlayKit SDK] Installing UniTask from GitHub...");
-
-            // Show progress bar
-            EditorUtility.DisplayProgressBar(
-                "PlayKit SDK",
-                "Installing UniTask... This may take a moment.",
-                0.3f
-            );
+            Debug.Log($"[PlayKit SDK] Importing UniTask from: {packagePath}");
 
             try
             {
-                _addRequest = Client.Add(UNITASK_GIT_URL);
-                EditorApplication.update += OnInstallProgress;
+                // ImportPackage will show Unity's import dialog
+                AssetDatabase.ImportPackage(packagePath, true);
+
+                Debug.Log("[PlayKit SDK] UniTask import dialog opened. Please click 'Import' to complete installation.");
             }
             catch (Exception ex)
             {
-                EditorUtility.ClearProgressBar();
-                _isInstalling = false;
-                Debug.LogError($"[PlayKit SDK] Failed to start UniTask installation: {ex.Message}");
+                Debug.LogError($"[PlayKit SDK] Failed to import UniTask package: {ex.Message}");
                 EditorUtility.DisplayDialog(
-                    "Installation Failed",
-                    $"Failed to start UniTask installation:\n\n{ex.Message}\n\n" +
-                    "Please try manual installation via Package Manager.",
+                    "Import Failed",
+                    $"Failed to import UniTask package:\n\n{ex.Message}\n\n" +
+                    "Please download UniTask from the Asset Store instead.",
                     "OK"
                 );
+                Application.OpenURL(UNITASK_ASSET_STORE_URL);
             }
         }
 
-        private static void OnInstallProgress()
+        [MenuItem("PlayKit SDK/Install UniTask")]
+        public static void InstallUniTaskManual()
         {
-            if (_addRequest == null || !_addRequest.IsCompleted)
+            if (IsUniTaskAvailable())
             {
-                // Still in progress, update progress bar
-                EditorUtility.DisplayProgressBar(
-                    "PlayKit SDK",
-                    "Installing UniTask... This may take a moment.",
-                    0.5f
+                EditorUtility.DisplayDialog(
+                    "UniTask Already Installed",
+                    "UniTask is already installed in your project.",
+                    "OK"
                 );
                 return;
             }
 
-            // Completed, clean up
-            EditorApplication.update -= OnInstallProgress;
-            EditorUtility.ClearProgressBar();
-            _isInstalling = false;
+            string embeddedPackagePath = GetEmbeddedUniTaskPackagePath();
 
-            if (_addRequest.Status == StatusCode.Success)
+            if (!string.IsNullOrEmpty(embeddedPackagePath))
             {
-                Debug.Log($"[PlayKit SDK] UniTask installed successfully: {_addRequest.Result.packageId}");
-                EditorUtility.DisplayDialog(
-                    "Installation Successful",
-                    "UniTask has been installed successfully!\n\n" +
-                    "Unity will now recompile scripts. " +
-                    "PlayKit SDK is ready to use after recompilation.",
-                    "OK"
-                );
-
-                // Force script recompilation
-                AssetDatabase.Refresh();
+                ImportUniTaskPackage(embeddedPackagePath);
             }
             else
             {
-                string errorMessage = _addRequest.Error?.message ?? "Unknown error";
-                Debug.LogError($"[PlayKit SDK] Failed to install UniTask: {errorMessage}");
-
                 int option = EditorUtility.DisplayDialogComplex(
-                    "Installation Failed",
-                    $"Failed to install UniTask:\n\n{errorMessage}\n\n" +
-                    "This might be due to network issues or firewall restrictions.\n" +
-                    "Would you like to try manual installation?",
-                    "Copy Git URL",
+                    "UniTask Not Found",
+                    "UniTask is not installed and the embedded package was not found.\n\n" +
+                    "Please download UniTask from the Unity Asset Store (it's free).",
+                    "Open Asset Store",
                     "Cancel",
-                    "Open Asset Store"
+                    ""
                 );
 
-                switch (option)
+                if (option == 0)
                 {
-                    case 0:
-                        GUIUtility.systemCopyBuffer = UNITASK_GIT_URL;
-                        UnityEditor.PackageManager.UI.Window.Open("");
-                        break;
-                    case 2:
-                        Application.OpenURL(UNITASK_ASSET_STORE_URL);
-                        break;
+                    Application.OpenURL(UNITASK_ASSET_STORE_URL);
                 }
             }
-
-            _addRequest = null;
-            _installingPackage = null;
         }
 
         #region Newtonsoft.Json Installation
@@ -480,9 +293,9 @@ namespace PlayKit_SDK.Editor
                 "PlayKit SDK requires Newtonsoft.Json for JSON serialization.\n\n" +
                 "Newtonsoft.Json is not installed in your project.\n\n" +
                 "Click 'Install Now' to automatically install from Unity Package Manager.",
-                "Install Now",           // 0 - Returns 0
-                "Don't Show Again",      // 1 - Returns 1
-                "Cancel"                 // 2 - Returns 2
+                "Install Now",           // 0
+                "Don't Show Again",      // 1
+                "Cancel"                 // 2
             );
 
             switch (option)
@@ -500,9 +313,6 @@ namespace PlayKit_SDK.Editor
             }
         }
 
-        /// <summary>
-        /// Install Newtonsoft.Json via Package Manager API
-        /// </summary>
         private static void InstallNewtonsoft()
         {
             if (_isInstalling)
@@ -512,10 +322,8 @@ namespace PlayKit_SDK.Editor
             }
 
             _isInstalling = true;
-            _installingPackage = "Newtonsoft.Json";
             Debug.Log("[PlayKit SDK] Installing Newtonsoft.Json...");
 
-            // Show progress bar
             EditorUtility.DisplayProgressBar(
                 "PlayKit SDK",
                 "Installing Newtonsoft.Json...",
@@ -531,7 +339,6 @@ namespace PlayKit_SDK.Editor
             {
                 EditorUtility.ClearProgressBar();
                 _isInstalling = false;
-                _installingPackage = null;
                 Debug.LogError($"[PlayKit SDK] Failed to start Newtonsoft.Json installation: {ex.Message}");
                 EditorUtility.DisplayDialog(
                     "Installation Failed",
@@ -546,7 +353,6 @@ namespace PlayKit_SDK.Editor
         {
             if (_addRequest == null || !_addRequest.IsCompleted)
             {
-                // Still in progress, update progress bar
                 EditorUtility.DisplayProgressBar(
                     "PlayKit SDK",
                     "Installing Newtonsoft.Json...",
@@ -555,11 +361,9 @@ namespace PlayKit_SDK.Editor
                 return;
             }
 
-            // Completed, clean up
             EditorApplication.update -= OnNewtonsoftInstallProgress;
             EditorUtility.ClearProgressBar();
             _isInstalling = false;
-            _installingPackage = null;
 
             if (_addRequest.Status == StatusCode.Success)
             {
@@ -567,12 +371,9 @@ namespace PlayKit_SDK.Editor
                 EditorUtility.DisplayDialog(
                     "Installation Successful",
                     "Newtonsoft.Json has been installed successfully!\n\n" +
-                    "Unity will now recompile scripts. " +
-                    "PlayKit SDK is ready to use after recompilation.",
+                    "Unity will now recompile scripts.",
                     "OK"
                 );
-
-                // Force script recompilation
                 AssetDatabase.Refresh();
             }
             else
@@ -596,15 +397,22 @@ namespace PlayKit_SDK.Editor
 
         #endregion
 
+        #region Utility Methods
+
         /// <summary>
-        /// Reset the skip preference (useful for testing or re-enabling check)
+        /// Reset the skip preference
         /// </summary>
-        // [MenuItem("PlayKit SDK/Reset Dependency Check")]
-        // public static void ResetDependencyCheck()
-        // {
-        //     EditorPrefs.DeleteKey(SKIP_CHECK_KEY);
-        //     EditorPrefs.DeleteKey(LAST_CHECK_KEY);
-        //     Debug.Log("[PlayKit SDK] Dependency check preferences reset. Check will run on next Editor startup.");
-        // }
+        [MenuItem("PlayKit SDK/Reset Dependency Check")]
+        public static void ResetDependencyCheck()
+        {
+            EditorPrefs.DeleteKey(SKIP_CHECK_KEY);
+            EditorPrefs.DeleteKey(LAST_CHECK_KEY);
+            Debug.Log("[PlayKit SDK] Dependency check preferences reset. Check will run on next Editor startup.");
+
+            // Run check immediately
+            CheckDependencies(isManual: true);
+        }
+
+        #endregion
     }
 }
