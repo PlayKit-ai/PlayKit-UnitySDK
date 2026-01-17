@@ -76,3 +76,5 @@ crashlytics-build.properties
 steam_appid.txt
 /dev/Assets/Plugins
 dev/Assets/Plugins.meta
+/release/Assets/Plugins
+release/Assets/Plugins.meta
