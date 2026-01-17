@@ -759,7 +759,7 @@ PlayerSettings:
   webGLMemoryGeometricGrowthCap: 96
   webGLPowerPreference: 2
   scriptingDefineSymbols:
-    Standalone: VUPLEX_CCU;VUPLEX_STANDALONE
+    Standalone: VUPLEX_CCU;VUPLEX_STANDALONE;PLAYKIT_NEWTONSOFT_SUPPORT;PLAYKIT_UNITASK_SUPPORT
     WebGL: VUPLEX_CCU;VUPLEX_STANDALONE
   additionalCompilerArguments: {}
   platformArchitecture: {}
