@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "com.cysharp.unitask": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask",
     "com.playkit.sdk": "file:com.playkit.sdk",
     "com.playkit.sdk.steam": "file:com.playkit.sdk.steam",
     "com.unity.collab-proxy": "2.8.2",
