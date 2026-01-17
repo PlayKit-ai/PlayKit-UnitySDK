@@ -44,6 +44,13 @@ namespace PlayKit_SDK.Editor
                 return;
             }
 
+            // Always ensure scripting define symbols are set for manual installs
+            // This handles the case where user manually installed UniTask
+            if (!IsUniTaskInstalledViaPackageManager() && IsUniTaskAssemblyAvailable())
+            {
+                EnsureScriptingDefineSymbols();
+            }
+
             // Only check once per session (check timestamp)
             string lastCheckStr = EditorPrefs.GetString(LAST_CHECK_KEY, "");
             if (!string.IsNullOrEmpty(lastCheckStr))
@@ -84,48 +91,24 @@ namespace PlayKit_SDK.Editor
                 return;
             }
 
-            // Check if installed via Package Manager (required for versionDefines to work)
-            if (IsUniTaskInstalledViaPackageManager())
+            // Check if already installed (via PM or manually)
+            bool installedViaPM = IsUniTaskInstalledViaPackageManager();
+            bool installedManually = IsUniTaskAssemblyAvailable();
+
+            if (installedViaPM || installedManually)
             {
+                // Ensure scripting define symbols are set for manual installs
+                if (!installedViaPM && installedManually)
+                {
+                    EnsureScriptingDefineSymbols();
+                }
+
+                string status = installedViaPM ? "via Package Manager" : "manually (scripting symbols configured)";
                 EditorUtility.DisplayDialog(
                     "UniTask Already Installed",
-                    "UniTask is already installed via Package Manager.",
+                    $"UniTask is already installed {status}.",
                     "OK"
                 );
-                return;
-            }
-
-            // Check if UniTask exists but not via PM (manual install)
-            if (IsUniTaskAssemblyAvailable())
-            {
-                int option = EditorUtility.DisplayDialogComplex(
-                    "UniTask Installation Issue",
-                    "UniTask is installed in your project, but NOT via Package Manager.\n\n" +
-                    "PlayKit SDK requires UniTask to be installed via Package Manager " +
-                    "for proper integration (scripting define symbols).\n\n" +
-                    "Please remove the manually installed UniTask and install via Package Manager.",
-                    "Install via PM",
-                    "Cancel",
-                    "Copy Git URL"
-                );
-
-                switch (option)
-                {
-                    case 0: // Install via PM
-                        InstallUniTask();
-                        break;
-                    case 2: // Copy Git URL
-                        GUIUtility.systemCopyBuffer = UNITASK_GIT_URL;
-                        EditorUtility.DisplayDialog(
-                            "Git URL Copied",
-                            "Please remove the existing UniTask first, then:\n\n" +
-                            "1. Window > Package Manager\n" +
-                            "2. Click '+' > 'Add package from git URL...'\n" +
-                            "3. Paste the URL and click 'Add'",
-                            "OK"
-                        );
-                        break;
-                }
                 return;
             }
 
@@ -140,15 +123,25 @@ namespace PlayKit_SDK.Editor
             bool hasUniTaskAssembly = IsUniTaskAssemblyAvailable();
             bool hasNewtonsoft = IsNewtonsoftAvailable();
 
-            // All dependencies properly installed via Package Manager
-            if (hasUniTaskViaPM && hasNewtonsoft)
+            // Check if UniTask is available (either via PM or manual install)
+            bool hasUniTask = hasUniTaskViaPM || hasUniTaskAssembly;
+
+            // If manually installed, ensure scripting define symbols are set
+            if (!hasUniTaskViaPM && hasUniTaskAssembly)
+            {
+                EnsureScriptingDefineSymbols();
+            }
+
+            // All dependencies installed
+            if (hasUniTask && hasNewtonsoft)
             {
                 if (isManual)
                 {
+                    string uniTaskStatus = hasUniTaskViaPM ? "Installed (via Package Manager)" : "Installed (manual)";
                     EditorUtility.DisplayDialog(
                         "PlayKit SDK - Dependencies",
                         "All required dependencies are installed.\n\n" +
-                        "- UniTask: Installed (via Package Manager)\n" +
+                        $"- UniTask: {uniTaskStatus}\n" +
                         "- Newtonsoft.Json: Installed",
                         "OK"
                     );
@@ -156,13 +149,8 @@ namespace PlayKit_SDK.Editor
                 return;
             }
 
-            // Check for manual UniTask installation (not via PM)
-            if (!hasUniTaskViaPM && hasUniTaskAssembly)
-            {
-                ShowUniTaskManualInstallWarning();
-            }
             // UniTask not installed at all
-            else if (!hasUniTaskViaPM)
+            if (!hasUniTask)
             {
                 ShowUniTaskInstallDialog();
             }
@@ -174,39 +162,55 @@ namespace PlayKit_SDK.Editor
         }
 
         /// <summary>
-        /// Show warning when UniTask is manually installed but not via Package Manager
+        /// Ensure scripting define symbols are set for manually installed packages.
+        /// This is needed because versionDefines only work with Package Manager installations.
         /// </summary>
-        private static void ShowUniTaskManualInstallWarning()
+        private static void EnsureScriptingDefineSymbols()
         {
-            int option = EditorUtility.DisplayDialogComplex(
-                "PlayKit SDK - UniTask Installation Issue",
-                "UniTask is detected in your project, but it was NOT installed via Package Manager.\n\n" +
-                "PlayKit SDK requires UniTask to be installed via Package Manager for proper integration.\n\n" +
-                "Please:\n" +
-                "1. Remove the manually installed UniTask from your Assets folder\n" +
-                "2. Install UniTask via Package Manager (Git URL or OpenUPM)\n\n" +
-                "This ensures scripting define symbols are set correctly.",
-                "Install via Git URL",
-                "Don't Show Again",
-                "Manual Install Guide"
-            );
+            var buildTargetGroup = EditorUserBuildSettings.selectedBuildTargetGroup;
+            if (buildTargetGroup == BuildTargetGroup.Unknown)
+                return;
 
-            switch (option)
+            string defines = PlayerSettings.GetScriptingDefineSymbolsForGroup(buildTargetGroup);
+            var defineList = new System.Collections.Generic.List<string>(defines.Split(';'));
+            bool changed = false;
+
+            // Add PLAYKIT_UNITASK_SUPPORT if UniTask assembly is available
+            if (IsUniTaskAssemblyAvailable() && !defineList.Contains("PLAYKIT_UNITASK_SUPPORT"))
             {
-                case 0: // Install via Git URL
-                    InstallUniTask();
-                    break;
-                case 1: // Don't show again
-                    EditorPrefs.SetBool(SKIP_CHECK_KEY, true);
-                    Debug.LogWarning(
-                        "[PlayKit SDK] Dependency check disabled. " +
-                        "Re-enable via: PlayKit SDK > Reset Dependency Check"
-                    );
-                    break;
-                case 2: // Manual Install Guide
-                    ShowManualInstallOptions();
-                    break;
+                defineList.Add("PLAYKIT_UNITASK_SUPPORT");
+                changed = true;
+                Debug.Log("[PlayKit SDK] Added PLAYKIT_UNITASK_SUPPORT scripting define symbol for manually installed UniTask.");
             }
+
+            // Add PLAYKIT_NEWTONSOFT_SUPPORT if Newtonsoft assembly is available
+            if (IsNewtonsoftAssemblyAvailable() && !defineList.Contains("PLAYKIT_NEWTONSOFT_SUPPORT"))
+            {
+                defineList.Add("PLAYKIT_NEWTONSOFT_SUPPORT");
+                changed = true;
+                Debug.Log("[PlayKit SDK] Added PLAYKIT_NEWTONSOFT_SUPPORT scripting define symbol.");
+            }
+
+            if (changed)
+            {
+                PlayerSettings.SetScriptingDefineSymbolsForGroup(buildTargetGroup, string.Join(";", defineList));
+            }
+        }
+
+        /// <summary>
+        /// Check if Newtonsoft.Json assembly exists
+        /// </summary>
+        private static bool IsNewtonsoftAssemblyAvailable()
+        {
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var name = assembly.GetName().Name;
+                if (name == "Newtonsoft.Json" || name == "Unity.Newtonsoft.Json")
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>
@@ -251,14 +255,11 @@ namespace PlayKit_SDK.Editor
         }
 
         /// <summary>
-        /// Quick check if UniTask is available (via PM or assembly)
-        /// For dependency check, we need PM installation for proper integration.
+        /// Quick check if UniTask is available (via PM or manual install)
         /// </summary>
         private static bool IsUniTaskAvailable()
         {
-            // For SDK to work properly, UniTask must be installed via Package Manager
-            // so that versionDefines can set PLAYKIT_UNITASK_SUPPORT
-            return IsUniTaskInstalledViaPackageManager();
+            return IsUniTaskInstalledViaPackageManager() || IsUniTaskAssemblyAvailable();
         }
 
         /// <summary>
