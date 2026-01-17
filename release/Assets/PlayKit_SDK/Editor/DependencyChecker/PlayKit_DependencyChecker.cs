@@ -137,31 +137,32 @@ namespace PlayKit_SDK.Editor
         /// </summary>
         private static string GetEmbeddedUniTaskPackagePath()
         {
-            // Find this script's directory
-            string[] guids = AssetDatabase.FindAssets("PlayKit_DependencyChecker t:Script");
+            // Search for UniTask.unitypackage using AssetDatabase
+            string[] guids = AssetDatabase.FindAssets("UniTask");
             foreach (string guid in guids)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
-                if (path.Contains("PlayKit_DependencyChecker"))
+                if (path.EndsWith(".unitypackage") && path.Contains("com.playkit.sdk"))
                 {
-                    string directory = Path.GetDirectoryName(path);
-                    string packagePath = Path.Combine(directory, UNITASK_PACKAGE_FILENAME);
-
-                    // Normalize path separators
-                    packagePath = packagePath.Replace("\\", "/");
-
-                    if (File.Exists(packagePath))
-                    {
-                        return packagePath;
-                    }
+                    return path;
                 }
             }
 
-            // Also check in Dependencies folder
-            string dependenciesPath = "Packages/com.playkit.sdk/Editor/Dependencies/" + UNITASK_PACKAGE_FILENAME;
-            if (File.Exists(dependenciesPath))
+            // Fallback: check known locations with absolute path
+            string[] possiblePaths = new[]
             {
-                return dependenciesPath;
+                "Packages/com.playkit.sdk/Editor/Dependencies/" + UNITASK_PACKAGE_FILENAME,
+                "Packages/com.playkit.sdk/Editor/DependencyChecker/" + UNITASK_PACKAGE_FILENAME,
+            };
+
+            foreach (var relativePath in possiblePaths)
+            {
+                // Convert to absolute path
+                string absolutePath = Path.GetFullPath(relativePath);
+                if (File.Exists(absolutePath))
+                {
+                    return relativePath; // Return relative path for AssetDatabase.ImportPackage
+                }
             }
 
             return null;
