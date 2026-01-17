@@ -570,7 +570,7 @@ PlayerSettings:
   webGLMemoryGeometricGrowthCap: 96
   webGLPowerPreference: 2
   scriptingDefineSymbols:
-    Standalone: PLAYKIT_NEWTONSOFT_SUPPORT
+    Standalone: PLAYKIT_NEWTONSOFT_SUPPORT;PLAYKIT_UNITASK_SUPPORT
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend: {}

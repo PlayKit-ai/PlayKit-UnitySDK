@@ -22,11 +22,7 @@ namespace PlayKit_SDK.Editor
             EditorApplication.delayCall += UpdateScriptDefines;
         }
 
-        /// <summary>
-        /// Updates script define symbols based on detected dependencies.
-        /// Call this after installing or removing dependencies.
-        /// </summary>
-        public static void UpdateScriptDefines()
+        private static void UpdateScriptDefines()
         {
             bool hasUniTask = IsAssemblyLoaded("UniTask");
             bool hasNewtonsoft = IsAssemblyLoaded("Newtonsoft.Json") || IsAssemblyLoaded("Unity.Newtonsoft.Json");
