@@ -84,13 +84,48 @@ namespace PlayKit_SDK.Editor
                 return;
             }
 
-            if (IsUniTaskAvailable())
+            // Check if installed via Package Manager (required for versionDefines to work)
+            if (IsUniTaskInstalledViaPackageManager())
             {
                 EditorUtility.DisplayDialog(
                     "UniTask Already Installed",
-                    "UniTask is already installed in your project.",
+                    "UniTask is already installed via Package Manager.",
                     "OK"
                 );
+                return;
+            }
+
+            // Check if UniTask exists but not via PM (manual install)
+            if (IsUniTaskAssemblyAvailable())
+            {
+                int option = EditorUtility.DisplayDialogComplex(
+                    "UniTask Installation Issue",
+                    "UniTask is installed in your project, but NOT via Package Manager.\n\n" +
+                    "PlayKit SDK requires UniTask to be installed via Package Manager " +
+                    "for proper integration (scripting define symbols).\n\n" +
+                    "Please remove the manually installed UniTask and install via Package Manager.",
+                    "Install via PM",
+                    "Cancel",
+                    "Copy Git URL"
+                );
+
+                switch (option)
+                {
+                    case 0: // Install via PM
+                        InstallUniTask();
+                        break;
+                    case 2: // Copy Git URL
+                        GUIUtility.systemCopyBuffer = UNITASK_GIT_URL;
+                        EditorUtility.DisplayDialog(
+                            "Git URL Copied",
+                            "Please remove the existing UniTask first, then:\n\n" +
+                            "1. Window > Package Manager\n" +
+                            "2. Click '+' > 'Add package from git URL...'\n" +
+                            "3. Paste the URL and click 'Add'",
+                            "OK"
+                        );
+                        break;
+                }
                 return;
             }
 
@@ -101,18 +136,19 @@ namespace PlayKit_SDK.Editor
         {
             EditorPrefs.SetString(LAST_CHECK_KEY, DateTime.Now.ToString());
 
-            bool hasUniTask = IsUniTaskAvailable();
+            bool hasUniTaskViaPM = IsUniTaskInstalledViaPackageManager();
+            bool hasUniTaskAssembly = IsUniTaskAssemblyAvailable();
             bool hasNewtonsoft = IsNewtonsoftAvailable();
 
-            // All dependencies installed
-            if (hasUniTask && hasNewtonsoft)
+            // All dependencies properly installed via Package Manager
+            if (hasUniTaskViaPM && hasNewtonsoft)
             {
                 if (isManual)
                 {
                     EditorUtility.DisplayDialog(
                         "PlayKit SDK - Dependencies",
                         "All required dependencies are installed.\n\n" +
-                        "- UniTask: Installed\n" +
+                        "- UniTask: Installed (via Package Manager)\n" +
                         "- Newtonsoft.Json: Installed",
                         "OK"
                     );
@@ -120,11 +156,17 @@ namespace PlayKit_SDK.Editor
                 return;
             }
 
-            // Check which dependencies are missing
-            if (!hasUniTask)
+            // Check for manual UniTask installation (not via PM)
+            if (!hasUniTaskViaPM && hasUniTaskAssembly)
+            {
+                ShowUniTaskManualInstallWarning();
+            }
+            // UniTask not installed at all
+            else if (!hasUniTaskViaPM)
             {
                 ShowUniTaskInstallDialog();
             }
+            // UniTask OK, check Newtonsoft
             else if (!hasNewtonsoft)
             {
                 ShowNewtonsoftInstallDialog();
@@ -132,11 +174,47 @@ namespace PlayKit_SDK.Editor
         }
 
         /// <summary>
-        /// Quick check if UniTask types are available
+        /// Show warning when UniTask is manually installed but not via Package Manager
         /// </summary>
-        private static bool IsUniTaskAvailable()
+        private static void ShowUniTaskManualInstallWarning()
         {
-            // Check if UniTask package is listed in Package Manager
+            int option = EditorUtility.DisplayDialogComplex(
+                "PlayKit SDK - UniTask Installation Issue",
+                "UniTask is detected in your project, but it was NOT installed via Package Manager.\n\n" +
+                "PlayKit SDK requires UniTask to be installed via Package Manager for proper integration.\n\n" +
+                "Please:\n" +
+                "1. Remove the manually installed UniTask from your Assets folder\n" +
+                "2. Install UniTask via Package Manager (Git URL or OpenUPM)\n\n" +
+                "This ensures scripting define symbols are set correctly.",
+                "Install via Git URL",
+                "Don't Show Again",
+                "Manual Install Guide"
+            );
+
+            switch (option)
+            {
+                case 0: // Install via Git URL
+                    InstallUniTask();
+                    break;
+                case 1: // Don't show again
+                    EditorPrefs.SetBool(SKIP_CHECK_KEY, true);
+                    Debug.LogWarning(
+                        "[PlayKit SDK] Dependency check disabled. " +
+                        "Re-enable via: PlayKit SDK > Reset Dependency Check"
+                    );
+                    break;
+                case 2: // Manual Install Guide
+                    ShowManualInstallOptions();
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Check if UniTask is properly installed via Package Manager.
+        /// This is required for versionDefines to work and define PLAYKIT_UNITASK_SUPPORT.
+        /// </summary>
+        private static bool IsUniTaskInstalledViaPackageManager()
+        {
             var listRequest = Client.List(true);
             while (!listRequest.IsCompleted)
             {
@@ -154,7 +232,14 @@ namespace PlayKit_SDK.Editor
                 }
             }
 
-            // Fallback: check assemblies
+            return false;
+        }
+
+        /// <summary>
+        /// Check if UniTask assembly exists (may be manually installed)
+        /// </summary>
+        private static bool IsUniTaskAssemblyAvailable()
+        {
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 if (assembly.GetName().Name == "UniTask")
@@ -162,8 +247,18 @@ namespace PlayKit_SDK.Editor
                     return true;
                 }
             }
-
             return false;
+        }
+
+        /// <summary>
+        /// Quick check if UniTask is available (via PM or assembly)
+        /// For dependency check, we need PM installation for proper integration.
+        /// </summary>
+        private static bool IsUniTaskAvailable()
+        {
+            // For SDK to work properly, UniTask must be installed via Package Manager
+            // so that versionDefines can set PLAYKIT_UNITASK_SUPPORT
+            return IsUniTaskInstalledViaPackageManager();
         }
 
         /// <summary>
