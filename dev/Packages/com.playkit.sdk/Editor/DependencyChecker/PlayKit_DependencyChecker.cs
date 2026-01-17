@@ -120,7 +120,7 @@ namespace PlayKit_SDK.Editor
         /// </summary>
         private static string GetEmbeddedUniTaskPackagePath()
         {
-            // Method 1: Find via script asset path
+            // Method 1: Find via script asset path (works for both Packages/ and Assets/ locations)
             var scriptGuids = AssetDatabase.FindAssets("PlayKit_DependencyChecker t:MonoScript");
             foreach (string guid in scriptGuids)
             {
@@ -131,13 +131,26 @@ namespace PlayKit_SDK.Editor
                     string dependencyCheckerFolder = Path.GetDirectoryName(scriptPath);
                     string editorFolder = Path.GetDirectoryName(dependencyCheckerFolder);
 
-                    // Check in Dependencies folder
-                    string dependenciesPath = Path.Combine(editorFolder, "Dependencies", UNITASK_PACKAGE_FILENAME);
-                    dependenciesPath = dependenciesPath.Replace("\\", "/");
+                    // Build the relative path to Dependencies folder
+                    string dependenciesRelativePath = Path.Combine(editorFolder, "Dependencies", UNITASK_PACKAGE_FILENAME);
+                    dependenciesRelativePath = dependenciesRelativePath.Replace("\\", "/");
 
-                    // Convert Unity path to absolute path for File.Exists check
-                    string absolutePath = Path.GetFullPath(dependenciesPath);
+                    // Convert Unity relative path to absolute path
+                    // For Assets/... paths: combine with Application.dataPath
+                    // For Packages/... paths: use Path.GetFullPath
+                    string absolutePath;
+                    if (dependenciesRelativePath.StartsWith("Assets/"))
+                    {
+                        // Application.dataPath returns ".../Assets", so we need to go up one level
+                        string projectRoot = Path.GetDirectoryName(Application.dataPath);
+                        absolutePath = Path.Combine(projectRoot, dependenciesRelativePath);
+                    }
+                    else
+                    {
+                        absolutePath = Path.GetFullPath(dependenciesRelativePath);
+                    }
 
+                    absolutePath = absolutePath.Replace("\\", "/");
                     Debug.Log($"[PlayKit SDK] Checking UniTask package at: {absolutePath}");
 
                     if (File.Exists(absolutePath))
@@ -146,26 +159,25 @@ namespace PlayKit_SDK.Editor
                     }
 
                     // Also check in same folder as this script
-                    string sameFolderPath = Path.Combine(dependencyCheckerFolder, UNITASK_PACKAGE_FILENAME);
-                    sameFolderPath = sameFolderPath.Replace("\\", "/");
-                    absolutePath = Path.GetFullPath(sameFolderPath);
+                    string sameFolderRelativePath = Path.Combine(dependencyCheckerFolder, UNITASK_PACKAGE_FILENAME);
+                    sameFolderRelativePath = sameFolderRelativePath.Replace("\\", "/");
 
+                    if (sameFolderRelativePath.StartsWith("Assets/"))
+                    {
+                        string projectRoot = Path.GetDirectoryName(Application.dataPath);
+                        absolutePath = Path.Combine(projectRoot, sameFolderRelativePath);
+                    }
+                    else
+                    {
+                        absolutePath = Path.GetFullPath(sameFolderRelativePath);
+                    }
+
+                    absolutePath = absolutePath.Replace("\\", "/");
                     if (File.Exists(absolutePath))
                     {
                         return absolutePath;
                     }
                 }
-            }
-
-            // Method 2: Try direct package path resolution
-            string packagePath = "Packages/com.playkit.sdk/Editor/Dependencies/" + UNITASK_PACKAGE_FILENAME;
-            string resolvedPath = Path.GetFullPath(packagePath);
-
-            Debug.Log($"[PlayKit SDK] Fallback check at: {resolvedPath}");
-
-            if (File.Exists(resolvedPath))
-            {
-                return resolvedPath;
             }
 
             Debug.LogWarning("[PlayKit SDK] UniTask.unitypackage not found in SDK package.");
