@@ -180,13 +180,24 @@ namespace PlayKit_SDK.Provider.AI
                 try
                 {
                     var response = JsonConvert.DeserializeObject<ImageGenerationResponse>(webRequest.downloadHandler.text);
-                    Debug.Log($"[AIImageProvider] Successfully generated {response?.Data?.Count ?? 0} images");
+
+                    if (response == null)
+                    {
+                        throw new PlayKitException("Image generation failed: server returned empty or invalid response");
+                    }
+
+                    if (response.Data == null || response.Data.Count == 0)
+                    {
+                        throw new PlayKitException("Image generation failed: server returned no image data");
+                    }
+
+                    Debug.Log($"[AIImageProvider] Successfully generated {response.Data.Count} images");
                     return response;
                 }
                 catch (JsonException ex)
                 {
                     Debug.LogError($"[AIImageProvider] Failed to parse response: {ex.Message}\nResponse: {webRequest.downloadHandler.text}");
-                    return null;
+                    throw new PlayKitException($"Failed to parse image generation response: {ex.Message}", ex);
                 }
             }
         }

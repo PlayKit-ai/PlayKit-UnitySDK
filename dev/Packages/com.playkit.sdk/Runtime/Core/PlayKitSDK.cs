@@ -99,6 +99,22 @@ namespace PlayKit_SDK
         private static Provider.AI.IObjectProvider _objectProvider;
         private static Provider.ITranscriptionProvider _transcriptionProvider;
         private static PlayKit_RechargeManager _rechargeManager;
+        private static string _lastInitializationError;
+
+        /// <summary>
+        /// Event fired when SDK initialization fails. Subscribe to receive detailed error information.
+        /// </summary>
+        public static event Action<string> OnInitializationFailed;
+
+        /// <summary>
+        /// Event fired when SDK initialization succeeds.
+        /// </summary>
+        public static event Action OnInitializationSucceeded;
+
+        /// <summary>
+        /// Get the last initialization error message, if any.
+        /// </summary>
+        public static string LastInitializationError => _lastInitializationError;
 
         /// <summary>
         /// Asynchronously initializes the SDK. This must complete successfully before creating clients.
@@ -132,6 +148,7 @@ namespace PlayKit_SDK
             // Start initialization
             _isInitializing = true;
             _initializationTask = new UniTaskCompletionSource<bool>();
+            _lastInitializationError = null;
             Debug.Log("[PlayKit SDK] Initializing...");
 
             bool success = false;
@@ -144,6 +161,16 @@ namespace PlayKit_SDK
                 _isInitialized = success;
                 _isInitializing = false;
                 _initializationTask.TrySetResult(success);
+
+                // Fire appropriate event
+                if (success)
+                {
+                    OnInitializationSucceeded?.Invoke();
+                }
+                else if (!string.IsNullOrEmpty(_lastInitializationError))
+                {
+                    OnInitializationFailed?.Invoke(_lastInitializationError);
+                }
             }
 
             return success;
@@ -158,14 +185,16 @@ namespace PlayKit_SDK
             var settings = PlayKitSettings.Instance;
             if (settings == null)
             {
-                Debug.LogError("[PlayKit SDK] PlayKitSettings not found. Please configure the SDK via Tools > PlayKit SDK > Settings");
+                _lastInitializationError = "PlayKitSettings not found. Please configure the SDK via Tools > PlayKit SDK > Settings";
+                Debug.LogError($"[PlayKit SDK] {_lastInitializationError}");
                 return false;
             }
 
             // Validate settings
             if (!settings.Validate(out string errorMessage))
             {
-                Debug.LogError($"[PlayKit SDK] Configuration error: {errorMessage}");
+                _lastInitializationError = $"Configuration error: {errorMessage}";
+                Debug.LogError($"[PlayKit SDK] {_lastInitializationError}");
                 return false;
             }
 
@@ -216,7 +245,8 @@ namespace PlayKit_SDK
 
                 if (!authSuccess)
                 {
-                    Debug.LogError("[PlayKit SDK] Developer token authentication failed");
+                    _lastInitializationError = "Developer token authentication failed. Please check your developer token.";
+                    Debug.LogError($"[PlayKit SDK] {_lastInitializationError}");
                     return false;
                 }
 
@@ -240,13 +270,15 @@ namespace PlayKit_SDK
 
                 if (authProvider == null)
                 {
-                    Debug.LogError($"[PlayKit SDK] Platform addon '{platformAddon.AddonId}' does not provide authentication");
+                    _lastInitializationError = $"Platform addon '{platformAddon.AddonId}' does not provide authentication.";
+                    Debug.LogError($"[PlayKit SDK] {_lastInitializationError}");
                     return false;
                 }
 
                 if (!authProvider.IsAvailable)
                 {
-                    Debug.LogError($"[PlayKit SDK] {authProvider.DisplayName} is not available. Please ensure the platform is properly configured.");
+                    _lastInitializationError = $"{authProvider.DisplayName} is not available. Please ensure the platform is properly configured.";
+                    Debug.LogError($"[PlayKit SDK] {_lastInitializationError}");
                     return false;
                 }
 
@@ -255,7 +287,8 @@ namespace PlayKit_SDK
 
                 if (!authSuccess)
                 {
-                    Debug.LogError("[PlayKit SDK] SDK Authentication Failed. Cannot proceed.");
+                    _lastInitializationError = $"Platform authentication failed ({authProvider.DisplayName}). User may have cancelled or credentials are invalid.";
+                    Debug.LogError($"[PlayKit SDK] {_lastInitializationError}");
                     return false;
                 }
             }
@@ -267,7 +300,8 @@ namespace PlayKit_SDK
 
                 if (!authSuccess)
                 {
-                    Debug.LogError("[PlayKit SDK] SDK Authentication Failed. Cannot proceed.");
+                    _lastInitializationError = "Browser authentication failed. User may have cancelled or login failed.";
+                    Debug.LogError($"[PlayKit SDK] {_lastInitializationError}");
                     return false;
                 }
             }

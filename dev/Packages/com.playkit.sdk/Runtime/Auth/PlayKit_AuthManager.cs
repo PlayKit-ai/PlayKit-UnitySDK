@@ -498,7 +498,10 @@ namespace PlayKit_SDK.Auth
                                 ClearPlayerToken();
                             }
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            Debug.LogWarning($"[PlayKit SDK] Failed to parse token refresh error response: {ex.Message}");
+                        }
                     }
                 }
             }

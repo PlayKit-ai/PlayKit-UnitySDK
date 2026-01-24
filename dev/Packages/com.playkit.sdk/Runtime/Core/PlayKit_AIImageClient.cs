@@ -80,14 +80,12 @@ namespace PlayKit_SDK
         {
             if (string.IsNullOrEmpty(prompt))
             {
-                Debug.LogError("[PlayKit_AIImageClient] Prompt cannot be empty");
-                return null;
+                throw new ArgumentException("Prompt cannot be null or empty", nameof(prompt));
             }
 
             if (count < 1 || count > 10)
             {
-                Debug.LogError("[PlayKit_AIImageClient] Count must be between 1 and 10");
-                return null;
+                throw new ArgumentOutOfRangeException(nameof(count), count, "Count must be between 1 and 10");
             }
 
             var request = new ImageGenerationRequest
@@ -102,12 +100,9 @@ namespace PlayKit_SDK
             try
             {
                 var response = await _imageProvider.GenerateImageAsync(request, cancellationToken);
-                
-                if (response?.Data == null)
-                {
-                    Debug.LogError("[PlayKit_AIImageClient] Image generation failed - no response data");
-                    return null;
-                }
+
+                // Response validation is now handled in AIImageProvider
+                // If we reach here, response and response.Data are guaranteed to be valid
 
                 var results = new List<PlayKit_GeneratedImage>();
                 foreach (var imageData in response.Data)
@@ -126,22 +121,21 @@ namespace PlayKit_SDK
                 Debug.Log($"[PlayKit_AIImageClient] Successfully generated {results.Count} images");
                 return results;
             }
-            catch (PlayKitImageSizeValidationException ex)
+            catch (PlayKitImageSizeValidationException)
             {
-                // Log a concise error message for size validation
-                // Debug.LogError($"[PlayKit_AIImageClient] Size validation failed ({ex.ErrorCode}): {ex.Message}");
                 throw; // Re-throw for caller to handle
             }
-            catch (PlayKitApiErrorException ex)
+            catch (PlayKitApiErrorException)
             {
-                // Log API errors concisely
-                // Debug.LogError($"[PlayKit_AIImageClient] API error ({ex.ErrorCode}): {ex.Message}");
                 throw; // Re-throw for caller to handle
             }
             catch (PlayKitException)
             {
-                // Don't log here as it's already logged in AIImageProvider
                 throw; // Re-throw for caller to handle
+            }
+            catch (ArgumentException)
+            {
+                throw; // Re-throw argument validation exceptions
             }
             catch (Exception ex)
             {
@@ -179,11 +173,8 @@ namespace PlayKit_SDK
             {
                 var response = await _imageProvider.GenerateImageAsync(request, cancellationToken);
 
-                if (response?.Data == null)
-                {
-                    Debug.LogError("[PlayKit_AIImageClient] Image generation failed - no response data");
-                    return null;
-                }
+                // Response validation is now handled in AIImageProvider
+                // If we reach here, response and response.Data are guaranteed to be valid
 
                 var results = new List<PlayKit_GeneratedImage>();
                 foreach (var imageData in response.Data)
@@ -201,22 +192,21 @@ namespace PlayKit_SDK
 
                 return results;
             }
-            catch (PlayKitImageSizeValidationException ex)
+            catch (PlayKitImageSizeValidationException)
             {
-                // Log a concise error message for size validation
-                Debug.LogError($"[PlayKit_AIImageClient] Size validation failed ({ex.ErrorCode}): {ex.Message}");
                 throw; // Re-throw for caller to handle
             }
-            catch (PlayKitApiErrorException ex)
+            catch (PlayKitApiErrorException)
             {
-                // Log API errors concisely
-                Debug.LogError($"[PlayKit_AIImageClient] API error ({ex.ErrorCode}): {ex.Message}");
                 throw; // Re-throw for caller to handle
             }
             catch (PlayKitException)
             {
-                // Don't log here as it's already logged in AIImageProvider
                 throw; // Re-throw for caller to handle
+            }
+            catch (ArgumentException)
+            {
+                throw; // Re-throw argument validation exceptions
             }
             catch (Exception ex)
             {
@@ -282,8 +272,7 @@ namespace PlayKit_SDK
         {
             if (inputImages == null || inputImages.Count == 0)
             {
-                Debug.LogError("[PlayKit_AIImageClient] At least one input image is required for img2img");
-                return null;
+                throw new ArgumentException("At least one input image is required for img2img", nameof(inputImages));
             }
 
             var options = new PlayKit_ImageGenerationOptions
