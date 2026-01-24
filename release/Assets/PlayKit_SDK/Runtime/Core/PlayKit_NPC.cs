@@ -58,8 +58,19 @@ namespace PlayKit_SDK
         /// </summary>
         public event Action<string[]> OnReplyPredictionGenerated;
 
+        /// <summary>
+        /// Event fired when an error occurs (initialization failure, chat failure, etc.)
+        /// Subscribe to handle errors in your game logic.
+        /// </summary>
+        public event Action<string> OnError;
+
         public bool IsTalking => _isTalking;
         public bool IsReady => _isReady;
+
+        /// <summary>
+        /// Whether initialization failed. Check this if IsReady remains false.
+        /// </summary>
+        public bool InitializationFailed { get; private set; }
 
         /// <summary>
         /// Whether this NPC has actions configured and enabled
@@ -104,7 +115,20 @@ namespace PlayKit_SDK
 
         private async UniTask Initialize()
         {
-            await UniTask.WaitUntil(() => PlayKitSDK.IsReady());
+            // Wait for SDK to be ready with timeout (30 seconds)
+            var timeoutTask = UniTask.Delay(TimeSpan.FromSeconds(30), cancellationToken: this.GetCancellationTokenOnDestroy());
+            var readyTask = UniTask.WaitUntil(() => PlayKitSDK.IsReady(), cancellationToken: this.GetCancellationTokenOnDestroy());
+
+            int completedIndex = await UniTask.WhenAny(readyTask, timeoutTask);
+
+            if (completedIndex == 1) // Timeout
+            {
+                string error = $"[NPCClient] SDK initialization timeout on '{gameObject.name}'. SDK did not become ready within 30 seconds. Check if authentication succeeded.";
+                Debug.LogError(error);
+                InitializationFailed = true;
+                OnError?.Invoke(error);
+                return;
+            }
 
             // Auto-detect ActionsModule on same GameObject
             _actionsModule = GetComponent<PlayKit_NPC_ActionsModule>();
@@ -123,6 +147,15 @@ namespace PlayKit_SDK
             else
             {
                 PlayKitSDK.Populate.CreateNpc(this);
+            }
+
+            // Check if initialization actually succeeded
+            if (_chatClient == null)
+            {
+                string error = $"[NPCClient] Failed to create chat client for '{gameObject.name}'. SDK authentication may have failed.";
+                Debug.LogError(error);
+                InitializationFailed = true;
+                OnError?.Invoke(error);
             }
         }
 
@@ -147,14 +180,26 @@ namespace PlayKit_SDK
             var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
             _isTalking = true;
 
-            if (_chatClient == null)
+            // Check if initialization failed - don't wait forever
+            if (InitializationFailed)
             {
-                Debug.LogError("[NPCClient] Chat client not initialized. Please call PlayKit_SDK.InitializeAsync() first.");
+                string error = "[NPCClient] Cannot talk: NPC initialization failed. Check OnError event for details.";
+                Debug.LogError(error);
+                OnError?.Invoke(error);
                 _isTalking = false;
                 return null;
             }
 
-            await UniTask.WaitUntil(() => IsReady);
+            if (_chatClient == null)
+            {
+                string error = "[NPCClient] Chat client not initialized. Please ensure SDK authentication succeeded.";
+                Debug.LogError(error);
+                OnError?.Invoke(error);
+                _isTalking = false;
+                return null;
+            }
+
+            await UniTask.WaitUntil(() => IsReady, cancellationToken: token);
 
             if (!gameObject.activeInHierarchy)
             {
@@ -200,16 +245,30 @@ namespace PlayKit_SDK
             var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
             _isTalking = true;
 
-            if (_chatClient == null)
+            // Check if initialization failed - don't wait forever
+            if (InitializationFailed)
             {
-                Debug.LogError("[NPCClient] Chat client not initialized. Please call PlayKit_SDK.InitializeAsync() first.");
+                string error = "[NPCClient] Cannot talk: NPC initialization failed. Check OnError event for details.";
+                Debug.LogError(error);
+                OnError?.Invoke(error);
                 _isTalking = false;
                 onChunk?.Invoke(null);
                 onComplete?.Invoke(null);
                 return;
             }
 
-            await UniTask.WaitUntil(() => IsReady);
+            if (_chatClient == null)
+            {
+                string error = "[NPCClient] Chat client not initialized. Please ensure SDK authentication succeeded.";
+                Debug.LogError(error);
+                OnError?.Invoke(error);
+                _isTalking = false;
+                onChunk?.Invoke(null);
+                onComplete?.Invoke(null);
+                return;
+            }
+
+            await UniTask.WaitUntil(() => IsReady, cancellationToken: token);
 
             if (string.IsNullOrEmpty(message))
             {
@@ -266,14 +325,26 @@ namespace PlayKit_SDK
             var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
             _isTalking = true;
 
-            if (_chatClient == null)
+            // Check if initialization failed - don't wait forever
+            if (InitializationFailed)
             {
-                Debug.LogError("[NPCClient] Chat client not initialized. Please call PlayKit_SDK.InitializeAsync() first.");
+                string error = "[NPCClient] Cannot talk: NPC initialization failed. Check OnError event for details.";
+                Debug.LogError(error);
+                OnError?.Invoke(error);
                 _isTalking = false;
                 return null;
             }
 
-            await UniTask.WaitUntil(() => IsReady);
+            if (_chatClient == null)
+            {
+                string error = "[NPCClient] Chat client not initialized. Please ensure SDK authentication succeeded.";
+                Debug.LogError(error);
+                OnError?.Invoke(error);
+                _isTalking = false;
+                return null;
+            }
+
+            await UniTask.WaitUntil(() => IsReady, cancellationToken: token);
 
             if (!gameObject.activeInHierarchy)
             {
@@ -331,16 +402,30 @@ namespace PlayKit_SDK
             var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
             _isTalking = true;
 
-            if (_chatClient == null)
+            // Check if initialization failed - don't wait forever
+            if (InitializationFailed)
             {
-                Debug.LogError("[NPCClient] Chat client not initialized. Please call PlayKit_SDK.InitializeAsync() first.");
+                string error = "[NPCClient] Cannot talk: NPC initialization failed. Check OnError event for details.";
+                Debug.LogError(error);
+                OnError?.Invoke(error);
                 _isTalking = false;
                 onChunk?.Invoke(null);
                 onComplete?.Invoke(null);
                 return;
             }
 
-            await UniTask.WaitUntil(() => IsReady);
+            if (_chatClient == null)
+            {
+                string error = "[NPCClient] Chat client not initialized. Please ensure SDK authentication succeeded.";
+                Debug.LogError(error);
+                OnError?.Invoke(error);
+                _isTalking = false;
+                onChunk?.Invoke(null);
+                onComplete?.Invoke(null);
+                return;
+            }
+
+            await UniTask.WaitUntil(() => IsReady, cancellationToken: token);
 
             if (string.IsNullOrEmpty(message))
             {

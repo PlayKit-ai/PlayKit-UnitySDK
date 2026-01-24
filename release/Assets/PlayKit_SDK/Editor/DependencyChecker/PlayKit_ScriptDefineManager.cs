@@ -17,6 +17,15 @@ namespace PlayKit_SDK.Editor
         private const string UNITASK_DEFINE = "PLAYKIT_UNITASK_SUPPORT";
         private const string NEWTONSOFT_DEFINE = "PLAYKIT_NEWTONSOFT_SUPPORT";
 
+        // All build target groups that should have script defines set
+        private static readonly BuildTargetGroup[] TargetGroups = new[]
+        {
+            BuildTargetGroup.Standalone,
+            BuildTargetGroup.Android,
+            BuildTargetGroup.iOS,
+            BuildTargetGroup.WebGL
+        };
+
         static PlayKit_ScriptDefineManager()
         {
             EditorApplication.delayCall += UpdateScriptDefines;
@@ -27,12 +36,15 @@ namespace PlayKit_SDK.Editor
             bool hasUniTask = IsAssemblyLoaded("UniTask");
             bool hasNewtonsoft = IsAssemblyLoaded("Newtonsoft.Json") || IsAssemblyLoaded("Unity.Newtonsoft.Json");
 
-            var targetGroup = EditorUserBuildSettings.selectedBuildTargetGroup;
-            if (targetGroup == BuildTargetGroup.Unknown)
+            // Update script defines for all target groups to ensure cross-platform compatibility
+            foreach (var targetGroup in TargetGroups)
             {
-                targetGroup = BuildTargetGroup.Standalone;
+                UpdateDefinesForTargetGroup(targetGroup, hasUniTask, hasNewtonsoft);
             }
+        }
 
+        private static void UpdateDefinesForTargetGroup(BuildTargetGroup targetGroup, bool hasUniTask, bool hasNewtonsoft)
+        {
             string currentDefines = PlayerSettings.GetScriptingDefineSymbolsForGroup(targetGroup);
             var definesList = currentDefines.Split(';').Where(d => !string.IsNullOrWhiteSpace(d)).ToList();
 
@@ -43,13 +55,11 @@ namespace PlayKit_SDK.Editor
             {
                 definesList.Add(UNITASK_DEFINE);
                 changed = true;
-                Debug.Log($"[PlayKit SDK] Added {UNITASK_DEFINE} (UniTask detected)");
             }
             else if (!hasUniTask && definesList.Contains(UNITASK_DEFINE))
             {
                 definesList.Remove(UNITASK_DEFINE);
                 changed = true;
-                Debug.Log($"[PlayKit SDK] Removed {UNITASK_DEFINE} (UniTask not found)");
             }
 
             // Manage NEWTONSOFT define
@@ -57,19 +67,18 @@ namespace PlayKit_SDK.Editor
             {
                 definesList.Add(NEWTONSOFT_DEFINE);
                 changed = true;
-                Debug.Log($"[PlayKit SDK] Added {NEWTONSOFT_DEFINE} (Newtonsoft.Json detected)");
             }
             else if (!hasNewtonsoft && definesList.Contains(NEWTONSOFT_DEFINE))
             {
                 definesList.Remove(NEWTONSOFT_DEFINE);
                 changed = true;
-                Debug.Log($"[PlayKit SDK] Removed {NEWTONSOFT_DEFINE} (Newtonsoft.Json not found)");
             }
 
             if (changed)
             {
                 string newDefines = string.Join(";", definesList);
                 PlayerSettings.SetScriptingDefineSymbolsForGroup(targetGroup, newDefines);
+                Debug.Log($"[PlayKit SDK] Updated script defines for {targetGroup}: UniTask={hasUniTask}, Newtonsoft={hasNewtonsoft}");
             }
         }
 
