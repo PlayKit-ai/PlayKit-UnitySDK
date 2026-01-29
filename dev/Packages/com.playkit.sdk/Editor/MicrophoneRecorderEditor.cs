@@ -20,9 +20,16 @@ namespace PlayKit_SDK.Editor
         private SerializedProperty silenceThresholdProp;
         private SerializedProperty maxSilenceDurationProp;
 
+        // Always Listening Mode Properties
+        private SerializedProperty alwaysListeningModeProp;
+        private SerializedProperty voiceStartThresholdProp;
+        private SerializedProperty minVoiceDurationProp;
+        private SerializedProperty preBufferDurationProp;
+
         // Foldout states
         private bool showRecordingSettings = true;
         private bool showVADSettings = true;
+        private bool showAlwaysListeningSettings = true;
         private bool showRuntimeStatus = true;
 
         // Styles
@@ -42,6 +49,12 @@ namespace PlayKit_SDK.Editor
             useVADProp = serializedObject.FindProperty("useVAD");
             silenceThresholdProp = serializedObject.FindProperty("silenceThreshold");
             maxSilenceDurationProp = serializedObject.FindProperty("maxSilenceDuration");
+
+            // Always Listening Mode
+            alwaysListeningModeProp = serializedObject.FindProperty("alwaysListeningMode");
+            voiceStartThresholdProp = serializedObject.FindProperty("voiceStartThreshold");
+            minVoiceDurationProp = serializedObject.FindProperty("minVoiceDuration");
+            preBufferDurationProp = serializedObject.FindProperty("preBufferDuration");
 
             RefreshDeviceList();
         }
@@ -102,6 +115,9 @@ namespace PlayKit_SDK.Editor
 
             // VAD Settings Section
             DrawVADSection();
+
+            // Always Listening Mode Section
+            DrawAlwaysListeningSection();
 
             // Runtime Status (Play Mode Only)
             if (Application.isPlaying)
@@ -264,6 +280,69 @@ namespace PlayKit_SDK.Editor
             EditorGUILayout.EndFoldoutHeaderGroup();
         }
 
+        private void DrawAlwaysListeningSection()
+        {
+            showAlwaysListeningSettings = EditorGUILayout.BeginFoldoutHeaderGroup(showAlwaysListeningSettings,
+                L.Get("mic.section.always_listening"));
+
+            if (showAlwaysListeningSettings)
+            {
+                EditorGUILayout.BeginVertical(boxStyle);
+
+                // Enable Always Listening Mode toggle
+                EditorGUILayout.BeginHorizontal();
+                var toggleContent = new GUIContent(
+                    L.Get("mic.always_listening.enable"),
+                    L.Get("mic.always_listening.enable.tooltip")
+                );
+                EditorGUILayout.PropertyField(alwaysListeningModeProp, toggleContent);
+
+                // Status indicator
+                if (alwaysListeningModeProp.boolValue)
+                {
+                    GUILayout.Label(EditorGUIUtility.IconContent("d_winbtn_mac_max"), GUILayout.Width(20));
+                }
+                else
+                {
+                    GUILayout.Label(EditorGUIUtility.IconContent("d_winbtn_mac_min"), GUILayout.Width(20));
+                }
+                EditorGUILayout.EndHorizontal();
+
+                // Settings (only if enabled)
+                if (alwaysListeningModeProp.boolValue)
+                {
+                    EditorGUI.indentLevel++;
+
+                    EditorGUILayout.Space(5);
+
+                    // Voice Start Threshold
+                    EditorGUILayout.PropertyField(voiceStartThresholdProp,
+                        new GUIContent(L.Get("mic.always_listening.voice_threshold"), L.Get("mic.always_listening.voice_threshold.tooltip")));
+                    voiceStartThresholdProp.floatValue = Mathf.Clamp01(voiceStartThresholdProp.floatValue);
+
+                    EditorGUILayout.Space(5);
+
+                    // Min Voice Duration
+                    EditorGUILayout.PropertyField(minVoiceDurationProp,
+                        new GUIContent(L.Get("mic.always_listening.min_voice_duration"), L.Get("mic.always_listening.min_voice_duration.tooltip")));
+                    minVoiceDurationProp.floatValue = Mathf.Max(0.01f, minVoiceDurationProp.floatValue);
+
+                    EditorGUILayout.Space(5);
+
+                    // Pre-buffer Duration
+                    EditorGUILayout.PropertyField(preBufferDurationProp,
+                        new GUIContent(L.Get("mic.always_listening.pre_buffer"), L.Get("mic.always_listening.pre_buffer.tooltip")));
+                    preBufferDurationProp.floatValue = Mathf.Clamp(preBufferDurationProp.floatValue, 0.1f, 2f);
+
+                    EditorGUI.indentLevel--;
+                }
+
+                EditorGUILayout.EndVertical();
+            }
+
+            EditorGUILayout.EndFoldoutHeaderGroup();
+        }
+
         private void DrawRuntimeStatus()
         {
             showRuntimeStatus = EditorGUILayout.BeginFoldoutHeaderGroup(showRuntimeStatus,
@@ -280,6 +359,21 @@ namespace PlayKit_SDK.Editor
                 EditorGUILayout.LabelField(L.Get("mic.runtime.recording"), EditorStyles.boldLabel, GUILayout.Width(100));
                 DrawStatusIndicator(recorder.IsRecording);
                 EditorGUILayout.EndHorizontal();
+
+                // Listening status (Always Listening Mode)
+                if (recorder.AlwaysListeningModeEnabled)
+                {
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.LabelField(L.Get("mic.runtime.listening"), EditorStyles.boldLabel, GUILayout.Width(100));
+                    DrawStatusIndicator(recorder.IsListening);
+                    EditorGUILayout.EndHorizontal();
+
+                    // Listening state
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.LabelField(L.Get("mic.runtime.listening_state"), EditorStyles.boldLabel, GUILayout.Width(100));
+                    EditorGUILayout.LabelField(recorder.CurrentListeningState.ToString());
+                    EditorGUILayout.EndHorizontal();
+                }
 
                 // Recording time
                 EditorGUILayout.BeginHorizontal();
@@ -303,11 +397,11 @@ namespace PlayKit_SDK.Editor
                     );
                 }
 
-                // Quick action buttons
+                // Quick action buttons for recording
                 EditorGUILayout.Space(10);
                 EditorGUILayout.BeginHorizontal();
 
-                GUI.enabled = !recorder.IsRecording;
+                GUI.enabled = !recorder.IsRecording && !recorder.IsListening;
                 if (GUILayout.Button(L.Get("mic.action.start")))
                 {
                     recorder.StartRecording();
@@ -327,10 +421,36 @@ namespace PlayKit_SDK.Editor
                 GUI.enabled = true;
                 EditorGUILayout.EndHorizontal();
 
+                // Always Listening Mode buttons
+                if (recorder.AlwaysListeningModeEnabled)
+                {
+                    EditorGUILayout.Space(5);
+                    EditorGUILayout.BeginHorizontal();
+
+                    GUI.enabled = !recorder.IsListening && !recorder.IsRecording;
+                    if (GUILayout.Button(L.Get("mic.action.start_listening")))
+                    {
+                        recorder.StartListening();
+                    }
+
+                    GUI.enabled = recorder.IsListening || recorder.IsRecording;
+                    if (GUILayout.Button(L.Get("mic.action.stop_listening")))
+                    {
+                        if (recorder.IsRecording)
+                        {
+                            recorder.StopRecording();
+                        }
+                        recorder.StopListening();
+                    }
+
+                    GUI.enabled = true;
+                    EditorGUILayout.EndHorizontal();
+                }
+
                 EditorGUILayout.EndVertical();
 
-                // Force repaint during recording to update the UI
-                if (recorder.IsRecording)
+                // Force repaint during recording or listening to update the UI
+                if (recorder.IsRecording || recorder.IsListening)
                 {
                     Repaint();
                 }

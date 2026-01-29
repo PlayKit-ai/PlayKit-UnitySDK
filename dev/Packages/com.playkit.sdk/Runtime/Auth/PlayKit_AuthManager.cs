@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using System.Runtime.InteropServices;
 using Cysharp.Threading.Tasks;
 using Newtonsoft.Json;
 using PlayKit_SDK.Art;
@@ -14,15 +15,44 @@ namespace PlayKit_SDK.Auth
         private const string PlayerTokenKey = "PlayKit_SDK_PlayerToken";
         private const string RefreshTokenKey = "PlayKit_SDK_RefreshToken";
         private const string TokenExpiryKey = "PlayKit_SDK_TokenExpiry";
-        
+
         // How early (in seconds) before expiry should we refresh the token
         private const int TOKEN_REFRESH_BUFFER_SECONDS = 300; // 5 minutes before expiry
+
+        // Platform token detection settings (for same-domain WebGL scenarios)
+        private const string DefaultPlatformTokenKey = "shared_token";
 
         private string _gameId;
         public string gameId { get => _gameId; }
         public string AuthToken { get; private set; }
         public string RefreshToken { get; private set; }
         public bool IsDeveloperToken { get; private set; }
+
+        /// <summary>
+        /// Platform token to use directly (optional).
+        /// When set, SDK will use this token without triggering login flow.
+        /// Useful for first-party apps that receive tokens from the platform.
+        /// </summary>
+        public string PlatformToken { get; set; }
+
+        /// <summary>
+        /// Whether to auto-detect platform token from browser localStorage (WebGL only).
+        /// When enabled, SDK will check localStorage for a token stored by the platform
+        /// (e.g., Agentland-Space) and use it directly without triggering Device Auth.
+        /// Default: true
+        /// </summary>
+        public bool AutoDetectPlatformToken { get; set; } = true;
+
+        /// <summary>
+        /// localStorage key name for platform token detection.
+        /// Default: 'shared_token'
+        /// </summary>
+        public string PlatformTokenKey { get; set; } = DefaultPlatformTokenKey;
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [DllImport("__Internal")]
+        private static extern string PlayKit_GetLocalStorage(string key);
+#endif
 
         [SerializeField] private PlayKit_PlayerClient _playerClient;
         public PlayKit_PlayerClient PlayerClient { get => _playerClient; }
@@ -78,7 +108,7 @@ namespace PlayKit_SDK.Auth
         public async UniTask<bool> AuthenticateAsync()
         {
             SetLoadingVisible(true);
-            
+
             // If using a developer token, authentication is always considered successful.
             if (IsDeveloperToken)
             {
@@ -86,7 +116,37 @@ namespace PlayKit_SDK.Auth
                 SetLoadingVisible(false);
                 return true;
             }
-            
+
+            // Check for explicitly set platform token (first-party apps)
+            if (!string.IsNullOrEmpty(PlatformToken))
+            {
+                Debug.Log("[PlayKit SDK] Using platform token. Authentication successful.");
+                AuthToken = PlatformToken;
+                if (PlayerClient != null)
+                {
+                    PlayerClient.SetPlayerToken(AuthToken);
+                }
+                SetLoadingVisible(false);
+                return true;
+            }
+
+            // WebGL: Auto-detect platform token from browser localStorage (same-domain scenario)
+            if (AutoDetectPlatformToken)
+            {
+                string detectedToken = GetPlatformTokenFromBrowser();
+                if (!string.IsNullOrEmpty(detectedToken))
+                {
+                    Debug.Log("[PlayKit SDK] Platform token detected from browser localStorage. Authentication successful.");
+                    AuthToken = detectedToken;
+                    if (PlayerClient != null)
+                    {
+                        PlayerClient.SetPlayerToken(AuthToken);
+                    }
+                    SetLoadingVisible(false);
+                    return true;
+                }
+            }
+
             // Step 1: Try loading tokens from storage
             LoadTokens();
 
@@ -329,6 +389,35 @@ namespace PlayKit_SDK.Auth
             PlayerPrefs.DeleteKey(TokenExpiryKey);
             PlayerPrefs.Save();
             Debug.Log("[PlayKit SDK] Player tokens cleared.");
+        }
+
+        #endregion
+
+        #region Platform Token Detection
+
+        /// <summary>
+        /// Attempt to get platform token from browser localStorage (WebGL only).
+        /// Returns null on non-WebGL platforms or if token is not found.
+        /// </summary>
+        private string GetPlatformTokenFromBrowser()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            try
+            {
+                string key = string.IsNullOrEmpty(PlatformTokenKey) ? DefaultPlatformTokenKey : PlatformTokenKey;
+                string token = PlayKit_GetLocalStorage(key);
+                if (!string.IsNullOrEmpty(token))
+                {
+                    Debug.Log($"[PlayKit SDK] Platform token found in localStorage[{key}]");
+                    return token;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[PlayKit SDK] Error detecting platform token: {e.Message}");
+            }
+#endif
+            return null;
         }
 
         #endregion

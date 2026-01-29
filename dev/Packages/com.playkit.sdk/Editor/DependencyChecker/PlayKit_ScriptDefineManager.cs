@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Compilation;
 using UnityEngine;
 
 namespace PlayKit_SDK.Editor
@@ -29,9 +30,19 @@ namespace PlayKit_SDK.Editor
         static PlayKit_ScriptDefineManager()
         {
             EditorApplication.delayCall += UpdateScriptDefines;
+            CompilationPipeline.compilationFinished += OnCompilationFinished;
         }
 
-        private static void UpdateScriptDefines()
+        private static void OnCompilationFinished(object obj)
+        {
+            // Delay check after compilation to ensure assemblies are loaded
+            EditorApplication.delayCall += UpdateScriptDefines;
+        }
+
+        /// <summary>
+        /// Updates script define symbols based on detected dependencies.
+        /// </summary>
+        public static void UpdateScriptDefines()
         {
             bool hasUniTask = IsAssemblyLoaded("UniTask");
             bool hasNewtonsoft = IsAssemblyLoaded("Newtonsoft.Json") || IsAssemblyLoaded("Unity.Newtonsoft.Json");
@@ -92,6 +103,13 @@ namespace PlayKit_SDK.Editor
                 }
             }
             return false;
+        }
+
+        [MenuItem("PlayKit SDK/Refresh Script Defines")]
+        public static void RefreshScriptDefinesManual()
+        {
+            UpdateScriptDefines();
+            Debug.Log("[PlayKit SDK] Script defines refreshed.");
         }
     }
 }
