@@ -70,7 +70,6 @@ namespace PlayKit_SDK.Auth
         // --- Private State ---
         private PlayKit_DeviceAuthFlow _deviceAuthFlow;
         private bool _isAuthInProgress = false;
-        private bool _isWaitingForLoginClick = false;
 
         private async void Start()
         {
@@ -153,11 +152,11 @@ namespace PlayKit_SDK.Auth
             if (emailToggle != null) emailToggle.gameObject.SetActive(false);
             if (phoneToggle != null) phoneToggle.gameObject.SetActive(false);
 
-            // Setup sendCodeButton - used as login button on WebGL, retry button on other platforms
+            // Setup sendCodeButton as retry button (initially hidden)
             if (sendCodeButton != null)
             {
                 sendCodeButton.onClick.RemoveAllListeners();
-                sendCodeButton.onClick.AddListener(OnLoginButtonClicked);
+                sendCodeButton.onClick.AddListener(OnRetryButtonClicked);
                 sendCodeButton.gameObject.SetActive(false);
             }
 
@@ -171,11 +170,10 @@ namespace PlayKit_SDK.Auth
             if (_isAuthInProgress) return;
 
             _isAuthInProgress = true;
-            _isWaitingForLoginClick = false;
-
-            // Hide login/retry button during auth initialization
+            
+            // Hide retry button during auth
             if (sendCodeButton != null) sendCodeButton.gameObject.SetActive(false);
-
+            
             ShowLoadingModal();
             UpdateStatus("正在启动登录...\nStarting authentication...");
 
@@ -188,27 +186,13 @@ namespace PlayKit_SDK.Auth
                     return;
                 }
 
-                // On WebGL platform, don't auto-open browser to avoid popup blocking
-                // Instead, show a login button that user must click
-                bool isWebGL = Application.platform == RuntimePlatform.WebGLPlayer;
-
                 var result = await _deviceAuthFlow.StartAuthFlowAsync(
                     gameId,
                     "player:play",
-                    this.GetCancellationTokenOnDestroy(),
-                    autoOpenBrowser: !isWebGL
+                    this.GetCancellationTokenOnDestroy()
                 );
 
-                // On WebGL, result will be null and we need to wait for user to click login button
-                if (isWebGL && result == null && _deviceAuthFlow.Status == DeviceAuthStatus.WaitingForBrowser)
-                {
-                    _isWaitingForLoginClick = true;
-                    _isAuthInProgress = false;
-                    HideLoadingModal();
-                    ShowLoginButton();
-                    UpdateStatus("点击下方按钮登录\nClick the button below to login");
-                }
-                // Result is handled in OnDeviceAuthSuccess or OnDeviceAuthError for non-WebGL
+                // Result is handled in OnDeviceAuthSuccess or OnDeviceAuthError
             }
             catch (OperationCanceledException)
             {
@@ -220,39 +204,9 @@ namespace PlayKit_SDK.Auth
             }
         }
 
-        private async void OnLoginButtonClicked()
+        private async void OnRetryButtonClicked()
         {
-            // If waiting for login click on WebGL, open browser and start polling
-            if (_isWaitingForLoginClick)
-            {
-                _isWaitingForLoginClick = false;
-                _isAuthInProgress = true;
-
-                // Hide login button and show loading
-                if (sendCodeButton != null) sendCodeButton.gameObject.SetActive(false);
-                ShowLoadingModal();
-                UpdateStatus("正在打开登录页面...\nOpening login page...");
-
-                try
-                {
-                    // This call must be in the click event handler to avoid popup blocking
-                    var result = await _deviceAuthFlow.OpenBrowserAndPollAsync(this.GetCancellationTokenOnDestroy());
-                    // Result is handled in OnDeviceAuthSuccess or OnDeviceAuthError via events
-                }
-                catch (OperationCanceledException)
-                {
-                    OnDeviceAuthCancelled();
-                }
-                catch (Exception ex)
-                {
-                    OnDeviceAuthError($"登录失败: {ex.Message}\nAuthentication failed: {ex.Message}");
-                }
-            }
-            else
-            {
-                // Normal retry flow
-                await StartLoginFlow();
-            }
+            await StartLoginFlow();
         }
 
         #region Device Auth Event Handlers
@@ -369,29 +323,8 @@ namespace PlayKit_SDK.Auth
 
         private void ShowRetryButton()
         {
-            _isWaitingForLoginClick = false;
             if (sendCodeButton != null)
             {
-                // Update button text for retry
-                var buttonText = sendCodeButton.GetComponentInChildren<Text>();
-                if (buttonText != null)
-                {
-                    buttonText.text = "重试 / Retry";
-                }
-                sendCodeButton.gameObject.SetActive(true);
-            }
-        }
-
-        private void ShowLoginButton()
-        {
-            if (sendCodeButton != null)
-            {
-                // Update button text for login
-                var buttonText = sendCodeButton.GetComponentInChildren<Text>();
-                if (buttonText != null)
-                {
-                    buttonText.text = "登录 / Login";
-                }
                 sendCodeButton.gameObject.SetActive(true);
             }
         }
@@ -403,7 +336,7 @@ namespace PlayKit_SDK.Auth
         public void ShowIdentifierModal()
         {
             // Legacy method - now triggers DeviceAuth retry
-            OnLoginButtonClicked();
+            OnRetryButtonClicked();
         }
 
         #endregion

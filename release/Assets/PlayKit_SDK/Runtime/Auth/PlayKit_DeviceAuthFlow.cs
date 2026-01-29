@@ -70,13 +70,11 @@ namespace PlayKit_SDK.Auth
         /// <param name="gameId">The game ID to authenticate for</param>
         /// <param name="scope">Authorization scope (default: player:play)</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <param name="autoOpenBrowser">Whether to automatically open browser (set to false for WebGL to avoid popup blocking)</param>
         /// <returns>DeviceAuthResult on success, null on failure</returns>
         public async UniTask<DeviceAuthResult> StartAuthFlowAsync(
             string gameId,
             string scope = "player:play",
-            CancellationToken cancellationToken = default,
-            bool autoOpenBrowser = true)
+            CancellationToken cancellationToken = default)
         {
             if (_isRunning)
             {
@@ -111,89 +109,13 @@ namespace PlayKit_SDK.Auth
                 _pollIntervalMs = initResult.PollInterval * 1000;
                 _expiresAt = DateTime.UtcNow.AddSeconds(initResult.ExpiresIn);
 
-                // Step 3: Open browser for user authorization (if autoOpenBrowser is true)
+                // Step 3: Open browser for user authorization
                 Status = DeviceAuthStatus.WaitingForBrowser;
-
-                if (autoOpenBrowser)
-                {
-                    Debug.Log($"[PlayKit_DeviceAuthFlow] Opening browser: {_authUrl}");
-                    Application.OpenURL(_authUrl);
-
-                    // Step 4: Start polling for authorization
-                    Status = DeviceAuthStatus.Polling;
-                    var result = await PollForAuthorizationAsync(baseUrl, _pollCts.Token);
-
-                    if (result != null)
-                    {
-                        Status = DeviceAuthStatus.Authorized;
-                        OnAuthSuccess?.Invoke(result);
-                    }
-
-                    return result;
-                }
-                else
-                {
-                    // For WebGL: Return null to indicate we're waiting for manual browser open
-                    // The UI will show a login button, and when clicked, OpenBrowserAndPoll() should be called
-                    Debug.Log($"[PlayKit_DeviceAuthFlow] Auth URL ready, waiting for user to click login button: {_authUrl}");
-                    return null;
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                Status = DeviceAuthStatus.Idle;
-                OnCancelled?.Invoke();
-                return null;
-            }
-            catch (Exception ex)
-            {
-                Status = DeviceAuthStatus.Error;
-                var errorMsg = $"Device auth failed: {ex.Message}";
-                OnAuthError?.Invoke(errorMsg);
-                Debug.LogError($"[PlayKit_DeviceAuthFlow] {errorMsg}");
-                return null;
-            }
-            finally
-            {
-                if (autoOpenBrowser)
-                {
-                    _isRunning = false;
-                    _pollCts?.Dispose();
-                    _pollCts = null;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Open the browser and start polling for authorization.
-        /// Call this after StartAuthFlowAsync with autoOpenBrowser=false.
-        /// This should be called from a user click event to avoid popup blocking on WebGL.
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>DeviceAuthResult on success, null on failure</returns>
-        public async UniTask<DeviceAuthResult> OpenBrowserAndPollAsync(CancellationToken cancellationToken = default)
-        {
-            if (string.IsNullOrEmpty(_authUrl))
-            {
-                Debug.LogError("[PlayKit_DeviceAuthFlow] Auth URL not available. Call StartAuthFlowAsync first.");
-                OnAuthError?.Invoke("授权URL未就绪\nAuth URL not ready");
-                return null;
-            }
-
-            if (_pollCts == null)
-            {
-                _pollCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            }
-
-            try
-            {
-                // Open browser - this must be triggered by user click to avoid popup blocking
-                Debug.Log($"[PlayKit_DeviceAuthFlow] Opening browser (user triggered): {_authUrl}");
+                Debug.Log($"[PlayKit_DeviceAuthFlow] Opening browser: {_authUrl}");
                 Application.OpenURL(_authUrl);
 
-                // Start polling for authorization
+                // Step 4: Start polling for authorization
                 Status = DeviceAuthStatus.Polling;
-                var baseUrl = PlayKitSettings.Instance?.BaseUrl ?? "https://playkit.ai";
                 var result = await PollForAuthorizationAsync(baseUrl, _pollCts.Token);
 
                 if (result != null)

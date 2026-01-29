@@ -379,6 +379,10 @@ namespace PlayKit_SDK.Editor
             EditorPrefs.DeleteKey(SKIP_CHECK_KEY);
             EditorPrefs.DeleteKey(LAST_CHECK_KEY);
             Debug.Log("[PlayKit SDK] Dependency check reset.");
+
+            // Trigger script define symbols update
+            PlayKit_ScriptDefineManager.UpdateScriptDefines();
+
             CheckDependencies(isManual: true);
         }
     }

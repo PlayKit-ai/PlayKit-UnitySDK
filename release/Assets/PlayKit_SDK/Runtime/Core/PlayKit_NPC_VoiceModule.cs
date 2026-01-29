@@ -536,5 +536,145 @@ namespace PlayKit_SDK
 
             return true;
         }
+
+        #region Always Listening Mode
+
+        private Action<string> _alwaysListeningOnChunk;
+        private Action<string> _alwaysListeningOnComplete;
+        private string _alwaysListeningLanguage;
+
+        /// <summary>
+        /// Start always listening mode - automatically detects voice and processes with NPC
+        /// Workflow: Listen → Voice Detected → Auto Record → Transcription → NPC Stream Response → Restart Listening
+        /// </summary>
+        /// <param name="onChunk">Callback for each text chunk as NPC response streams in</param>
+        /// <param name="onComplete">Callback when complete NPC response is ready</param>
+        /// <param name="language">Optional language code for transcription (defaults to module's defaultLanguage)</param>
+        public void StartAlwaysListening(
+            Action<string> onChunk = null,
+            Action<string> onComplete = null,
+            string language = null)
+        {
+            if (!ValidateRecorderReady())
+            {
+                Debug.LogError("[VoiceModule] Cannot start always listening - recorder not ready");
+                return;
+            }
+
+            // Store callbacks for use when recording completes
+            _alwaysListeningOnChunk = onChunk;
+            _alwaysListeningOnComplete = onComplete;
+            _alwaysListeningLanguage = language;
+
+            // Enable always listening mode on recorder
+            microphoneRecorder.SetAlwaysListeningMode(true);
+
+            // Subscribe to recording stopped event
+            microphoneRecorder.OnRecordingStopped -= OnAlwaysListeningRecordingStopped;
+            microphoneRecorder.OnRecordingStopped += OnAlwaysListeningRecordingStopped;
+
+            microphoneRecorder.OnAutoRecordingStarted -= OnAlwaysListeningAutoRecordingStarted;
+            microphoneRecorder.OnAutoRecordingStarted += OnAlwaysListeningAutoRecordingStarted;
+
+            // Start listening
+            if (!microphoneRecorder.StartListening())
+            {
+                Debug.LogError("[VoiceModule] Failed to start listening");
+                return;
+            }
+
+            Debug.Log("[VoiceModule] Always listening mode started - speak to trigger recording");
+        }
+
+        /// <summary>
+        /// Stop always listening mode
+        /// </summary>
+        public void StopAlwaysListening()
+        {
+            if (microphoneRecorder == null) return;
+
+            // Unsubscribe from events
+            microphoneRecorder.OnRecordingStopped -= OnAlwaysListeningRecordingStopped;
+            microphoneRecorder.OnAutoRecordingStarted -= OnAlwaysListeningAutoRecordingStarted;
+
+            // Stop any ongoing recording
+            if (microphoneRecorder.IsRecording)
+            {
+                microphoneRecorder.StopRecording(false); // Don't auto-restart
+            }
+
+            // Stop listening
+            microphoneRecorder.StopListening();
+
+            // Disable always listening mode
+            microphoneRecorder.SetAlwaysListeningMode(false);
+
+            // Clear callbacks
+            _alwaysListeningOnChunk = null;
+            _alwaysListeningOnComplete = null;
+            _alwaysListeningLanguage = null;
+
+            Debug.Log("[VoiceModule] Always listening mode stopped");
+        }
+
+        private void OnAlwaysListeningAutoRecordingStarted()
+        {
+            Debug.Log("[VoiceModule] Voice detected - auto-recording started");
+        }
+
+        private void OnAlwaysListeningRecordingStopped(AudioClip audioClip)
+        {
+            if (audioClip == null)
+            {
+                Debug.LogWarning("[VoiceModule] No audio recorded in always listening mode");
+                return;
+            }
+
+            Debug.Log($"[VoiceModule] Auto-recording completed ({audioClip.length:F1}s), processing...");
+
+            // Process the recorded audio
+            ProcessAlwaysListeningAudio(audioClip).Forget();
+        }
+
+        private async UniTask ProcessAlwaysListeningAudio(AudioClip audioClip)
+        {
+            IsProcessing = true;
+
+            try
+            {
+                var token = this.GetCancellationTokenOnDestroy();
+
+                // Transcribe and stream to NPC
+                await ListenAndTalkStream(
+                    audioClip,
+                    _alwaysListeningOnChunk,
+                    response =>
+                    {
+                        _alwaysListeningOnComplete?.Invoke(response);
+                        IsProcessing = false;
+                    },
+                    _alwaysListeningLanguage,
+                    token
+                );
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[VoiceModule] Error processing always listening audio: {ex.Message}");
+                IsProcessing = false;
+                _alwaysListeningOnComplete?.Invoke(null);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            // Clean up event subscriptions
+            if (microphoneRecorder != null)
+            {
+                microphoneRecorder.OnRecordingStopped -= OnAlwaysListeningRecordingStopped;
+                microphoneRecorder.OnAutoRecordingStarted -= OnAlwaysListeningAutoRecordingStarted;
+            }
+        }
+
+        #endregion
     }
 }
