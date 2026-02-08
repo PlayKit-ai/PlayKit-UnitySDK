@@ -16,18 +16,22 @@ namespace PlayKit_SDK.Provider.AI
 
     /// <summary>
     /// Content part for multimodal messages (text or image)
+    /// Uses Vercel AI SDK format: {type: "image", image: "..."} for images
     /// </summary>
     [System.Serializable]
     public class ChatContentPart
     {
         [JsonProperty("type")]
-        public string Type { get; set; } // "text" or "image_url"
+        public string Type { get; set; } // "text" or "image"
 
         [JsonProperty("text", NullValueHandling = NullValueHandling.Ignore)]
         public string Text { get; set; }
 
-        [JsonProperty("image_url", NullValueHandling = NullValueHandling.Ignore)]
-        public ChatImageUrl ImageUrl { get; set; }
+        [JsonProperty("image", NullValueHandling = NullValueHandling.Ignore)]
+        public string Image { get; set; }
+
+        [JsonProperty("detail", NullValueHandling = NullValueHandling.Ignore)]
+        public string Detail { get; set; }
 
         /// <summary>
         /// Create a text content part
@@ -38,33 +42,17 @@ namespace PlayKit_SDK.Provider.AI
         }
 
         /// <summary>
-        /// Create an image content part from base64 data
+        /// Create an image content part from base64 data (Vercel AI SDK format)
         /// </summary>
         public static ChatContentPart CreateImage(string base64Data, string detail = "auto")
         {
             return new ChatContentPart
             {
-                Type = "image_url",
-                ImageUrl = new ChatImageUrl
-                {
-                    Url = $"data:image/png;base64,{base64Data}",
-                    Detail = detail
-                }
+                Type = "image",
+                Image = $"data:image/png;base64,{base64Data}",
+                Detail = detail
             };
         }
-    }
-
-    /// <summary>
-    /// Image URL for multimodal chat messages
-    /// </summary>
-    [System.Serializable]
-    public class ChatImageUrl
-    {
-        [JsonProperty("url")]
-        public string Url { get; set; } // data:image/png;base64,... or URL
-
-        [JsonProperty("detail", NullValueHandling = NullValueHandling.Ignore)]
-        public string Detail { get; set; } // "auto", "low", "high"
     }
 
     #endregion
