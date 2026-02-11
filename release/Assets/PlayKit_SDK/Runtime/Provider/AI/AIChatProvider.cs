@@ -56,15 +56,16 @@ namespace PlayKit_SDK.Provider.AI
                 webRequest.downloadHandler = new DownloadHandlerBuffer();
                 webRequest.SetRequestHeader("Content-Type", "application/json");
                 webRequest.SetRequestHeader("Authorization", $"Bearer {GetAuthToken()}");
-                
-                try 
-                { 
-                    await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken); 
+                PlayKitSDK.SetSDKHeaders(webRequest);
+
+                try
+                {
+                    await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken);
                 }
-                catch (Exception ex) when (!(ex is OperationCanceledException)) 
-                { 
-                    Debug.LogError($"[AIChatProvider] API request failed: {ex.Message}"); 
-                    return null; 
+                catch (Exception ex) when (!(ex is OperationCanceledException))
+                {
+                    Debug.LogError($"[AIChatProvider] API request failed: {ex.Message}");
+                    return null;
                 }
                 
                 if (webRequest.result != UnityWebRequest.Result.Success) 
@@ -95,14 +96,15 @@ namespace PlayKit_SDK.Provider.AI
                 webRequest.downloadHandler = new StreamingDownloadHandler(onTextDelta, onLegacyResponse);
                 webRequest.SetRequestHeader("Content-Type", "application/json");
                 webRequest.SetRequestHeader("Authorization", $"Bearer {GetAuthToken()}");
-                
-                try 
-                { 
-                    await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken); 
+                PlayKitSDK.SetSDKHeaders(webRequest);
+
+                try
+                {
+                    await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken);
                 }
-                catch (Exception ex) when (!(ex is OperationCanceledException)) 
-                { 
-                    Debug.LogError($"[AIChatProvider] API stream request failed: {ex.Message}"); 
+                catch (Exception ex) when (!(ex is OperationCanceledException))
+                {
+                    Debug.LogError($"[AIChatProvider] API stream request failed: {ex.Message}");
                 }
                 finally 
                 { 

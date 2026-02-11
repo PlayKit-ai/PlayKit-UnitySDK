@@ -104,6 +104,7 @@ namespace PlayKit_SDK.Provider.AI
                 webRequest.downloadHandler = new DownloadHandlerBuffer();
                 webRequest.SetRequestHeader("Content-Type", "application/json");
                 webRequest.SetRequestHeader("Authorization", $"Bearer {GetAuthToken()}");
+                PlayKitSDK.SetSDKHeaders(webRequest);
 
                 try
                 {

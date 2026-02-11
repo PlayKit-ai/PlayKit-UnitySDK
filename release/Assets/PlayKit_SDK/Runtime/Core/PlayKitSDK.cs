@@ -1,12 +1,23 @@
 using System;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace PlayKit_SDK
 {
     public class PlayKitSDK : MonoBehaviour
     {
         public const string VERSION = "v0.2.4.12";
+
+        /// <summary>
+        /// Sets standard SDK identification headers on a UnityWebRequest.
+        /// Call this on every request before SendWebRequest().
+        /// </summary>
+        internal static void SetSDKHeaders(UnityWebRequest request)
+        {
+            request.SetRequestHeader("X-SDK-Type", "Unity");
+            request.SetRequestHeader("X-SDK-Version", VERSION);
+        }
 
         // Configuration is now loaded from PlayKitSettings ScriptableObject
         // No need to manually place prefabs in scenes - SDK initializes automatically at runtime
@@ -27,6 +38,13 @@ namespace PlayKit_SDK
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void AutoInitialize()
         {
+            // Check if auto-initialization is enabled in settings
+            var settings = PlayKitSettings.Instance;
+            if (settings != null && !settings.AutoInitialize)
+            {
+                return;
+            }
+
             // Check if an instance already exists in the scene (for backward compatibility)
             if (Instance != null)
             {

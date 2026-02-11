@@ -54,6 +54,7 @@ namespace PlayKit_SDK.Editor
         {
             using (var webRequest = UnityWebRequest.Get(VERSION_API_URL))
             {
+                PlayKitSDK.SetSDKHeaders(webRequest);
                 var operation = webRequest.SendWebRequest();
 
                 // Wait for completion
