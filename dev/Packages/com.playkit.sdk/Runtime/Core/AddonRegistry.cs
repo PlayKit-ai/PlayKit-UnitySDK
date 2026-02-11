@@ -48,11 +48,11 @@ namespace PlayKit_SDK
                 return;
             }
 
-            if (_addons.ContainsKey(addon.AddonId))
-            {
-                Debug.LogWarning($"[AddonRegistry] Addon '{addon.AddonId}' is already registered");
-                return;
-            }
+            // if (_addons.ContainsKey(addon.AddonId))
+            // {
+            //     Debug.LogWarning($"[AddonRegistry] Addon '{addon.AddonId}' is already registered");
+            //     return;
+            // }
 
             _addons[addon.AddonId] = addon;
             Debug.Log($"[AddonRegistry] Registered addon: {addon.AddonId} ({addon.DisplayName} v{addon.Version})");

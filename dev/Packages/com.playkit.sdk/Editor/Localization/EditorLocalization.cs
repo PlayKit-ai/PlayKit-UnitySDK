@@ -178,27 +178,27 @@ namespace PlayKit.SDK.Editor
             string filePath = Path.Combine(folder, $"{languageCode}.json").Replace("\\", "/");
 
             // Debug: log the path being tried
-            Debug.Log($"[PlayKit SDK] Trying to load language from: {filePath} (exists: {File.Exists(filePath)})");
+            // Debug.Log($"[PlayKit SDK] Trying to load language from: {filePath} (exists: {File.Exists(filePath)})");
 
-            if (!File.Exists(filePath))
-            {
-                Debug.LogWarning($"[PlayKit SDK] Language file not found: {filePath}. Falling back to en-US.");
-
-                if (languageCode != "en-US")
-                {
-                    filePath = Path.Combine(folder, "en-US.json").Replace("\\", "/");
-                    if (!File.Exists(filePath))
-                    {
-                        Debug.LogError($"[PlayKit SDK] Fallback language file not found: {filePath}. Languages folder: {folder}");
-                        return;
-                    }
-                }
-                else
-                {
-                    Debug.LogError($"[PlayKit SDK] en-US language file not found. Languages folder: {folder}");
-                    return;
-                }
-            }
+            // if (!File.Exists(filePath))
+            // {
+            //     Debug.LogWarning($"[PlayKit SDK] Language file not found: {filePath}. Falling back to en-US.");
+            //
+            //     if (languageCode != "en-US")
+            //     {
+            //         filePath = Path.Combine(folder, "en-US.json").Replace("\\", "/");
+            //         if (!File.Exists(filePath))
+            //         {
+            //             Debug.LogError($"[PlayKit SDK] Fallback language file not found: {filePath}. Languages folder: {folder}");
+            //             return;
+            //         }
+            //     }
+            //     else
+            //     {
+            //         Debug.LogError($"[PlayKit SDK] en-US language file not found. Languages folder: {folder}");
+            //         return;
+            //     }
+            // }
 
             try
             {
@@ -207,14 +207,14 @@ namespace PlayKit.SDK.Editor
                 // Simple JSON parsing for key-value pairs
                 ParseJsonTranslations(jsonContent);
 
-                if (translations.Count > 0)
-                {
-                    Debug.Log($"[PlayKit SDK] Loaded {translations.Count} translations for language: {languageCode}");
-                }
-                else
-                {
-                    Debug.LogWarning($"[PlayKit SDK] Parsed 0 translations from: {filePath}");
-                }
+                // if (translations.Count > 0)
+                // {
+                //     Debug.Log($"[PlayKit SDK] Loaded {translations.Count} translations for language: {languageCode}");
+                // }
+                // else
+                // {
+                //     Debug.LogWarning($"[PlayKit SDK] Parsed 0 translations from: {filePath}");
+                // }
             }
             catch (Exception ex)
             {

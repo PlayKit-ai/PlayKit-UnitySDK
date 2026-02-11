@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Build;
 using UnityEditor.Compilation;
 using UnityEngine;
 
@@ -18,19 +19,39 @@ namespace PlayKit_SDK.Editor
         private const string UNITASK_DEFINE = "PLAYKIT_UNITASK_SUPPORT";
         private const string NEWTONSOFT_DEFINE = "PLAYKIT_NEWTONSOFT_SUPPORT";
 
-        // All build target groups that should have script defines set
-        private static readonly BuildTargetGroup[] TargetGroups = new[]
-        {
-            BuildTargetGroup.Standalone,
-            BuildTargetGroup.Android,
-            BuildTargetGroup.iOS,
-            BuildTargetGroup.WebGL
-        };
+        private static readonly NamedBuildTarget[] TargetGroups;
 
         static PlayKit_ScriptDefineManager()
         {
+            TargetGroups = GetSupportedBuildTargets();
             EditorApplication.delayCall += UpdateScriptDefines;
             CompilationPipeline.compilationFinished += OnCompilationFinished;
+        }
+
+        private static NamedBuildTarget[] GetSupportedBuildTargets()
+        {
+            var targets = new List<NamedBuildTarget>
+            {
+                NamedBuildTarget.Standalone,
+                NamedBuildTarget.Server,
+                NamedBuildTarget.Android,
+                NamedBuildTarget.iOS,
+                NamedBuildTarget.WebGL,
+                NamedBuildTarget.tvOS,
+            };
+
+            // VisionOS - only available when the visionOS build support module is installed
+            try
+            {
+                var visionOS = (BuildTargetGroup)Enum.Parse(typeof(BuildTargetGroup), "VisionOS");
+                targets.Add(NamedBuildTarget.FromBuildTargetGroup(visionOS));
+            }
+            catch
+            {
+                // VisionOS not available in this Unity version
+            }
+
+            return targets.ToArray();
         }
 
         private static void OnCompilationFinished(object obj)
@@ -48,15 +69,22 @@ namespace PlayKit_SDK.Editor
             bool hasNewtonsoft = IsAssemblyLoaded("Newtonsoft.Json") || IsAssemblyLoaded("Unity.Newtonsoft.Json");
 
             // Update script defines for all target groups to ensure cross-platform compatibility
-            foreach (var targetGroup in TargetGroups)
+            foreach (var target in TargetGroups)
             {
-                UpdateDefinesForTargetGroup(targetGroup, hasUniTask, hasNewtonsoft);
+                try
+                {
+                    UpdateDefinesForTarget(target, hasUniTask, hasNewtonsoft);
+                }
+                catch
+                {
+                    // Skip targets whose build support module is not installed
+                }
             }
         }
 
-        private static void UpdateDefinesForTargetGroup(BuildTargetGroup targetGroup, bool hasUniTask, bool hasNewtonsoft)
+        private static void UpdateDefinesForTarget(NamedBuildTarget target, bool hasUniTask, bool hasNewtonsoft)
         {
-            string currentDefines = PlayerSettings.GetScriptingDefineSymbolsForGroup(targetGroup);
+            string currentDefines = PlayerSettings.GetScriptingDefineSymbols(target);
             var definesList = currentDefines.Split(';').Where(d => !string.IsNullOrWhiteSpace(d)).ToList();
 
             bool changed = false;
@@ -88,8 +116,8 @@ namespace PlayKit_SDK.Editor
             if (changed)
             {
                 string newDefines = string.Join(";", definesList);
-                PlayerSettings.SetScriptingDefineSymbolsForGroup(targetGroup, newDefines);
-                Debug.Log($"[PlayKit SDK] Updated script defines for {targetGroup}: UniTask={hasUniTask}, Newtonsoft={hasNewtonsoft}");
+                PlayerSettings.SetScriptingDefineSymbols(target, newDefines);
+                Debug.Log($"[PlayKit SDK] Updated script defines for {target}: UniTask={hasUniTask}, Newtonsoft={hasNewtonsoft}");
             }
         }
 
