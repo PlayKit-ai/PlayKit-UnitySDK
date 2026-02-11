@@ -537,6 +537,7 @@ namespace PlayKit_SDK.Auth
                     webRequest.uploadHandler = new UploadHandlerRaw(bodyRaw);
                     webRequest.downloadHandler = new DownloadHandlerBuffer();
                     webRequest.SetRequestHeader("Content-Type", "application/json");
+                    PlayKitSDK.SetSDKHeaders(webRequest);
 
                     var operation = webRequest.SendWebRequest();
                     while (!operation.isDone)

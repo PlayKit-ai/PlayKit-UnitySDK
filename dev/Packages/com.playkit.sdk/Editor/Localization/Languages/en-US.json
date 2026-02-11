@@ -42,6 +42,9 @@
   "config.models.select_game_first": "Please select a game first to load available models.",
   "config.models.none_available": "No models available",
 
+  "config.init.auto_initialize": "Auto Initialize SDK",
+  "config.init.auto_initialize.tooltip": "Automatically initialize PlayKit SDK at runtime startup. Disable to manually call PlayKitSDK.InitializeAsync().",
+
   "dev.tools.title": "Developer Tools",
   "dev.storage.title": "Developer Token Storage",
   "dev.storage.use_local": "Use Local Storage",

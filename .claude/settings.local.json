@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "WebSearch",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

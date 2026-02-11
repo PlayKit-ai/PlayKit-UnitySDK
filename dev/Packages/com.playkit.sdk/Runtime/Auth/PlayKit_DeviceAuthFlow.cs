@@ -220,6 +220,7 @@ namespace PlayKit_SDK.Auth
                 webRequest.uploadHandler = new UploadHandlerRaw(bodyRaw);
                 webRequest.downloadHandler = new DownloadHandlerBuffer();
                 webRequest.SetRequestHeader("Content-Type", "application/json");
+                PlayKitSDK.SetSDKHeaders(webRequest);
 
                 try
                 {
@@ -266,6 +267,7 @@ namespace PlayKit_SDK.Auth
 
                     using (var webRequest = UnityWebRequest.Get(endpoint))
                     {
+                        PlayKitSDK.SetSDKHeaders(webRequest);
                         // Don't use ToUniTask() as it throws on non-2xx status codes
                         // Instead, manually wait for the request to complete
                         var operation = webRequest.SendWebRequest();

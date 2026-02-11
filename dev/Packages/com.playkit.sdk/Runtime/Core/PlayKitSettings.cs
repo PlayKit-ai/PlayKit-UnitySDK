@@ -29,6 +29,10 @@ namespace PlayKit_SDK
         [Tooltip("Default 3D model generation model. Leave empty to use server default.")]
         [SerializeField] private string default3DModel = "default-3d-model";
 
+        [Header("Initialization")]
+        [Tooltip("Automatically initialize PlayKit SDK at runtime startup. Disable to manually call PlayKitSDK.InitializeAsync().")]
+        [SerializeField] private bool autoInitialize = true;
+
         [Header("Development Options")]
         [Tooltip("When enabled, ignores developer tokens and forces player authentication flow")]
         [SerializeField] private bool ignoreDeveloperToken = false;
@@ -146,6 +150,7 @@ namespace PlayKit_SDK
         public string DefaultImageModel => defaultImageModel;
         public string DefaultTranscriptionModel => defaultTranscriptionModel;
         public string Default3DModel => default3DModel;
+        public bool AutoInitialize => autoInitialize;
         public bool IgnoreDeveloperToken => ignoreDeveloperToken;
 
         /// <summary>

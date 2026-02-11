@@ -177,6 +177,7 @@ namespace PlayKit_SDK.Recharge
                 {
                     // Add Authorization header with player token
                     request.SetRequestHeader("Authorization", $"Bearer {playerToken}");
+                    PlayKitSDK.SetSDKHeaders(request);
 
                     await request.SendWebRequest();
 

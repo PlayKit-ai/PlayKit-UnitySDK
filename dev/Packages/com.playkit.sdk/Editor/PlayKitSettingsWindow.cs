@@ -721,6 +721,14 @@ namespace PlayKit_SDK
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
+            SerializedProperty autoInitProp = serializedSettings.FindProperty("autoInitialize");
+            EditorGUILayout.PropertyField(autoInitProp, new GUIContent(
+                L10n.Get("config.init.auto_initialize"),
+                L10n.Get("config.init.auto_initialize.tooltip")
+            ));
+
+            EditorGUILayout.Space(5);
+
             SerializedProperty ignoreProp = serializedSettings.FindProperty("ignoreDeveloperToken");
             EditorGUILayout.PropertyField(ignoreProp, new GUIContent(
                 L10n.Get("dev.token.ignore"),
@@ -1483,6 +1491,7 @@ namespace PlayKit_SDK
                 using (var webRequest = UnityWebRequest.Get(endpoint))
                 {
                     webRequest.SetRequestHeader("Authorization", $"Bearer {token}");
+                    PlayKitSDK.SetSDKHeaders(webRequest);
 
                     var operation = webRequest.SendWebRequest();
                     while (!operation.isDone)
@@ -1564,6 +1573,7 @@ namespace PlayKit_SDK
                 using (var webRequest = UnityWebRequest.Get(endpoint))
                 {
                     webRequest.SetRequestHeader("Authorization", $"Bearer {token}");
+                    PlayKitSDK.SetSDKHeaders(webRequest);
 
                     var operation = webRequest.SendWebRequest();
                     while (!operation.isDone)

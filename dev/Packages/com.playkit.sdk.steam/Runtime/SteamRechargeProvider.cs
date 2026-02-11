@@ -118,6 +118,7 @@ namespace PlayKit_SDK.Steam
                     request.downloadHandler = new DownloadHandlerBuffer();
                     request.SetRequestHeader("Content-Type", "application/json");
                     request.SetRequestHeader("Authorization", $"Bearer {playerToken}");
+                    PlayKitSDK.SetSDKHeaders(request);
 
                     await request.SendWebRequest();
 
@@ -217,6 +218,7 @@ namespace PlayKit_SDK.Steam
                     request.downloadHandler = new DownloadHandlerBuffer();
                     request.SetRequestHeader("Content-Type", "application/json");
                     request.SetRequestHeader("Authorization", $"Bearer {playerToken}");
+                    PlayKitSDK.SetSDKHeaders(request);
 
                     await request.SendWebRequest();
 
@@ -302,6 +304,7 @@ namespace PlayKit_SDK.Steam
                 {
                     // Add Authorization header with player token
                     request.SetRequestHeader("Authorization", $"Bearer {playerToken}");
+                    PlayKitSDK.SetSDKHeaders(request);
 
                     await request.SendWebRequest();
 

@@ -100,6 +100,7 @@ namespace PlayKit_SDK.Steam
                 using (var request = UnityEngine.Networking.UnityWebRequest.Get(endpoint))
                 {
                     request.SetRequestHeader("Authorization", $"Bearer {developerToken}");
+                    PlayKitSDK.SetSDKHeaders(request);
                     await request.SendWebRequest();
 
                     if (request.result == UnityEngine.Networking.UnityWebRequest.Result.Success)

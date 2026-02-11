@@ -56,6 +56,9 @@
   "config.models.select_game_first": "请先选择游戏以加载可用模型。",
   "config.models.none_available": "暂无可用模型",
 
+  "config.init.auto_initialize": "自动初始化 SDK",
+  "config.init.auto_initialize.tooltip": "运行时自动初始化 PlayKit SDK。禁用后需手动调用 PlayKitSDK.InitializeAsync()。",
+
   "dev.tools.title": "开发者工具",
   "dev.storage.title": "开发者令牌存储方式",
   "dev.storage.use_local": "使用本地存储",

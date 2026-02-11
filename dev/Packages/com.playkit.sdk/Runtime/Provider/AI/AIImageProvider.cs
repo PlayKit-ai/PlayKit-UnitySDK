@@ -66,10 +66,11 @@ namespace PlayKit_SDK.Provider.AI
                 webRequest.downloadHandler = new DownloadHandlerBuffer();
                 webRequest.SetRequestHeader("Content-Type", "application/json");
                 webRequest.SetRequestHeader("Authorization", $"Bearer {GetAuthToken()}");
-                
-                try 
-                { 
-                    await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken); 
+                PlayKitSDK.SetSDKHeaders(webRequest);
+
+                try
+                {
+                    await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken);
                 }
                 catch (UnityWebRequestException ex) when (!(ex is OperationCanceledException)) 
                 { 

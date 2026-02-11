@@ -554,6 +554,7 @@ namespace PlayKit_SDK
                     request.uploadHandler = new UploadHandlerRaw(postData);
                     request.downloadHandler = new DownloadHandlerBuffer();
                     request.SetRequestHeader("Content-Type", "application/json");
+                    PlayKitSDK.SetSDKHeaders(request);
 
                     // ADDED: Set the Authorization header if a token is provided
                     if (!string.IsNullOrEmpty(authToken))
@@ -604,6 +605,7 @@ namespace PlayKit_SDK
                 {
                     request.downloadHandler = new DownloadHandlerBuffer();
                     request.SetRequestHeader("Authorization", $"Bearer {authToken}");
+                    PlayKitSDK.SetSDKHeaders(request);
 
                     // Add additional headers if provided
                     if (additionalHeaders != null)
