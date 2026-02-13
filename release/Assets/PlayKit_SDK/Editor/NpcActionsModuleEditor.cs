@@ -79,14 +79,14 @@ namespace PlayKit_SDK.Editor
                 // Draw foldout header
                 var foldoutRect = new Rect(rect.x, rect.y + 2, rect.width, EditorGUIUtility.singleLineHeight);
                 string displayName = string.IsNullOrEmpty(actionNameProp.stringValue) ? "(Unnamed Action)" : actionNameProp.stringValue;
-                string statusIcon = enabledProp.boolValue ? "d_winbtn_mac_max" : "d_winbtn_mac_min";
-
                 var foldoutContent = new GUIContent($"  {displayName}");
                 actionFoldouts[index] = EditorGUI.Foldout(foldoutRect, actionFoldouts[index], foldoutContent, true, EditorStyles.foldoutHeader);
 
                 // Draw status icon
                 var iconRect = new Rect(rect.x + rect.width - 20, rect.y + 2, 18, EditorGUIUtility.singleLineHeight);
-                GUI.Label(iconRect, EditorGUIUtility.IconContent(statusIcon));
+                string statusIconName = enabledProp.boolValue ? "d_winbtn_mac_max" : "d_winbtn_mac_min";
+                string statusFallback = enabledProp.boolValue ? "●" : "○";
+                GUI.Label(iconRect, SafeIconContent(statusIconName, statusFallback));
 
                 if (actionFoldouts[index])
                 {
@@ -264,6 +264,14 @@ namespace PlayKit_SDK.Editor
                 prop.InsertArrayElementAtIndex(i);
                 prop.GetArrayElementAtIndex(i).stringValue = values[i].Trim();
             }
+        }
+
+        private static GUIContent SafeIconContent(string iconName, string fallbackText)
+        {
+            var content = EditorGUIUtility.IconContent(iconName);
+            if (content != null && content.image != null)
+                return content;
+            return new GUIContent(fallbackText);
         }
 
         public override void OnInspectorGUI()

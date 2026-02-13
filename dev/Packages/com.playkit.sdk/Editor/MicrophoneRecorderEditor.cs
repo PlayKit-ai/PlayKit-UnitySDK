@@ -243,11 +243,11 @@ namespace PlayKit_SDK.Editor
                 // Status indicator
                 if (useVADProp.boolValue)
                 {
-                    GUILayout.Label(EditorGUIUtility.IconContent("d_winbtn_mac_max"), GUILayout.Width(20));
+                    GUILayout.Label(SafeIconContent("d_winbtn_mac_max", "●"), GUILayout.Width(20));
                 }
                 else
                 {
-                    GUILayout.Label(EditorGUIUtility.IconContent("d_winbtn_mac_min"), GUILayout.Width(20));
+                    GUILayout.Label(SafeIconContent("d_winbtn_mac_min", "○"), GUILayout.Width(20));
                 }
                 EditorGUILayout.EndHorizontal();
 
@@ -300,11 +300,11 @@ namespace PlayKit_SDK.Editor
                 // Status indicator
                 if (alwaysListeningModeProp.boolValue)
                 {
-                    GUILayout.Label(EditorGUIUtility.IconContent("d_winbtn_mac_max"), GUILayout.Width(20));
+                    GUILayout.Label(SafeIconContent("d_winbtn_mac_max", "●"), GUILayout.Width(20));
                 }
                 else
                 {
-                    GUILayout.Label(EditorGUIUtility.IconContent("d_winbtn_mac_min"), GUILayout.Width(20));
+                    GUILayout.Label(SafeIconContent("d_winbtn_mac_min", "○"), GUILayout.Width(20));
                 }
                 EditorGUILayout.EndHorizontal();
 
@@ -457,6 +457,14 @@ namespace PlayKit_SDK.Editor
             }
 
             EditorGUILayout.EndFoldoutHeaderGroup();
+        }
+
+        private static GUIContent SafeIconContent(string iconName, string fallbackText)
+        {
+            var content = EditorGUIUtility.IconContent(iconName);
+            if (content != null && content.image != null)
+                return content;
+            return new GUIContent(fallbackText);
         }
 
         private void DrawStatusIndicator(bool status)
