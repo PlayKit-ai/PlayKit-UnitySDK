@@ -14,7 +14,7 @@ AI-powered game development SDK for Unity. Build intelligent NPCs, dynamic conve
 
 ## Requirements
 
-- **Unity**: 2020.3 or later
+- **Unity**: 2022.3 or later
 - **Scripting Backend**: IL2CPP or Mono (Both supported)
 - **.NET**: .NET Standard 2.1
 - **Dependencies**:

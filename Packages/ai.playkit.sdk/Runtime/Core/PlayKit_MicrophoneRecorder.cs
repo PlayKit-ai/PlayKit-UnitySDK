@@ -314,6 +314,38 @@ namespace PlayKit_SDK
             Debug.Log($"[MicrophoneRecorder] Microphone device set to: {deviceName}");
         }
 
+        /// <summary>
+        /// Set Voice Activity Detection parameters for recording auto-stop
+        /// </summary>
+        /// <param name="silenceThreshold">Volume below which is silence (0.0-1.0, default 0.01)</param>
+        /// <param name="maxSilenceDuration">Seconds of silence before auto-stop (default 2.0)</param>
+        public void SetVADSettings(float silenceThreshold, float maxSilenceDuration)
+        {
+            this.silenceThreshold = Mathf.Clamp01(silenceThreshold);
+            this.maxSilenceDuration = Mathf.Max(0f, maxSilenceDuration);
+            Debug.Log($"[MicrophoneRecorder] VAD settings updated: silenceThreshold={this.silenceThreshold}, maxSilenceDuration={this.maxSilenceDuration}s");
+        }
+
+        /// <summary>
+        /// Set Always Listening Mode voice detection parameters
+        /// Cannot be changed while listening is active
+        /// </summary>
+        /// <param name="voiceStartThreshold">Volume to trigger voice detection (0.0-1.0, default 0.02)</param>
+        /// <param name="minVoiceDuration">Minimum seconds of voice before recording starts (default 0.1)</param>
+        /// <param name="preBufferDuration">Seconds of audio to keep before voice detected (default 0.5)</param>
+        public void SetListeningSettings(float voiceStartThreshold, float minVoiceDuration, float preBufferDuration)
+        {
+            if (isListening)
+            {
+                Debug.LogWarning("[MicrophoneRecorder] Cannot change listening settings while listening! Stop listening first.");
+                return;
+            }
+            this.voiceStartThreshold = Mathf.Clamp01(voiceStartThreshold);
+            this.minVoiceDuration = Mathf.Max(0f, minVoiceDuration);
+            this.preBufferDuration = Mathf.Max(0f, preBufferDuration);
+            Debug.Log($"[MicrophoneRecorder] Listening settings updated: voiceStartThreshold={this.voiceStartThreshold}, minVoiceDuration={this.minVoiceDuration}s, preBufferDuration={this.preBufferDuration}s");
+        }
+
         #region Always Listening Mode API
 
         /// <summary>
