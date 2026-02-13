@@ -14,4 +14,6 @@ jobs:
         with:
           fetch-depth: 0
       - run: |
-          git push --mirror https://oauth2:${{ secrets.GITLAB_TOKEN }}@${{ secrets.GITLAB_REPO }}
+          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@${{ secrets.GITLAB_REPO }}
+          git push gitlab --all --force
+          git push gitlab --tags --force
