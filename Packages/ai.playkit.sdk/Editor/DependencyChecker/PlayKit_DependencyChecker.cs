@@ -219,7 +219,7 @@ namespace PlayKit_SDK.Editor
                     "PlayKit SDK requires UniTask, but the embedded UniTask.unitypackage was not found.\n\n" +
                     "Please ensure the SDK package is complete.\n\n" +
                     "Expected location:\n" +
-                    "Packages/com.playkit.sdk/Editor/Dependencies/UniTask.unitypackage",
+                    "Packages/ai.playkit.sdk/Editor/Dependencies/UniTask.unitypackage",
                     "OK"
                 );
             }
@@ -271,7 +271,7 @@ namespace PlayKit_SDK.Editor
                     "The embedded UniTask.unitypackage was not found.\n\n" +
                     "Please ensure the SDK package is complete.\n\n" +
                     "Expected location:\n" +
-                    "Packages/com.playkit.sdk/Editor/Dependencies/UniTask.unitypackage",
+                    "Packages/ai.playkit.sdk/Editor/Dependencies/UniTask.unitypackage",
                     "OK"
                 );
             }

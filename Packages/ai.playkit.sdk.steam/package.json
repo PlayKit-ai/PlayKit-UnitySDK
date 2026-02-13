@@ -1,5 +1,5 @@
 {
-  "name": "com.playkit.sdk.steam",
+  "name": "ai.playkit.sdk.steam",
   "displayName": "PlayKitSDKSteamAddon",
   "version": "0.2.3",
   "unity": "2020.3",

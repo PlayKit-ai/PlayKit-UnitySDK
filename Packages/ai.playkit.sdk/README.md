@@ -37,7 +37,7 @@ Add to your `Packages/manifest.json`:
 ```json
 {
   "dependencies": {
-    "com.playkit.sdk": "https://github.com/playkit-ai/playkit-unity-sdk.git#v0.2.0",
+    "ai.playkit.sdk": "https://github.com/PlayKit-ai/PlayKit-UnitySDK.git?path=Packages/ai.playkit.sdk",
     "com.cysharp.unitask": "https://github.com/Cysharp/UniTask.git?path=src/UniTask/Assets/Plugins/UniTask"
   }
 }
@@ -393,7 +393,7 @@ else
 ### Steam
 
 - **IMPORTANT**: Must use Steam overlay for purchases (not browser)
-- Requires Steam addon: `com.playkit.sdk.steam`
+- Requires Steam addon: `ai.playkit.sdk.steam`
 - Configure Steam App ID in `PlayKit_SteamAuthManager`
 
 ### iOS

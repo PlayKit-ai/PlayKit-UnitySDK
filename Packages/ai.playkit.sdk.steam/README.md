@@ -5,7 +5,7 @@ Steam authentication addon for PlayKit SDK. Provides seamless Steam login integr
 ## Requirements
 
 - Unity 2020.3 or later
-- PlayKit SDK (com.playkit.sdk) 0.2.0+
+- PlayKit SDK (ai.playkit.sdk) 0.2.0+
 - UniTask (com.cysharp.unitask) 2.5.0+
 - Steam client running on the target machine
 
@@ -36,7 +36,7 @@ Add to your `Packages/manifest.json`:
 ```json
 {
   "dependencies": {
-    "com.playkit.sdk.steam": "https://github.com/playkit-ai/playkit-unity-steam.git#v0.1.0"
+    "ai.playkit.sdk.steam": "https://github.com/PlayKit-ai/PlayKit-UnitySDK.git?path=Packages/ai.playkit.sdk.steam"
   }
 }
 ```

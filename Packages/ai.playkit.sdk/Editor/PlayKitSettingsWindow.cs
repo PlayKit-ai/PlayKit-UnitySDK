@@ -66,7 +66,7 @@ namespace PlayKit_SDK
         private string _modelsLoadError = "";
 
         // Addons state
-        private const string STEAM_ADDON_PACKAGE_NAME = "com.playkit.sdk.steam";
+        private const string STEAM_ADDON_PACKAGE_NAME = "ai.playkit.sdk.steam";
         private const string STEAM_ADDON_GIT_URL = "https://github.com/playkit-ai/playkit-unity-steam.git";
         private const string STEAM_ADDON_DOCS_URL = "https://docs.playkit.ai/unity/addons/steam";
         private bool _isSteamAddonInstalled = false;

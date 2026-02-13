@@ -95,7 +95,7 @@ namespace PlayKit.SDK.Editor
             {
                 "Assets/PlayKit_SDK/Editor/Localization/Languages",
                 "Assets/SDKs/Unity/Editor/Localization/Languages",
-                "Packages/com.playkit.sdk/Editor/Localization/Languages"
+                "Packages/ai.playkit.sdk/Editor/Localization/Languages"
             };
 
             foreach (var path in possiblePaths)

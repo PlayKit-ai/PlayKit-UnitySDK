@@ -1,15 +1,15 @@
 {
   "dependencies": {
-    "com.playkit.sdk": {
-      "version": "file:com.playkit.sdk",
+    "ai.playkit.sdk": {
+      "version": "file:ai.playkit.sdk",
       "depth": 0,
       "source": "embedded",
       "dependencies": {
         "com.unity.nuget.newtonsoft-json": "3.2.1"
       }
     },
-    "com.playkit.sdk.steam": {
-      "version": "file:com.playkit.sdk.steam",
+    "ai.playkit.sdk.steam": {
+      "version": "file:ai.playkit.sdk.steam",
       "depth": 0,
       "source": "embedded",
       "dependencies": {}
