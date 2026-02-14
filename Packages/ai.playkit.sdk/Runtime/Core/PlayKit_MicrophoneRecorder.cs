@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 
 namespace PlayKit_SDK
@@ -43,6 +44,9 @@ namespace PlayKit_SDK
 
         [Tooltip("Pre-buffer duration to capture audio before voice detection (seconds) 语音检测前的预缓冲时长（秒）")]
         [SerializeField] private float preBufferDuration = 0.5f;
+
+        [Tooltip("Debounce delay before auto-restarting listening after recording stops (seconds) 录音结束后自动重新监听的防抖延迟（秒）")]
+        [SerializeField] private float restartDebounceTime = 0.3f;
 
         [Header("Status (Read Only) 状态（只读）")]
         [SerializeField] private bool isRecording = false;
@@ -108,6 +112,7 @@ namespace PlayKit_SDK
 
         private AudioClip _recordingClip;
         private float _silenceTimer = 0f;
+        private Coroutine _restartDebounceCoroutine;
 
         // Always Listening Mode fields
         private AudioClip _listeningClip;
@@ -346,6 +351,16 @@ namespace PlayKit_SDK
             Debug.Log($"[MicrophoneRecorder] Listening settings updated: voiceStartThreshold={this.voiceStartThreshold}, minVoiceDuration={this.minVoiceDuration}s, preBufferDuration={this.preBufferDuration}s");
         }
 
+        /// <summary>
+        /// Set the debounce delay before auto-restarting listening after recording stops
+        /// </summary>
+        /// <param name="seconds">Debounce delay in seconds (default 0.3)</param>
+        public void SetRestartDebounce(float seconds)
+        {
+            restartDebounceTime = Mathf.Max(0f, seconds);
+            Debug.Log($"[MicrophoneRecorder] Restart debounce set to: {restartDebounceTime}s");
+        }
+
         #region Always Listening Mode API
 
         /// <summary>
@@ -441,6 +456,13 @@ namespace PlayKit_SDK
 #if UNITY_WEBGL
             Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
 #else
+            // Cancel any pending debounce restart
+            if (_restartDebounceCoroutine != null)
+            {
+                StopCoroutine(_restartDebounceCoroutine);
+                _restartDebounceCoroutine = null;
+            }
+
             if (!isListening)
             {
                 return;
@@ -696,18 +718,24 @@ namespace PlayKit_SDK
             Debug.Log($"[MicrophoneRecorder] Recording stopped. Duration: {trimmedClip.length:F2}s");
             OnRecordingStopped?.Invoke(trimmedClip);
 
-            // Auto-restart listening if in Always Listening Mode
+            listeningState = ListeningState.Idle;
+
+            // Auto-restart listening if in Always Listening Mode (with debounce)
             if (autoRestart && alwaysListeningMode)
             {
-                listeningState = ListeningState.Idle;
-                Debug.Log("[MicrophoneRecorder] Auto-restarting listening mode");
-                StartListening();
-            }
-            else
-            {
-                listeningState = ListeningState.Idle;
+                if (_restartDebounceCoroutine != null)
+                    StopCoroutine(_restartDebounceCoroutine);
+                _restartDebounceCoroutine = StartCoroutine(RestartListeningDebounced());
             }
 #endif
+        }
+
+        private IEnumerator RestartListeningDebounced()
+        {
+            Debug.Log($"[MicrophoneRecorder] Debounce: restarting listening in {restartDebounceTime}s");
+            yield return new WaitForSeconds(restartDebounceTime);
+            _restartDebounceCoroutine = null;
+            StartListening();
         }
 
         private AudioClip CombineWithPreBuffer(AudioClip recordedClip, int recordedSamples)
@@ -788,8 +816,12 @@ namespace PlayKit_SDK
 
         private void OnDestroy()
         {
+            if (_restartDebounceCoroutine != null)
+            {
+                StopCoroutine(_restartDebounceCoroutine);
+                _restartDebounceCoroutine = null;
+            }
 #if !UNITY_WEBGL
-            // Ensure microphone is stopped when component is destroyed
             if (isRecording)
             {
                 Microphone.End(microphoneDevice);

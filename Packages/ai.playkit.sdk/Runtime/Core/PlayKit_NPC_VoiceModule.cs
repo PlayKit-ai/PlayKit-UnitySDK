@@ -22,6 +22,10 @@ namespace PlayKit_SDK
         [Tooltip("Optional: Attach a PlayKit_MicrophoneRecorder for integrated recording functionality 可选：附加PlayKit_MicrophoneRecorder组件以集成录制功能")]
         [SerializeField] private PlayKit_MicrophoneRecorder microphoneRecorder;
 
+        [Header("Always Listening Behavior 始终监听行为")]
+        [Tooltip("Allow new transcriptions to interrupt an in-progress NPC stream 允许新的转录结果打断正在进行的NPC流")]
+        [SerializeField] private bool interruptible = true;
+
         [Header("Debug Options 调试选项")]
         [Tooltip("Log transcription results to console 将转录结果输出到控制台")]
         [SerializeField] private bool logTranscription = true;
@@ -44,6 +48,17 @@ namespace PlayKit_SDK
         /// The transcription model being used
         /// </summary>
         public string TranscriptionModel => transcriptionModel;
+
+        /// <summary>
+        /// Whether new transcriptions can interrupt an in-progress NPC stream.
+        /// When true: new voice input interrupts old NPC response, merges user messages, and starts a new request.
+        /// When false: waits for current NPC response to finish before processing new voice input.
+        /// </summary>
+        public bool Interruptible
+        {
+            get => interruptible;
+            set => interruptible = value;
+        }
 
         private void Start()
         {
@@ -152,6 +167,7 @@ namespace PlayKit_SDK
                 var transcription = await TranscribeAudio(audioClip, language, token);
                 if (transcription == null)
                 {
+                    IsProcessing = false;
                     onComplete?.Invoke(null);
                     return;
                 }
@@ -543,9 +559,17 @@ namespace PlayKit_SDK
         private Action<string> _alwaysListeningOnComplete;
         private string _alwaysListeningLanguage;
 
+        // Parallel transcription & generation tracking
+        private int _transcriptionGeneration;
+        private int _lastForwardedGeneration;
+        private int _pendingTranscriptions;
+        private string _accumulatedUserText;
+
         /// <summary>
-        /// Start always listening mode - automatically detects voice and processes with NPC
-        /// Workflow: Listen → Voice Detected → Auto Record → Transcription → NPC Stream Response → Restart Listening
+        /// Start always listening mode - automatically detects voice and processes with NPC.
+        /// Supports parallel transcription: multiple recordings can be transcribed simultaneously.
+        /// When interruptible=true, new transcriptions interrupt the current NPC stream and merge user messages.
+        /// Workflow: Listen → Voice Detected → Auto Record → Parallel Transcription → NPC Stream → Restart Listening
         /// </summary>
         /// <param name="onChunk">Callback for each text chunk as NPC response streams in</param>
         /// <param name="onComplete">Callback when complete NPC response is ready</param>
@@ -565,6 +589,12 @@ namespace PlayKit_SDK
             _alwaysListeningOnChunk = onChunk;
             _alwaysListeningOnComplete = onComplete;
             _alwaysListeningLanguage = language;
+
+            // Reset generation tracking
+            _transcriptionGeneration = 0;
+            _lastForwardedGeneration = 0;
+            _pendingTranscriptions = 0;
+            _accumulatedUserText = null;
 
             // Enable always listening mode on recorder
             microphoneRecorder.SetAlwaysListeningMode(true);
@@ -587,13 +617,15 @@ namespace PlayKit_SDK
         }
 
         /// <summary>
-        /// Stop always listening mode
+        /// Stop always listening mode.
+        /// Only stops the recorder from accepting new audio.
+        /// In-flight transcriptions and NPC streams continue until completion.
         /// </summary>
         public void StopAlwaysListening()
         {
             if (microphoneRecorder == null) return;
 
-            // Unsubscribe from events
+            // Unsubscribe from events (prevents new recordings from being processed)
             microphoneRecorder.OnRecordingStopped -= OnAlwaysListeningRecordingStopped;
             microphoneRecorder.OnAutoRecordingStarted -= OnAlwaysListeningAutoRecordingStarted;
 
@@ -609,12 +641,7 @@ namespace PlayKit_SDK
             // Disable always listening mode
             microphoneRecorder.SetAlwaysListeningMode(false);
 
-            // Clear callbacks
-            _alwaysListeningOnChunk = null;
-            _alwaysListeningOnComplete = null;
-            _alwaysListeningLanguage = null;
-
-            Debug.Log("[VoiceModule] Always listening mode stopped");
+            Debug.Log("[VoiceModule] Always listening mode stopped (in-flight processing continues)");
         }
 
         private void OnAlwaysListeningAutoRecordingStarted()
@@ -630,37 +657,105 @@ namespace PlayKit_SDK
                 return;
             }
 
-            Debug.Log($"[VoiceModule] Auto-recording completed ({audioClip.length:F1}s), processing...");
+            // Assign generation based on recording order (not completion order)
+            _transcriptionGeneration++;
+            int generation = _transcriptionGeneration;
+            _pendingTranscriptions++;
 
-            // Process the recorded audio
-            ProcessAlwaysListeningAudio(audioClip).Forget();
+            Debug.Log($"[VoiceModule] Auto-recording completed ({audioClip.length:F1}s), transcribing (gen={generation})...");
+
+            // Fire transcription in parallel — recorder auto-restarts via debounce
+            TranscribeAndForwardToNpc(audioClip, generation).Forget();
         }
 
-        private async UniTask ProcessAlwaysListeningAudio(AudioClip audioClip)
+        /// <summary>
+        /// Core always-listening pipeline: transcribe audio, check generation, handle interruption/merging, forward to NPC.
+        /// Multiple instances may run in parallel (one per recording).
+        /// </summary>
+        private async UniTask TranscribeAndForwardToNpc(AudioClip audioClip, int generation)
         {
-            IsProcessing = true;
+            var token = this.GetCancellationTokenOnDestroy();
 
             try
             {
-                var token = this.GetCancellationTokenOnDestroy();
+                // Step 1: Transcribe (runs in parallel with other transcriptions)
+                var transcription = await TranscribeAudio(audioClip, _alwaysListeningLanguage, token);
 
-                // Transcribe and stream to NPC
-                await ListenAndTalkStream(
-                    audioClip,
+                _pendingTranscriptions--;
+
+                if (string.IsNullOrEmpty(transcription))
+                {
+                    Debug.LogWarning($"[VoiceModule] Transcription returned empty (gen={generation}), skipping");
+                    if (_pendingTranscriptions <= 0)
+                    {
+                        _pendingTranscriptions = 0;
+                        if (!_npcClient.IsTalking) IsProcessing = false;
+                    }
+                    return;
+                }
+
+                // Step 2: Generation check — discard if a newer recording was already forwarded
+                if (generation < _lastForwardedGeneration)
+                {
+                    Debug.Log($"[VoiceModule] Stale transcription (gen={generation} < last={_lastForwardedGeneration}), discarding");
+                    return;
+                }
+
+                _lastForwardedGeneration = generation;
+                IsProcessing = true;
+
+                // Step 3: Handle NPC state based on interruptible setting
+                if (_npcClient.IsTalking)
+                {
+                    if (interruptible)
+                    {
+                        // Interrupt current NPC stream
+                        _npcClient.InterruptCurrentTalk();
+
+                        // Merge with previous user text: revert stale user message, combine texts
+                        if (!string.IsNullOrEmpty(_accumulatedUserText))
+                        {
+                            _npcClient.RevertChatMessages(1); // Remove the stale user message
+                            transcription = _accumulatedUserText + " " + transcription;
+                            Debug.Log($"[VoiceModule] Merged user text: '{transcription}'");
+                        }
+                    }
+                    else
+                    {
+                        // Non-interruptible: wait for current talk to finish
+                        Debug.Log($"[VoiceModule] Waiting for current NPC talk to finish (non-interruptible mode)");
+                        await UniTask.WaitUntil(() => !_npcClient.IsTalking, cancellationToken: token);
+                    }
+                }
+
+                // Track accumulated text for potential future merging
+                _accumulatedUserText = transcription;
+
+                // Step 4: Stream NPC response
+                await _npcClient.TalkStream(
+                    transcription,
                     _alwaysListeningOnChunk,
                     response =>
                     {
+                        // Only reset state if this is still the latest generation
+                        if (generation >= _lastForwardedGeneration)
+                        {
+                            IsProcessing = false;
+                            _accumulatedUserText = null;
+                        }
                         _alwaysListeningOnComplete?.Invoke(response);
-                        IsProcessing = false;
                     },
-                    _alwaysListeningLanguage,
                     token
                 );
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[VoiceModule] Error processing always listening audio: {ex.Message}");
-                IsProcessing = false;
+                Debug.LogError($"[VoiceModule] Error processing always listening audio (gen={generation}): {ex.Message}");
+                _pendingTranscriptions = Mathf.Max(0, _pendingTranscriptions);
+                if (_pendingTranscriptions <= 0 && !_npcClient.IsTalking)
+                {
+                    IsProcessing = false;
+                }
                 _alwaysListeningOnComplete?.Invoke(null);
             }
         }

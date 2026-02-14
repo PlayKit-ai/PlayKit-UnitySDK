@@ -7,7 +7,7 @@ namespace PlayKit_SDK
 {
     public class PlayKitSDK : MonoBehaviour
     {
-        public const string VERSION = "v0.2.5.3";
+        public const string VERSION = "v0.2.5.4";
 
         /// <summary>
         /// Sets standard SDK identification headers on a UnityWebRequest.

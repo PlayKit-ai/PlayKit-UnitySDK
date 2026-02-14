@@ -42,6 +42,7 @@ namespace PlayKit_SDK
         private Dictionary<string, string> _memories = new Dictionary<string, string>();
         private bool _isTalking;
         private bool _isReady;
+        private CancellationTokenSource _currentTalkCts;
 
         // Actions integration
         private PlayKit_NPC_ActionsModule _actionsModule;
@@ -66,6 +67,23 @@ namespace PlayKit_SDK
 
         public bool IsTalking => _isTalking;
         public bool IsReady => _isReady;
+
+        /// <summary>
+        /// Interrupt the current streaming talk.
+        /// The interrupted stream's onComplete will NOT be called.
+        /// Conversation history: the user message stays, incomplete assistant response is not added.
+        /// </summary>
+        public void InterruptCurrentTalk()
+        {
+            if (!_isTalking) return;
+
+            var oldCts = _currentTalkCts;
+            _currentTalkCts = null; // Clear first so stale callbacks skip themselves
+            oldCts?.Cancel();
+            oldCts?.Dispose();
+            _isTalking = false;
+            Debug.Log("[NPCClient] Current talk interrupted");
+        }
 
         /// <summary>
         /// Whether initialization failed. Check this if IsReady remains false.
@@ -109,6 +127,11 @@ namespace PlayKit_SDK
 
         private void OnDestroy()
         {
+            // Cancel any in-flight streaming talk
+            _currentTalkCts?.Cancel();
+            _currentTalkCts?.Dispose();
+            _currentTalkCts = null;
+
             // Unregister from AIContextManager when destroyed
             AIContextManager.Instance?.UnregisterNpc(this);
         }
@@ -238,7 +261,8 @@ namespace PlayKit_SDK
         {
             if (_isTalking)
             {
-                Debug.LogWarning("[NPCClient] Already processing a request.");
+                Debug.LogWarning("[NPCClient] Already processing a request. Call InterruptCurrentTalk() first to interrupt.");
+                onComplete?.Invoke(null);
                 return;
             }
 
@@ -395,7 +419,8 @@ namespace PlayKit_SDK
         {
             if (_isTalking)
             {
-                Debug.LogWarning("[NPCClient] Already processing a request.");
+                Debug.LogWarning("[NPCClient] Already processing a request. Call InterruptCurrentTalk() first to interrupt.");
+                onComplete?.Invoke(null);
                 return;
             }
 
@@ -586,15 +611,27 @@ namespace PlayKit_SDK
                 Content = message
             });
 
+            // Create linked CTS for interruption support
+            _currentTalkCts?.Dispose();
+            var myCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            _currentTalkCts = myCts;
+
             try
             {
                 var config = new PlayKit_ChatStreamConfig(_conversationHistory.ToList());
 
                 await _chatClient.TextChatStreamAsync(config,
-                    chunk => onChunk?.Invoke(chunk),
+                    chunk =>
+                    {
+                        if (_currentTalkCts != myCts) return; // Stale — interrupted
+                        onChunk?.Invoke(chunk);
+                    },
                     completeResponse =>
                     {
+                        if (_currentTalkCts != myCts) return; // Stale — interrupted
                         _isTalking = false;
+                        _currentTalkCts = null;
+                        myCts.Dispose();
                         if (!string.IsNullOrEmpty(completeResponse))
                         {
                             _conversationHistory.Add(new PlayKit_ChatMessage
@@ -603,7 +640,6 @@ namespace PlayKit_SDK
                                 Content = completeResponse
                             });
 
-                            // Trigger reply prediction generation (fire and forget)
                             if (generateReplyPrediction)
                             {
                                 TriggerReplyPredictionAsync(token).Forget();
@@ -611,12 +647,28 @@ namespace PlayKit_SDK
                         }
                         onComplete?.Invoke(completeResponse);
                     },
-                    token
+                    myCts.Token
                 );
+            }
+            catch (OperationCanceledException)
+            {
+                // Interrupted by InterruptCurrentTalk or destroyed — don't call onComplete
+                if (_currentTalkCts == myCts)
+                {
+                    _isTalking = false;
+                    _currentTalkCts = null;
+                    myCts.Dispose();
+                }
+                Debug.Log("[NPCClient] Streaming talk interrupted");
             }
             catch (Exception ex)
             {
-                _isTalking = false;
+                if (_currentTalkCts == myCts)
+                {
+                    _isTalking = false;
+                    _currentTalkCts = null;
+                    myCts.Dispose();
+                }
                 Debug.LogError($"[NPCClient] Error in streaming Talk: {ex.Message}");
                 onChunk?.Invoke(null);
                 onComplete?.Invoke(null);
@@ -785,15 +837,27 @@ namespace PlayKit_SDK
             }
             _conversationHistory.Add(userMsg);
 
+            // Create linked CTS for interruption support
+            _currentTalkCts?.Dispose();
+            var myCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            _currentTalkCts = myCts;
+
             try
             {
                 var config = new PlayKit_ChatStreamConfig(_conversationHistory.ToList());
 
                 await _chatClient.TextChatStreamAsync(config,
-                    chunk => onChunk?.Invoke(chunk),
+                    chunk =>
+                    {
+                        if (_currentTalkCts != myCts) return; // Stale — interrupted
+                        onChunk?.Invoke(chunk);
+                    },
                     completeResponse =>
                     {
+                        if (_currentTalkCts != myCts) return; // Stale — interrupted
                         _isTalking = false;
+                        _currentTalkCts = null;
+                        myCts.Dispose();
                         if (!string.IsNullOrEmpty(completeResponse))
                         {
                             _conversationHistory.Add(new PlayKit_ChatMessage
@@ -802,7 +866,6 @@ namespace PlayKit_SDK
                                 Content = completeResponse
                             });
 
-                            // Trigger reply prediction generation (fire and forget)
                             if (generateReplyPrediction)
                             {
                                 TriggerReplyPredictionAsync(token).Forget();
@@ -810,12 +873,27 @@ namespace PlayKit_SDK
                         }
                         onComplete?.Invoke(completeResponse);
                     },
-                    token
+                    myCts.Token
                 );
+            }
+            catch (OperationCanceledException)
+            {
+                if (_currentTalkCts == myCts)
+                {
+                    _isTalking = false;
+                    _currentTalkCts = null;
+                    myCts.Dispose();
+                }
+                Debug.Log("[NPCClient] Streaming talk with images interrupted");
             }
             catch (Exception ex)
             {
-                _isTalking = false;
+                if (_currentTalkCts == myCts)
+                {
+                    _isTalking = false;
+                    _currentTalkCts = null;
+                    myCts.Dispose();
+                }
                 Debug.LogError($"[NPCClient] Error in streaming Talk with images: {ex.Message}");
                 onChunk?.Invoke(null);
                 onComplete?.Invoke(null);
@@ -845,6 +923,11 @@ namespace PlayKit_SDK
             }
             _conversationHistory.Add(userMsg);
 
+            // Create linked CTS for interruption support
+            _currentTalkCts?.Dispose();
+            var myCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            _currentTalkCts = myCts;
+
             try
             {
                 var actions = _actionsModule.EnabledActions;
@@ -858,17 +941,23 @@ namespace PlayKit_SDK
                 await _chatClient.TextGenerationWithToolsStreamAsync(
                     config,
                     tools,
-                    chunk => onChunk?.Invoke(chunk),
+                    chunk =>
+                    {
+                        if (_currentTalkCts != myCts) return; // Stale — interrupted
+                        onChunk?.Invoke(chunk);
+                    },
                     completionResponse =>
                     {
+                        if (_currentTalkCts != myCts) return; // Stale — interrupted
                         _isTalking = false;
+                        _currentTalkCts = null;
+                        myCts.Dispose();
 
                         if (completionResponse?.Choices?.Count > 0)
                         {
                             var choice = completionResponse.Choices[0];
                             var responseText = choice.Message?.GetTextContent() ?? "";
 
-                            // Add assistant response to history
                             _conversationHistory.Add(new PlayKit_ChatMessage
                             {
                                 Role = "assistant",
@@ -876,13 +965,11 @@ namespace PlayKit_SDK
                                 ToolCalls = choice.Message?.ToolCalls
                             });
 
-                            // Process action calls
                             if (choice.Message?.ToolCalls != null)
                             {
                                 ProcessActionCalls(choice.Message.ToolCalls);
                             }
 
-                            // Trigger reply prediction generation (fire and forget)
                             if (generateReplyPrediction)
                             {
                                 TriggerReplyPredictionAsync(token).Forget();
@@ -896,12 +983,27 @@ namespace PlayKit_SDK
                         }
                     },
                     "auto",
-                    token
+                    myCts.Token
                 );
+            }
+            catch (OperationCanceledException)
+            {
+                if (_currentTalkCts == myCts)
+                {
+                    _isTalking = false;
+                    _currentTalkCts = null;
+                    myCts.Dispose();
+                }
+                Debug.Log("[NPCClient] Streaming talk with actions and images interrupted");
             }
             catch (Exception ex)
             {
-                _isTalking = false;
+                if (_currentTalkCts == myCts)
+                {
+                    _isTalking = false;
+                    _currentTalkCts = null;
+                    myCts.Dispose();
+                }
                 Debug.LogError($"[NPCClient] Error in streaming Talk with actions and images: {ex.Message}");
                 onChunk?.Invoke(null);
                 onComplete?.Invoke(null);
@@ -915,15 +1017,17 @@ namespace PlayKit_SDK
         /// </summary>
         private async UniTask TalkWithActionsStreamInternal(string message, Action<string> onChunk, Action<string> onComplete, CancellationToken token)
         {
-            // Record conversation with AIContextManager
             AIContextManager.Instance?.RecordConversation(this);
 
-            // Add user message to history
             _conversationHistory.Add(new PlayKit_ChatMessage
             {
                 Role = "user",
                 Content = message
             });
+
+            _currentTalkCts?.Dispose();
+            var myCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            _currentTalkCts = myCts;
 
             try
             {
@@ -938,17 +1042,23 @@ namespace PlayKit_SDK
                 await _chatClient.TextGenerationWithToolsStreamAsync(
                     config,
                     tools,
-                    chunk => onChunk?.Invoke(chunk),
+                    chunk =>
+                    {
+                        if (_currentTalkCts != myCts) return;
+                        onChunk?.Invoke(chunk);
+                    },
                     completionResponse =>
                     {
+                        if (_currentTalkCts != myCts) return;
                         _isTalking = false;
+                        _currentTalkCts = null;
+                        myCts.Dispose();
 
                         if (completionResponse?.Choices?.Count > 0)
                         {
                             var choice = completionResponse.Choices[0];
                             var responseText = choice.Message?.GetTextContent() ?? "";
 
-                            // Add assistant response to history
                             _conversationHistory.Add(new PlayKit_ChatMessage
                             {
                                 Role = "assistant",
@@ -956,13 +1066,11 @@ namespace PlayKit_SDK
                                 ToolCalls = choice.Message?.ToolCalls
                             });
 
-                            // Process action calls
                             if (choice.Message?.ToolCalls != null)
                             {
                                 ProcessActionCalls(choice.Message.ToolCalls);
                             }
 
-                            // Trigger reply prediction generation (fire and forget)
                             if (generateReplyPrediction)
                             {
                                 TriggerReplyPredictionAsync(token).Forget();
@@ -976,12 +1084,27 @@ namespace PlayKit_SDK
                         }
                     },
                     "auto",
-                    token
+                    myCts.Token
                 );
+            }
+            catch (OperationCanceledException)
+            {
+                if (_currentTalkCts == myCts)
+                {
+                    _isTalking = false;
+                    _currentTalkCts = null;
+                    myCts.Dispose();
+                }
+                Debug.Log("[NPCClient] Streaming talk with actions interrupted");
             }
             catch (Exception ex)
             {
-                _isTalking = false;
+                if (_currentTalkCts == myCts)
+                {
+                    _isTalking = false;
+                    _currentTalkCts = null;
+                    myCts.Dispose();
+                }
                 Debug.LogError($"[NPCClient] Error in streaming Talk with actions: {ex.Message}");
                 onChunk?.Invoke(null);
                 onComplete?.Invoke(null);
