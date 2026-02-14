@@ -286,6 +286,7 @@
   "mic.always_listening.restart_debounce": "重啟延遲（秒）",
   "mic.always_listening.restart_debounce.tooltip": "錄音停止後延遲多久自動重新開始監聽（防止頻繁重啟）",
 
+  "mic.runtime.calibrating": "校準中：",
   "mic.runtime.recording": "錄音中：",
   "mic.runtime.time": "錄音時間：",
   "mic.runtime.device": "目前裝置：",

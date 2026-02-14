@@ -272,6 +272,7 @@
   "mic.vad.max_silence": "Max Silence Duration",
   "mic.vad.max_silence.tooltip": "Stop recording after this many seconds of silence",
 
+  "mic.runtime.calibrating": "Calibrating:",
   "mic.runtime.recording": "Recording:",
   "mic.runtime.time": "Recording Time:",
   "mic.runtime.device": "Current Device:",

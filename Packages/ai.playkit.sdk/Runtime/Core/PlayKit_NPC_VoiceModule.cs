@@ -609,7 +609,15 @@ namespace PlayKit_SDK
             // Start listening
             if (!microphoneRecorder.StartListening())
             {
-                Debug.LogError("[VoiceModule] Failed to start listening");
+                // Provide specific reason for failure
+                if (microphoneRecorder.IsListening)
+                    Debug.LogError("[VoiceModule] Failed to start listening: recorder is already listening. Call StopAlwaysListening() first.");
+                else if (microphoneRecorder.IsRecording)
+                    Debug.LogError("[VoiceModule] Failed to start listening: recorder is currently recording.");
+                else if (!microphoneRecorder.AlwaysListeningModeEnabled)
+                    Debug.LogError("[VoiceModule] Failed to start listening: always listening mode not enabled.");
+                else
+                    Debug.LogError("[VoiceModule] Failed to start listening: check microphone availability.");
                 return;
             }
 

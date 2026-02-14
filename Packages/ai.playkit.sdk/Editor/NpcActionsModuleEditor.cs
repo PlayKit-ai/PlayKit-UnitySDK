@@ -84,9 +84,7 @@ namespace PlayKit_SDK.Editor
 
                 // Draw status icon
                 var iconRect = new Rect(rect.x + rect.width - 20, rect.y + 2, 18, EditorGUIUtility.singleLineHeight);
-                string statusIconName = enabledProp.boolValue ? "d_winbtn_mac_max" : "d_winbtn_mac_min";
-                string statusFallback = enabledProp.boolValue ? "●" : "○";
-                GUI.Label(iconRect, SafeIconContent(statusIconName, statusFallback));
+                GUI.Label(iconRect, new GUIContent(enabledProp.boolValue ? "●" : "○"));
 
                 if (actionFoldouts[index])
                 {
@@ -264,14 +262,6 @@ namespace PlayKit_SDK.Editor
                 prop.InsertArrayElementAtIndex(i);
                 prop.GetArrayElementAtIndex(i).stringValue = values[i].Trim();
             }
-        }
-
-        private static GUIContent SafeIconContent(string iconName, string fallbackText)
-        {
-            var content = EditorGUIUtility.IconContent(iconName);
-            if (content != null && content.image != null)
-                return content;
-            return new GUIContent(fallbackText);
         }
 
         public override void OnInspectorGUI()

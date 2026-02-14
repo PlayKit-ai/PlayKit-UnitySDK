@@ -1,7 +1,7 @@
 {
     "name": "ai.playkit.sdk",
     "displayName": "PlayKitSDK",
-    "version": "0.2.54",
+    "version": "0.2.55",
     "unity": "2022.3",
     "description": "PlayKit SDK for Unity - AI-powered game development toolkit with NPC conversations, image generation, and more.",
     "author": {

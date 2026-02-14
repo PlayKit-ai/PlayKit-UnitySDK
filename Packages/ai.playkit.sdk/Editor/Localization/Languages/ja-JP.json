@@ -278,6 +278,7 @@
   "mic.always_listening.restart_debounce": "再開遅延（秒）",
   "mic.always_listening.restart_debounce.tooltip": "録音停止後にリスニングを自動再開するまでの遅延（頻繁な再開を防止）",
 
+  "mic.runtime.calibrating": "キャリブレーション中：",
   "mic.runtime.recording": "録音中：",
   "mic.runtime.time": "録音時間：",
   "mic.runtime.device": "現在のデバイス：",

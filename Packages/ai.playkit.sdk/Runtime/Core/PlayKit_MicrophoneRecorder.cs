@@ -9,6 +9,10 @@ namespace PlayKit_SDK
     /// Provides simple recording, stopping, and AudioClip retrieval
     /// Supports Voice Activity Detection (VAD) for automatic silence detection
     /// Supports Always Listening Mode for automatic voice start detection
+    ///
+    /// All actual Microphone hardware access is delegated to MicrophoneInternal,
+    /// which provides device-level mutual exclusion to prevent conflicts
+    /// when multiple recorders exist in a scene.
     /// </summary>
     public class PlayKit_MicrophoneRecorder : MonoBehaviour
     {
@@ -82,13 +86,16 @@ namespace PlayKit_SDK
         /// <summary>
         /// The microphone device currently being used
         /// </summary>
-        public string CurrentDevice => microphoneDevice ??
-            #if !UNITY_WEBGL
-            (Microphone.devices.Length > 0 ? Microphone.devices[0] : "None")
-            #else
-            "WebGL Not Supported"
-            #endif
-            ;
+        public string CurrentDevice
+        {
+            get
+            {
+                if (microphoneDevice != null) return microphoneDevice;
+                if (MicrophoneInternal.IsWebGL) return "WebGL Not Supported";
+                var devices = MicrophoneInternal.GetDevices();
+                return devices.Length > 0 ? devices[0] : "None";
+            }
+        }
 
         /// <summary>
         /// Last recorded AudioClip (available after StopRecording)
@@ -110,9 +117,16 @@ namespace PlayKit_SDK
         /// </summary>
         public bool AlwaysListeningModeEnabled => alwaysListeningMode;
 
+        /// <summary>
+        /// Whether the recorder is currently in calibration mode
+        /// </summary>
+        public bool IsCalibrating => _isCalibrating;
+
         private AudioClip _recordingClip;
         private float _silenceTimer = 0f;
         private Coroutine _restartDebounceCoroutine;
+        private bool _isCalibrating;
+        private bool _wasListeningBeforeCalibration;
 
         // Always Listening Mode fields
         private AudioClip _listeningClip;
@@ -172,10 +186,12 @@ namespace PlayKit_SDK
         /// <returns>True if recording started successfully, false otherwise</returns>
         public bool StartRecording(string deviceName = null)
         {
-#if UNITY_WEBGL
-            Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
-            return false;
-#else
+            if (MicrophoneInternal.IsWebGL)
+            {
+                Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
+                return false;
+            }
+
             if (isRecording)
             {
                 Debug.LogWarning("[MicrophoneRecorder] Already recording!");
@@ -183,7 +199,7 @@ namespace PlayKit_SDK
             }
 
             // Check if microphone devices are available
-            if (Microphone.devices.Length == 0)
+            if (MicrophoneInternal.GetDevices().Length == 0)
             {
                 Debug.LogError("[MicrophoneRecorder] No microphone devices found! Please check your system's audio input settings.");
                 return false;
@@ -192,11 +208,18 @@ namespace PlayKit_SDK
             // Use provided device name or fall back to configured/default
             string device = deviceName ?? microphoneDevice;
 
+            // Acquire exclusive access to the device
+            if (!MicrophoneInternal.TryAcquireDevice(device, this))
+            {
+                return false;
+            }
+
             // Start recording
-            _recordingClip = Microphone.Start(device, false, maxRecordingSeconds, sampleRate);
+            _recordingClip = MicrophoneInternal.StartMicrophone(device, false, maxRecordingSeconds, sampleRate);
 
             if (_recordingClip == null)
             {
+                MicrophoneInternal.ReleaseDevice(device, this);
                 Debug.LogError($"[MicrophoneRecorder] Failed to start recording on device '{device}'");
                 return false;
             }
@@ -210,7 +233,6 @@ namespace PlayKit_SDK
             OnRecordingStarted?.Invoke();
 
             return true;
-#endif
         }
 
         /// <summary>
@@ -220,10 +242,12 @@ namespace PlayKit_SDK
         /// <returns>Recorded AudioClip trimmed to actual recording duration</returns>
         public AudioClip StopRecording(bool autoRestartListening = false)
         {
-#if UNITY_WEBGL
-            Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
-            return null;
-#else
+            if (MicrophoneInternal.IsWebGL)
+            {
+                Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
+                return null;
+            }
+
             if (!isRecording)
             {
                 Debug.LogWarning("[MicrophoneRecorder] Not currently recording!");
@@ -232,7 +256,6 @@ namespace PlayKit_SDK
 
             StopRecordingInternal(autoRestartListening);
             return LastRecording;
-#endif
         }
 
         /// <summary>
@@ -240,18 +263,21 @@ namespace PlayKit_SDK
         /// </summary>
         public void CancelRecording()
         {
-#if UNITY_WEBGL
-            Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
-#else
+            if (MicrophoneInternal.IsWebGL)
+            {
+                Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
+                return;
+            }
+
             if (!isRecording) return;
 
-            Microphone.End(microphoneDevice);
+            MicrophoneInternal.StopMicrophone(microphoneDevice, this);
+            MicrophoneInternal.ReleaseDevice(microphoneDevice, this);
             isRecording = false;
             recordingTime = 0f;
             LastRecording = null;
 
             Debug.Log("[MicrophoneRecorder] Recording cancelled");
-#endif
         }
 
         /// <summary>
@@ -261,16 +287,13 @@ namespace PlayKit_SDK
         /// <returns>RMS (Root Mean Square) volume level</returns>
         public float GetCurrentVolume()
         {
-#if UNITY_WEBGL
-            Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
-            return 0f;
-#else
+            if (MicrophoneInternal.IsWebGL) return 0f;
             if (!isRecording || _recordingClip == null) return 0f;
 
             // Sample window for volume calculation
             int sampleWindow = 128;
             float[] samples = new float[sampleWindow];
-            int micPosition = Microphone.GetPosition(microphoneDevice);
+            int micPosition = MicrophoneInternal.GetMicrophonePosition(microphoneDevice);
 
             // Need enough data to calculate volume
             if (micPosition < sampleWindow) return 0f;
@@ -286,7 +309,6 @@ namespace PlayKit_SDK
             }
 
             return Mathf.Sqrt(sum / sampleWindow);
-#endif
         }
 
         /// <summary>
@@ -295,12 +317,7 @@ namespace PlayKit_SDK
         /// <returns>Array of device names</returns>
         public static string[] GetAvailableDevices()
         {
-#if UNITY_WEBGL
-            Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
-            return new string[] { "WebGL Not Supported" };
-#else
-            return Microphone.devices;
-#endif
+            return MicrophoneInternal.GetDevices();
         }
 
         /// <summary>
@@ -309,9 +326,9 @@ namespace PlayKit_SDK
         /// <param name="deviceName">Device name from GetAvailableDevices()</param>
         public void SetMicrophoneDevice(string deviceName)
         {
-            if (isRecording)
+            if (isRecording || isListening)
             {
-                Debug.LogWarning("[MicrophoneRecorder] Cannot change device while recording!");
+                Debug.LogWarning("[MicrophoneRecorder] Cannot change device while recording or listening!");
                 return;
             }
 
@@ -361,6 +378,85 @@ namespace PlayKit_SDK
             Debug.Log($"[MicrophoneRecorder] Restart debounce set to: {restartDebounceTime}s");
         }
 
+        #region Calibration API
+
+        /// <summary>
+        /// Start a calibration recording that bypasses VAD auto-stop and does not conflict with Always Listening Mode.
+        /// Use GetCurrentVolume() to sample audio levels during calibration.
+        /// Call StopCalibrationRecording() when done.
+        /// </summary>
+        /// <param name="deviceName">Optional specific device name to use</param>
+        /// <returns>True if calibration recording started successfully</returns>
+        public bool StartCalibrationRecording(string deviceName = null)
+        {
+            if (isRecording || _isCalibrating)
+            {
+                Debug.LogWarning("[MicrophoneRecorder] Cannot start calibration while recording or already calibrating!");
+                return false;
+            }
+
+            // Save and temporarily stop listening if active
+            _wasListeningBeforeCalibration = isListening;
+            if (isListening)
+            {
+                StopListening();
+            }
+
+            _isCalibrating = true;
+
+            // Start recording (VAD will be bypassed due to _isCalibrating flag in Update)
+            bool started = StartRecording(deviceName);
+            if (!started)
+            {
+                _isCalibrating = false;
+                // Restore listening if it was active
+                if (_wasListeningBeforeCalibration && alwaysListeningMode)
+                {
+                    _wasListeningBeforeCalibration = false;
+                    StartListening();
+                }
+                return false;
+            }
+
+            Debug.Log("[MicrophoneRecorder] Calibration recording started (VAD bypassed)");
+            return true;
+        }
+
+        /// <summary>
+        /// Stop calibration recording. Restores listening state if it was active before calibration.
+        /// Safe to call SetVADSettings/SetListeningSettings after this returns.
+        /// </summary>
+        public void StopCalibrationRecording()
+        {
+            if (!_isCalibrating) return;
+
+            // Cancel the recording (don't need the AudioClip)
+            CancelRecording();
+            _isCalibrating = false;
+
+            Debug.Log("[MicrophoneRecorder] Calibration recording stopped");
+        }
+
+        /// <summary>
+        /// Restore listening after calibration settings have been applied.
+        /// Call this after StopCalibrationRecording() and SetVADSettings/SetListeningSettings.
+        /// </summary>
+        public void RestoreListeningAfterCalibration()
+        {
+            if (_wasListeningBeforeCalibration && alwaysListeningMode)
+            {
+                _wasListeningBeforeCalibration = false;
+                StartListening();
+                Debug.Log("[MicrophoneRecorder] Listening restored after calibration");
+            }
+            else
+            {
+                _wasListeningBeforeCalibration = false;
+            }
+        }
+
+        #endregion
+
         #region Always Listening Mode API
 
         /// <summary>
@@ -389,10 +485,12 @@ namespace PlayKit_SDK
         /// <returns>True if listening started successfully</returns>
         public bool StartListening(string deviceName = null)
         {
-#if UNITY_WEBGL
-            Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
-            return false;
-#else
+            if (MicrophoneInternal.IsWebGL)
+            {
+                Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
+                return false;
+            }
+
             if (!alwaysListeningMode)
             {
                 Debug.LogWarning("[MicrophoneRecorder] Always Listening Mode is not enabled! Call SetAlwaysListeningMode(true) first or enable it in Inspector.");
@@ -412,7 +510,7 @@ namespace PlayKit_SDK
             }
 
             // Check if microphone devices are available
-            if (Microphone.devices.Length == 0)
+            if (MicrophoneInternal.GetDevices().Length == 0)
             {
                 Debug.LogError("[MicrophoneRecorder] No microphone devices found!");
                 return false;
@@ -421,6 +519,12 @@ namespace PlayKit_SDK
             // Use provided device name or fall back to configured/default
             string device = deviceName ?? microphoneDevice;
 
+            // Acquire exclusive access to the device
+            if (!MicrophoneInternal.TryAcquireDevice(device, this))
+            {
+                return false;
+            }
+
             // Initialize circular buffer for pre-buffering
             _circularBufferSize = Mathf.CeilToInt(preBufferDuration * sampleRate);
             _circularBuffer = new float[_circularBufferSize];
@@ -428,10 +532,11 @@ namespace PlayKit_SDK
 
             // Start loop recording for listening (1 second loop is enough for monitoring)
             int listeningLoopSeconds = Mathf.Max(1, Mathf.CeilToInt(preBufferDuration));
-            _listeningClip = Microphone.Start(device, true, listeningLoopSeconds, sampleRate);
+            _listeningClip = MicrophoneInternal.StartMicrophone(device, true, listeningLoopSeconds, sampleRate);
 
             if (_listeningClip == null)
             {
+                MicrophoneInternal.ReleaseDevice(device, this);
                 Debug.LogError($"[MicrophoneRecorder] Failed to start listening on device '{device}'");
                 return false;
             }
@@ -445,7 +550,6 @@ namespace PlayKit_SDK
             OnListeningStarted?.Invoke();
 
             return true;
-#endif
         }
 
         /// <summary>
@@ -453,9 +557,8 @@ namespace PlayKit_SDK
         /// </summary>
         public void StopListening()
         {
-#if UNITY_WEBGL
-            Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
-#else
+            if (MicrophoneInternal.IsWebGL) return;
+
             // Cancel any pending debounce restart
             if (_restartDebounceCoroutine != null)
             {
@@ -468,7 +571,8 @@ namespace PlayKit_SDK
                 return;
             }
 
-            Microphone.End(microphoneDevice);
+            MicrophoneInternal.StopMicrophone(microphoneDevice, this);
+            MicrophoneInternal.ReleaseDevice(microphoneDevice, this);
             isListening = false;
             listeningState = ListeningState.Idle;
             _listeningClip = null;
@@ -477,7 +581,6 @@ namespace PlayKit_SDK
 
             Debug.Log("[MicrophoneRecorder] Listening stopped");
             OnListeningStopped?.Invoke();
-#endif
         }
 
         /// <summary>
@@ -486,14 +589,12 @@ namespace PlayKit_SDK
         /// <returns>RMS volume level (0.0 - 1.0)</returns>
         public float GetListeningVolume()
         {
-#if UNITY_WEBGL
-            return 0f;
-#else
+            if (MicrophoneInternal.IsWebGL) return 0f;
             if (!isListening || _listeningClip == null) return 0f;
 
             int sampleWindow = 128;
             float[] samples = new float[sampleWindow];
-            int micPosition = Microphone.GetPosition(microphoneDevice);
+            int micPosition = MicrophoneInternal.GetMicrophonePosition(microphoneDevice);
 
             if (micPosition < sampleWindow) return 0f;
 
@@ -506,7 +607,6 @@ namespace PlayKit_SDK
             }
 
             return Mathf.Sqrt(sum / sampleWindow);
-#endif
         }
 
         #endregion
@@ -524,16 +624,16 @@ namespace PlayKit_SDK
 
             recordingTime += Time.deltaTime;
 
-            // Auto-stop when max duration reached
-            if (recordingTime >= maxRecordingSeconds)
+            // Auto-stop when max duration reached (skip during calibration)
+            if (!_isCalibrating && recordingTime >= maxRecordingSeconds)
             {
                 Debug.Log("[MicrophoneRecorder] Max recording duration reached, auto-stopping");
                 StopRecordingInternal(true);
                 return;
             }
 
-            // Voice Activity Detection (VAD)
-            if (useVAD)
+            // Voice Activity Detection (VAD) — skip during calibration
+            if (useVAD && !_isCalibrating)
             {
                 float volume = GetCurrentVolume();
                 OnVolumeChanged?.Invoke(volume);
@@ -560,11 +660,11 @@ namespace PlayKit_SDK
 
         private void UpdateListeningMode()
         {
-#if !UNITY_WEBGL
+            if (MicrophoneInternal.IsWebGL) return;
             if (_listeningClip == null) return;
 
             // Get current microphone position
-            int micPosition = Microphone.GetPosition(microphoneDevice);
+            int micPosition = MicrophoneInternal.GetMicrophonePosition(microphoneDevice);
             if (micPosition < 128) return;
 
             // Update circular buffer for pre-buffering
@@ -614,12 +714,10 @@ namespace PlayKit_SDK
                     // This state is handled by normal recording Update logic
                     break;
             }
-#endif
         }
 
         private void UpdateCircularBuffer(int micPosition)
         {
-#if !UNITY_WEBGL
             if (_circularBuffer == null || _listeningClip == null) return;
 
             // Calculate how many new samples to read
@@ -638,12 +736,12 @@ namespace PlayKit_SDK
                 _circularBuffer[_circularBufferWriteIndex] = tempSamples[i];
                 _circularBufferWriteIndex = (_circularBufferWriteIndex + 1) % _circularBufferSize;
             }
-#endif
         }
 
         private void StartRecordingFromVoiceDetection()
         {
-#if !UNITY_WEBGL
+            if (MicrophoneInternal.IsWebGL) return;
+
             Debug.Log("[MicrophoneRecorder] Starting recording from voice detection");
 
             // Save pre-recorded samples from circular buffer
@@ -654,17 +752,18 @@ namespace PlayKit_SDK
                 _preRecordedSamples[i] = _circularBuffer[readIndex];
             }
 
-            // Stop listening microphone
-            Microphone.End(microphoneDevice);
+            // Stop listening microphone hardware (keep device lease — we're transitioning, not releasing)
+            MicrophoneInternal.StopMicrophone(microphoneDevice, this);
             isListening = false;
             _listeningClip = null;
 
-            // Start actual recording
-            _recordingClip = Microphone.Start(microphoneDevice, false, maxRecordingSeconds, sampleRate);
+            // Start actual recording (device is still owned by this recorder)
+            _recordingClip = MicrophoneInternal.StartMicrophone(microphoneDevice, false, maxRecordingSeconds, sampleRate);
 
             if (_recordingClip == null)
             {
                 Debug.LogError("[MicrophoneRecorder] Failed to start recording after voice detection");
+                MicrophoneInternal.ReleaseDevice(microphoneDevice, this);
                 // Restart listening
                 StartListening();
                 return;
@@ -680,24 +779,23 @@ namespace PlayKit_SDK
             Debug.Log("[MicrophoneRecorder] Auto-recording started from voice detection");
             OnAutoRecordingStarted?.Invoke();
             OnRecordingStarted?.Invoke();
-#endif
         }
 
         private void StopRecordingInternal(bool autoRestart)
         {
-#if UNITY_WEBGL
-            Debug.LogError("[MicrophoneRecorder] Microphone recording is not supported in WebGL builds!");
-#else
+            if (MicrophoneInternal.IsWebGL) return;
+
             if (!isRecording)
             {
                 return;
             }
 
             // Get current microphone position before stopping
-            int micPosition = Microphone.GetPosition(microphoneDevice);
+            int micPosition = MicrophoneInternal.GetMicrophonePosition(microphoneDevice);
 
-            // Stop the microphone
-            Microphone.End(microphoneDevice);
+            // Stop the microphone and release device
+            MicrophoneInternal.StopMicrophone(microphoneDevice, this);
+            MicrophoneInternal.ReleaseDevice(microphoneDevice, this);
             isRecording = false;
 
             // Combine pre-buffer with recorded audio if this was auto-triggered
@@ -727,7 +825,6 @@ namespace PlayKit_SDK
                     StopCoroutine(_restartDebounceCoroutine);
                 _restartDebounceCoroutine = StartCoroutine(RestartListeningDebounced());
             }
-#endif
         }
 
         private IEnumerator RestartListeningDebounced()
@@ -821,21 +918,26 @@ namespace PlayKit_SDK
                 StopCoroutine(_restartDebounceCoroutine);
                 _restartDebounceCoroutine = null;
             }
-#if !UNITY_WEBGL
-            if (isRecording)
+
+            if (!MicrophoneInternal.IsWebGL)
             {
-                Microphone.End(microphoneDevice);
+                if (isRecording)
+                {
+                    MicrophoneInternal.StopMicrophone(microphoneDevice, this);
+                    MicrophoneInternal.ReleaseDevice(microphoneDevice, this);
+                    isRecording = false;
+                }
+                if (isListening)
+                {
+                    MicrophoneInternal.StopMicrophone(microphoneDevice, this);
+                    MicrophoneInternal.ReleaseDevice(microphoneDevice, this);
+                    isListening = false;
+                }
             }
-            if (isListening)
-            {
-                Microphone.End(microphoneDevice);
-            }
-#endif
         }
 
         private void OnApplicationPause(bool pauseStatus)
         {
-#if !UNITY_WEBGL
             // Stop recording/listening when application is paused (e.g., on mobile)
             if (pauseStatus)
             {
@@ -850,7 +952,6 @@ namespace PlayKit_SDK
                     StopListening();
                 }
             }
-#endif
         }
     }
 }

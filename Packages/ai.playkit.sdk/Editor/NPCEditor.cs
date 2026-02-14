@@ -204,11 +204,11 @@ namespace PlayKit_SDK.Editor
                 // Status indicator
                 if (generateReplyPredictionProp.boolValue)
                 {
-                    GUILayout.Label(SafeIconContent("d_winbtn_mac_max", "●"), GUILayout.Width(20));
+                    GUILayout.Label(new GUIContent("●"), GUILayout.Width(20));
                 }
                 else
                 {
-                    GUILayout.Label(SafeIconContent("d_winbtn_mac_min", "○"), GUILayout.Width(20));
+                    GUILayout.Label(new GUIContent("○"), GUILayout.Width(20));
                 }
                 EditorGUILayout.EndHorizontal();
 
@@ -302,14 +302,6 @@ namespace PlayKit_SDK.Editor
             GUILayout.Label(status ? "●" : "○", GUILayout.Width(20));
             GUI.color = oldColor;
             EditorGUILayout.LabelField(status ? L.Get("common.enabled") : L.Get("common.disabled"));
-        }
-
-        private static GUIContent SafeIconContent(string iconName, string fallbackText)
-        {
-            var content = EditorGUIUtility.IconContent(iconName);
-            if (content != null && content.image != null)
-                return content;
-            return new GUIContent(fallbackText);
         }
 
         private void DrawModulesInfo()
