@@ -243,6 +243,11 @@
   "voice.debug.log": "認識結果を記録",
   "voice.debug.log.tooltip": "認識結果をコンソールに出力",
 
+  "voice.section.behavior": "常時リスニング動作",
+  "voice.behavior.interruptible": "割り込み可能",
+  "voice.behavior.interruptible.tooltip": "新しい音声入力で進行中のNPC応答を中断することを許可",
+  "voice.behavior.interruptible.help": "有効にすると、新しい音声認識結果が現在のNPCストリームを中断し、ユーザーメッセージを結合します。無効の場合、現在の応答完了を待ちます。",
+
   "voice.runtime.ready": "準備完了：",
   "voice.runtime.processing": "処理中：",
   "voice.runtime.model": "モデル：",
@@ -269,6 +274,9 @@
   "mic.vad.threshold.tooltip": "この音量レベル以下を無音とみなす（0.0 - 1.0）",
   "mic.vad.max_silence": "最大無音時間",
   "mic.vad.max_silence.tooltip": "この秒数の無音後に録音を停止",
+
+  "mic.always_listening.restart_debounce": "再開遅延（秒）",
+  "mic.always_listening.restart_debounce.tooltip": "録音停止後にリスニングを自動再開するまでの遅延（頻繁な再開を防止）",
 
   "mic.runtime.recording": "録音中：",
   "mic.runtime.time": "録音時間：",

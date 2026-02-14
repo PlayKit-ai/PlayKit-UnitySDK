@@ -251,6 +251,11 @@
   "voice.debug.log": "記錄轉錄",
   "voice.debug.log.tooltip": "將轉錄結果輸出到主控台",
 
+  "voice.section.behavior": "始終監聽行為",
+  "voice.behavior.interruptible": "可打斷",
+  "voice.behavior.interruptible.tooltip": "允許新的語音輸入打斷正在進行的 NPC 回覆",
+  "voice.behavior.interruptible.help": "啟用後，新的轉錄結果會打斷目前 NPC 流並合併使用者訊息。停用時，等待目前回覆完成。",
+
   "voice.runtime.ready": "就緒：",
   "voice.runtime.processing": "處理中：",
   "voice.runtime.model": "模型：",
@@ -277,6 +282,9 @@
   "mic.vad.threshold.tooltip": "低於此音量級別視為靜音（0.0 - 1.0）",
   "mic.vad.max_silence": "最大靜音時長",
   "mic.vad.max_silence.tooltip": "靜音達到此秒數後停止錄音",
+
+  "mic.always_listening.restart_debounce": "重啟延遲（秒）",
+  "mic.always_listening.restart_debounce.tooltip": "錄音停止後延遲多久自動重新開始監聽（防止頻繁重啟）",
 
   "mic.runtime.recording": "錄音中：",
   "mic.runtime.time": "錄音時間：",

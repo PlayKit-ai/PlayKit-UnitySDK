@@ -231,6 +231,11 @@
   "voice.debug.log": "인식 결과 기록",
   "voice.debug.log.tooltip": "인식 결과를 콘솔에 출력",
 
+  "voice.section.behavior": "상시 리스닝 동작",
+  "voice.behavior.interruptible": "인터럽트 가능",
+  "voice.behavior.interruptible.tooltip": "새로운 음성 입력이 진행 중인 NPC 응답을 중단하도록 허용",
+  "voice.behavior.interruptible.help": "활성화하면 새로운 음성 인식 결과가 현재 NPC 스트림을 중단하고 사용자 메시지를 병합합니다. 비활성화하면 현재 응답 완료를 기다립니다.",
+
   "voice.runtime.ready": "준비 완료：",
   "voice.runtime.processing": "처리 중：",
   "voice.runtime.model": "모델：",
@@ -257,6 +262,9 @@
   "mic.vad.threshold.tooltip": "이 볼륨 레벨 이하를 무음으로 간주 (0.0 - 1.0)",
   "mic.vad.max_silence": "최대 무음 시간",
   "mic.vad.max_silence.tooltip": "이 시간(초)의 무음 후 녹음 중지",
+
+  "mic.always_listening.restart_debounce": "재시작 지연 (초)",
+  "mic.always_listening.restart_debounce.tooltip": "녹음 중지 후 리스닝을 자동으로 다시 시작하기 전 지연 (빈번한 재시작 방지)",
 
   "mic.runtime.recording": "녹음 중：",
   "mic.runtime.time": "녹음 시간：",

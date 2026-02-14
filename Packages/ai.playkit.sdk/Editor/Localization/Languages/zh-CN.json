@@ -206,6 +206,7 @@
 
   "voice.section.transcription": "转录设置",
   "voice.section.microphone": "麦克风录音器",
+  "voice.section.behavior": "始终监听行为",
   "voice.section.debug": "调试选项",
   "voice.section.runtime": "运行时状态",
 
@@ -217,6 +218,10 @@
   "voice.microphone.recorder": "麦克风录音器",
   "voice.microphone.recorder.help": "可选：链接 PlayKit_MicrophoneRecorder 以集成录音",
   "voice.microphone.create": "创建录音器",
+
+  "voice.behavior.interruptible": "可打断",
+  "voice.behavior.interruptible.tooltip": "允许新的语音输入打断正在进行的 NPC 回复",
+  "voice.behavior.interruptible.help": "启用后，新的转录结果会打断当前 NPC 流并合并用户消息。禁用时，等待当前回复完成。",
 
   "voice.debug.log": "记录转录",
   "voice.debug.log.tooltip": "将转录结果输出到控制台",
@@ -269,6 +274,8 @@
   "mic.always_listening.min_voice_duration.tooltip": "开始录音所需的最小语音持续时间（秒）",
   "mic.always_listening.pre_buffer": "预缓冲时长",
   "mic.always_listening.pre_buffer.tooltip": "语音检测前捕获的音频时长（秒）",
+  "mic.always_listening.restart_debounce": "重启延迟（秒）",
+  "mic.always_listening.restart_debounce.tooltip": "录音停止后延迟多久自动重新开始监听（防止频繁重启）",
   "mic.runtime.listening": "监听中：",
   "mic.runtime.listening_state": "监听状态：",
 

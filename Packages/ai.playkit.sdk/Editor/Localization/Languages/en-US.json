@@ -225,6 +225,7 @@
 
   "voice.section.transcription": "Transcription Settings",
   "voice.section.microphone": "Microphone Recorder",
+  "voice.section.behavior": "Always Listening Behavior",
   "voice.section.debug": "Debug Options",
   "voice.section.runtime": "Runtime Status",
 
@@ -236,6 +237,10 @@
   "voice.microphone.recorder": "Microphone Recorder",
   "voice.microphone.recorder.help": "Optional: Link a PlayKit_MicrophoneRecorder for integrated recording",
   "voice.microphone.create": "Create Recorder",
+
+  "voice.behavior.interruptible": "Interruptible",
+  "voice.behavior.interruptible.tooltip": "Allow new voice input to interrupt an in-progress NPC response",
+  "voice.behavior.interruptible.help": "When enabled, new transcriptions will interrupt the current NPC stream and merge user messages. When disabled, waits for the current response to finish.",
 
   "voice.debug.log": "Log Transcription",
   "voice.debug.log.tooltip": "Log transcription results to console",
@@ -288,6 +293,8 @@
   "mic.always_listening.min_voice_duration.tooltip": "Minimum duration of voice required to start recording (seconds)",
   "mic.always_listening.pre_buffer": "Pre-buffer Duration",
   "mic.always_listening.pre_buffer.tooltip": "Duration of audio to capture before voice detection (seconds)",
+  "mic.always_listening.restart_debounce": "Restart Debounce (sec)",
+  "mic.always_listening.restart_debounce.tooltip": "Delay before auto-restarting listening after recording stops (prevents rapid restarts)",
   "mic.runtime.listening": "Listening:",
   "mic.runtime.listening_state": "Listening State:",
 

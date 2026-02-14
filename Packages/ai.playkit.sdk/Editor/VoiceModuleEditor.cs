@@ -16,11 +16,13 @@ namespace PlayKit_SDK.Editor
         private SerializedProperty transcriptionModelProp;
         private SerializedProperty defaultLanguageProp;
         private SerializedProperty microphoneRecorderProp;
+        private SerializedProperty interruptibleProp;
         private SerializedProperty logTranscriptionProp;
 
         // Foldout states
         private bool showTranscriptionSettings = true;
         private bool showMicrophoneSettings = true;
+        private bool showBehaviorSettings = true;
         private bool showDebugSettings = true;
         private bool showRuntimeStatus = true;
 
@@ -34,6 +36,7 @@ namespace PlayKit_SDK.Editor
             transcriptionModelProp = serializedObject.FindProperty("transcriptionModel");
             defaultLanguageProp = serializedObject.FindProperty("defaultLanguage");
             microphoneRecorderProp = serializedObject.FindProperty("microphoneRecorder");
+            interruptibleProp = serializedObject.FindProperty("interruptible");
             logTranscriptionProp = serializedObject.FindProperty("logTranscription");
         }
 
@@ -71,6 +74,9 @@ namespace PlayKit_SDK.Editor
 
             // Microphone Settings Section
             DrawMicrophoneSection();
+
+            // Always Listening Behavior Section
+            DrawBehaviorSection();
 
             // Debug Settings Section
             DrawDebugSection();
@@ -162,6 +168,29 @@ namespace PlayKit_SDK.Editor
                         microphoneRecorderProp.objectReferenceValue = recorder;
                     }
                 }
+
+                EditorGUILayout.EndVertical();
+            }
+
+            EditorGUILayout.EndFoldoutHeaderGroup();
+        }
+
+        private void DrawBehaviorSection()
+        {
+            showBehaviorSettings = EditorGUILayout.BeginFoldoutHeaderGroup(showBehaviorSettings,
+                L.Get("voice.section.behavior"));
+
+            if (showBehaviorSettings)
+            {
+                EditorGUILayout.BeginVertical(boxStyle);
+
+                // Interruptible toggle
+                var toggleContent = new GUIContent(
+                    L.Get("voice.behavior.interruptible"),
+                    L.Get("voice.behavior.interruptible.tooltip")
+                );
+                EditorGUILayout.PropertyField(interruptibleProp, toggleContent);
+                EditorGUILayout.HelpBox(L.Get("voice.behavior.interruptible.help"), MessageType.None);
 
                 EditorGUILayout.EndVertical();
             }

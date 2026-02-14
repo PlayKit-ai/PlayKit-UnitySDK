@@ -25,6 +25,7 @@ namespace PlayKit_SDK.Editor
         private SerializedProperty voiceStartThresholdProp;
         private SerializedProperty minVoiceDurationProp;
         private SerializedProperty preBufferDurationProp;
+        private SerializedProperty restartDebounceTimeProp;
 
         // Foldout states
         private bool showRecordingSettings = true;
@@ -55,6 +56,7 @@ namespace PlayKit_SDK.Editor
             voiceStartThresholdProp = serializedObject.FindProperty("voiceStartThreshold");
             minVoiceDurationProp = serializedObject.FindProperty("minVoiceDuration");
             preBufferDurationProp = serializedObject.FindProperty("preBufferDuration");
+            restartDebounceTimeProp = serializedObject.FindProperty("restartDebounceTime");
 
             RefreshDeviceList();
         }
@@ -333,6 +335,13 @@ namespace PlayKit_SDK.Editor
                     EditorGUILayout.PropertyField(preBufferDurationProp,
                         new GUIContent(L.Get("mic.always_listening.pre_buffer"), L.Get("mic.always_listening.pre_buffer.tooltip")));
                     preBufferDurationProp.floatValue = Mathf.Clamp(preBufferDurationProp.floatValue, 0.1f, 2f);
+
+                    EditorGUILayout.Space(5);
+
+                    // Restart Debounce Time
+                    EditorGUILayout.PropertyField(restartDebounceTimeProp,
+                        new GUIContent(L.Get("mic.always_listening.restart_debounce"), L.Get("mic.always_listening.restart_debounce.tooltip")));
+                    restartDebounceTimeProp.floatValue = Mathf.Max(0f, restartDebounceTimeProp.floatValue);
 
                     EditorGUI.indentLevel--;
                 }
