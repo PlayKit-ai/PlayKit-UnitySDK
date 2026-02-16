@@ -148,7 +148,20 @@ namespace PlayKit_SDK.Provider.AI
                                 {
                                     _onTextDelta?.Invoke(uiMessage.Delta);
                                 }
-                                // Handle other types like "start", "finish", etc. if needed
+                                else if (uiMessage.Type == "finish")
+                                {
+                                    // Normal stream completion — no action needed,
+                                    // onFinally will fire when the HTTP request completes.
+                                }
+                                else if (uiMessage.Type == "abort")
+                                {
+                                    // Server-side timeout or cancellation
+                                    Debug.LogWarning($"[AIChatProvider] Stream aborted by server: {uiMessage.Reason ?? "unknown reason"}");
+                                }
+                                else if (uiMessage.Type == "error")
+                                {
+                                    Debug.LogError($"[AIChatProvider] Stream error from server: {uiMessage.ErrorText ?? "unknown error"}");
+                                }
                                 continue;
                             }
                         }

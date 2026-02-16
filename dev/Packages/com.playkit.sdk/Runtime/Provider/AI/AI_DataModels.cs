@@ -344,11 +344,19 @@ namespace PlayKit_SDK.Provider.AI
     {
         [JsonProperty("type")]
         public string Type { get; set; }
-        
+
         [JsonProperty("id")]
         public string Id { get; set; }
-        
+
         [JsonProperty("delta")]
         public string Delta { get; set; }
+
+        /// <summary>Abort reason (present when type = "abort")</summary>
+        [JsonProperty("reason")]
+        public string Reason { get; set; }
+
+        /// <summary>Error text (present when type = "error")</summary>
+        [JsonProperty("errorText")]
+        public string ErrorText { get; set; }
     }
 }
