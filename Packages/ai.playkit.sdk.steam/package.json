@@ -1,0 +1,27 @@
+{
+  "name": "ai.playkit.sdk.steam",
+  "displayName": "PlayKitSDKSteamAddon",
+  "version": "0.2.55",
+  "unity": "2022.3",
+  "description": "Steam authentication addon for PlayKit SDK. Provides seamless Steam login integration using Facepunch.Steamworks.",
+  "author": {
+    "name": "PlayKit",
+    "url": "https://playkit.ai"
+  },
+  "dependencies": {},
+  "keywords": [
+    "steam",
+    "steamworks",
+    "authentication",
+    "playkit",
+    "login"
+  ],
+  "license": "MIT",
+  "samples": [
+    {
+      "displayName": "Purchase Example",
+      "description": "Steam microtransaction example",
+      "path": "Samples~/PurchaseExample"
+    }
+  ]
+}
