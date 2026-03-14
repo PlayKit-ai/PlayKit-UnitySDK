@@ -1442,6 +1442,8 @@ Output ONLY a JSON array of {predictionNum} strings, nothing else:
             SetCharacterDesign(prompt);
         }
 
+        private int _memoryBatchDepth;
+
         /// <summary>
         /// Set or update a memory for the NPC.
         /// Memories are appended to the character design to form the system prompt.
@@ -1473,7 +1475,45 @@ Output ONLY a JSON array of {predictionNum} strings, nothing else:
                 Debug.Log($"[NPCClient] Memory '{memoryName}' set");
             }
 
-            RebuildSystemPrompt();
+            // Skip prompt rebuild if inside a batch — EndMemoryBatch will rebuild once
+            if (_memoryBatchDepth == 0)
+                RebuildSystemPrompt();
+        }
+
+        /// <summary>
+        /// Begin a batch of memory updates. System prompt will not be rebuilt
+        /// until EndMemoryBatch() is called. Batches can be nested.
+        ///
+        /// Usage:
+        /// <code>
+        /// npc.BeginMemoryBatch();
+        /// npc.SetMemory("key1", "value1");
+        /// npc.SetMemory("key2", "value2");
+        /// npc.SetMemory("key3", "value3");
+        /// npc.EndMemoryBatch(); // Rebuilds system prompt once
+        /// </code>
+        /// </summary>
+        public void BeginMemoryBatch()
+        {
+            _memoryBatchDepth++;
+        }
+
+        /// <summary>
+        /// End a batch of memory updates. Rebuilds the system prompt once
+        /// when the outermost batch is closed.
+        /// </summary>
+        public void EndMemoryBatch()
+        {
+            if (_memoryBatchDepth <= 0)
+            {
+                Debug.LogWarning("[NPCClient] EndMemoryBatch called without matching BeginMemoryBatch");
+                return;
+            }
+
+            _memoryBatchDepth--;
+
+            if (_memoryBatchDepth == 0)
+                RebuildSystemPrompt();
         }
 
         /// <summary>

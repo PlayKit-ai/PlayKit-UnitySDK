@@ -81,6 +81,19 @@ namespace PlayKit_SDK
         private Dictionary<PlayKit_NPC, NpcConversationState> _npcStates = new Dictionary<PlayKit_NPC, NpcConversationState>();
         private Coroutine _autoCompactCoroutine;
 
+        // Track which NPCs are currently being compacted to prevent concurrent compaction
+        private readonly HashSet<PlayKit_NPC> _compactingNpcs = new HashSet<PlayKit_NPC>();
+
+        /// <summary>
+        /// Event fired when an NPC is registered for context management.
+        /// </summary>
+        public event Action<PlayKit_NPC> OnNpcRegistered;
+
+        /// <summary>
+        /// Event fired when an NPC is unregistered (destroyed).
+        /// </summary>
+        public event Action<PlayKit_NPC> OnNpcUnregistered;
+
         /// <summary>
         /// Register an NPC for context management.
         /// Called automatically by NPCClient.
@@ -98,7 +111,18 @@ namespace PlayKit_SDK
                     CompactionCount = 0
                 };
                 Debug.Log($"[AIContextManager] NPC registered: {npc.gameObject.name}");
+                OnNpcRegistered?.Invoke(npc);
             }
+        }
+
+        /// <summary>
+        /// Get the conversation state for a specific NPC (for debugging/tooling).
+        /// Returns null if the NPC is not registered.
+        /// </summary>
+        public NpcConversationState GetNpcConversationState(PlayKit_NPC npc)
+        {
+            if (npc == null) return null;
+            return _npcStates.TryGetValue(npc, out var state) ? state : null;
         }
 
         /// <summary>
@@ -111,7 +135,9 @@ namespace PlayKit_SDK
             if (_npcStates.ContainsKey(npc))
             {
                 _npcStates.Remove(npc);
+                _compactingNpcs.Remove(npc);
                 Debug.Log($"[AIContextManager] NPC unregistered: {npc.gameObject.name}");
+                OnNpcUnregistered?.Invoke(npc);
             }
         }
 
@@ -130,6 +156,34 @@ namespace PlayKit_SDK
 
             _npcStates[npc].LastConversationTime = DateTime.UtcNow;
             _npcStates[npc].IsCompacted = false; // Reset compaction flag on new conversation
+        }
+
+        /// <summary>
+        /// Remove any NPC entries whose GameObjects have been destroyed.
+        /// Called automatically before iteration to prevent MissingReferenceException.
+        /// </summary>
+        private void PurgeDestroyedNpcs()
+        {
+            // Collect destroyed keys first to avoid modifying dictionary during iteration
+            List<PlayKit_NPC> destroyed = null;
+            foreach (var npc in _npcStates.Keys)
+            {
+                if (npc == null)
+                {
+                    destroyed ??= new List<PlayKit_NPC>();
+                    destroyed.Add(npc);
+                }
+            }
+
+            if (destroyed == null) return;
+
+            foreach (var npc in destroyed)
+            {
+                _npcStates.Remove(npc);
+                _compactingNpcs.Remove(npc);
+            }
+
+            Debug.Log($"[AIContextManager] Purged {destroyed.Count} destroyed NPC(s)");
         }
 
         #endregion
@@ -162,6 +216,9 @@ namespace PlayKit_SDK
             // Check if already compacted since last conversation
             if (state.IsCompacted) return false;
 
+            // Check if currently being compacted
+            if (_compactingNpcs.Contains(npc)) return false;
+
             // Check message count
             var history = npc.GetHistory();
             var nonSystemMessages = history.Count(m => m.Role != "system");
@@ -188,30 +245,58 @@ namespace PlayKit_SDK
                 return false;
             }
 
-            var history = npc.GetHistory();
-            var nonSystemMessages = history.Where(m => m.Role != "system").ToList();
-
-            if (nonSystemMessages.Count < 2)
+            // Prevent concurrent compaction on the same NPC
+            if (!_compactingNpcs.Add(npc))
             {
-                Debug.Log($"[AIContextManager] Skipping compaction for {npc.gameObject.name}: not enough messages");
+                Debug.Log($"[AIContextManager] Skipping compaction for {npc.gameObject.name}: already in progress");
                 return false;
             }
 
             try
             {
+                var history = npc.GetHistory();
+                var nonSystemMessages = history.Where(m => m.Role != "system").ToList();
+
+                if (nonSystemMessages.Count < 2)
+                {
+                    Debug.Log($"[AIContextManager] Skipping compaction for {npc.gameObject.name}: not enough messages");
+                    return false;
+                }
+
                 Debug.Log($"[AIContextManager] Starting compaction for {npc.gameObject.name} ({nonSystemMessages.Count} messages)");
 
                 // Build conversation text for summarization
                 var conversationText = string.Join("\n", nonSystemMessages.Select(m => $"{m.Role}: {m.Content}"));
 
+                // Include character context and previous summary for better quality
+                var contextPrefix = "";
+                var characterDesign = npc.CharacterDesign;
+                if (!string.IsNullOrEmpty(characterDesign))
+                {
+                    var designPreview = characterDesign.Length > 200
+                        ? characterDesign.Substring(0, 200) + "..."
+                        : characterDesign;
+                    contextPrefix += $"Character context: {designPreview}\n\n";
+                }
+
+                // Preserve previous summaries to avoid losing long-term context
+                var previousSummary = npc.GetMemory("PreviousConversationSummary");
+                if (!string.IsNullOrEmpty(previousSummary))
+                {
+                    contextPrefix += $"Previous conversation summary: {previousSummary}\n\n";
+                }
+
                 // Create summarization prompt
-                var summaryPrompt = $@"Summarize the following conversation concisely. Focus on:
+                var summaryPrompt = $@"{contextPrefix}Summarize the following conversation concisely. Focus on:
 1. Key topics discussed
 2. Important information exchanged
 3. Any decisions or commitments made
 4. The emotional tone
+5. Any state changes or persuasion progress
 
-Keep the summary under 200 words. Write in third person.
+If there is a previous conversation summary above, incorporate its key points into your new summary so no important context is lost.
+
+Keep the summary under 300 words. Write in third person.
 
 Conversation:
 {conversationText}";
@@ -235,13 +320,10 @@ Conversation:
                     return false;
                 }
 
-                // Get the character design (will be preserved)
-                var characterDesign = npc.CharacterDesign;
-
                 // Clear history and rebuild with summary
                 npc.ClearHistory();
 
-                // Add summary as a memory
+                // Add summary as a memory (replaces previous summary with accumulated context)
                 npc.SetMemory("PreviousConversationSummary", result.Response);
 
                 // Update state
@@ -261,6 +343,10 @@ Conversation:
                 OnCompactionFailed?.Invoke(npc, ex.Message);
                 return false;
             }
+            finally
+            {
+                _compactingNpcs.Remove(npc);
+            }
         }
 
         /// <summary>
@@ -269,6 +355,8 @@ Conversation:
         /// <param name="cancellationToken">Cancellation token</param>
         public async UniTask CompactAllEligibleAsync(CancellationToken cancellationToken = default)
         {
+            PurgeDestroyedNpcs();
+
             var eligibleNpcs = _npcStates.Keys.Where(IsEligibleForCompaction).ToList();
 
             if (eligibleNpcs.Count == 0)
@@ -343,15 +431,19 @@ Conversation:
             {
                 yield return new WaitForSeconds(checkIntervalSeconds);
 
-                if (!PlayKitSettings.Instance?.EnableAutoCompact == true)
+                // Fix: correct nullable bool check (was: !x == true which has wrong precedence)
+                if (PlayKitSettings.Instance?.EnableAutoCompact != true)
                     continue;
+
+                // Purge any destroyed NPCs before iterating
+                PurgeDestroyedNpcs();
 
                 // Check for eligible NPCs
                 var eligibleNpcs = _npcStates.Keys.Where(IsEligibleForCompaction).ToList();
 
                 foreach (var npc in eligibleNpcs)
                 {
-                    // Fire and forget compaction
+                    // Fire and forget compaction (concurrent guard is inside CompactConversationAsync)
                     CompactConversationAsync(npc, this.GetCancellationTokenOnDestroy()).Forget();
                 }
             }
@@ -361,9 +453,9 @@ Conversation:
     }
 
     /// <summary>
-    /// Internal state tracking for each NPC's conversation.
+    /// State tracking for each NPC's conversation.
     /// </summary>
-    internal class NpcConversationState
+    public class NpcConversationState
     {
         /// <summary>
         /// The last time a conversation exchange occurred with this NPC.
