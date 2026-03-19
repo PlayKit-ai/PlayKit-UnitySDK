@@ -92,6 +92,9 @@ namespace PlayKit_SDK
         public const string INSUFFICIENT_CREDITS = "INSUFFICIENT_CREDITS";
         public const string INSUFFICIENT_DEVELOPER_BALANCE = "INSUFFICIENT_DEVELOPER_BALANCE";
 
+        // Token spending limit error
+        public const string TOKEN_SPENDING_LIMIT_REACHED = "TOKEN_SPENDING_LIMIT_REACHED";
+
         // Image generation specific errors
         public const string INVALID_SIZE_FORMAT = "INVALID_SIZE_FORMAT";
         public const string INVALID_SIZE_VALUE = "INVALID_SIZE_VALUE";
@@ -119,5 +122,28 @@ namespace PlayKit_SDK
     {
         public string code { get; set; }
         public string message { get; set; }
+        /// <summary>
+        /// Additional error details (optional, may be null for older backends).
+        /// Currently used by TOKEN_SPENDING_LIMIT_REACHED to provide walletHasBalance and suggestedRechargeAmounts.
+        /// </summary>
+        public PlayKit_ApiErrorDetails details { get; set; }
+    }
+
+    /// <summary>
+    /// Additional details returned with certain error responses.
+    /// All fields are nullable-safe — always check for null before use.
+    /// </summary>
+    [Serializable]
+    public class PlayKit_ApiErrorDetails
+    {
+        /// <summary>
+        /// Whether the user's wallet still has balance (token limit reached but wallet is not empty).
+        /// </summary>
+        public bool walletHasBalance { get; set; }
+
+        /// <summary>
+        /// Suggested amounts (USD) for recharging the token spending limit.
+        /// </summary>
+        public float[] suggestedRechargeAmounts { get; set; }
     }
 }

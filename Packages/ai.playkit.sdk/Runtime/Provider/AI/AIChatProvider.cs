@@ -68,10 +68,14 @@ namespace PlayKit_SDK.Provider.AI
                     return null;
                 }
                 
-                if (webRequest.result != UnityWebRequest.Result.Success) 
-                { 
-                    Debug.LogError($"[AIChatProvider] API Error: {webRequest.responseCode} - {webRequest.error}\n{webRequest.downloadHandler.text}"); 
-                    return null; 
+                if (webRequest.result != UnityWebRequest.Result.Success)
+                {
+                    Debug.LogError($"[AIChatProvider] API Error: {webRequest.responseCode} - {webRequest.error}\n{webRequest.downloadHandler.text}");
+
+                    // Try to parse error response for billing/limit errors
+                    TryHandleBillingError(webRequest.downloadHandler.text, (int)webRequest.responseCode);
+
+                    return null;
                 }
                 
                 // Parse response - AI endpoint returns OpenAI compatible format for non-streaming
@@ -105,11 +109,62 @@ namespace PlayKit_SDK.Provider.AI
                 catch (Exception ex) when (!(ex is OperationCanceledException))
                 {
                     Debug.LogError($"[AIChatProvider] API stream request failed: {ex.Message}");
+
+                    // Try to parse billing error from response (e.g., 402 TOKEN_SPENDING_LIMIT_REACHED)
+                    if (webRequest.downloadHandler != null)
+                    {
+                        try
+                        {
+                            TryHandleBillingError(webRequest.downloadHandler.text, (int)webRequest.responseCode);
+                        }
+                        catch { /* ignore parse failures in streaming error path */ }
+                    }
                 }
-                finally 
-                { 
-                    onFinally?.Invoke(); 
+                finally
+                {
+                    onFinally?.Invoke();
                 }
+            }
+        }
+
+        /// <summary>
+        /// Try to parse an error response and fire appropriate events on the PlayerClient.
+        /// Handles TOKEN_SPENDING_LIMIT_REACHED (distinct from generic insufficient balance).
+        /// </summary>
+        private void TryHandleBillingError(string responseText, int statusCode)
+        {
+            if (string.IsNullOrEmpty(responseText)) return;
+
+            try
+            {
+                var errorResponse = JsonConvert.DeserializeObject<PlayKit_ApiErrorResponse>(responseText);
+                var errorCode = errorResponse?.error?.code;
+                if (string.IsNullOrEmpty(errorCode)) return;
+
+                var playerClient = _authManager?.PlayerClient;
+                if (playerClient == null) return;
+
+                if (errorCode == PlayKit_ErrorCodes.TOKEN_SPENDING_LIMIT_REACHED)
+                {
+                    // Token spending limit exhausted — wallet may still have balance
+                    playerClient.HandleTokenSpendingLimitReached(errorResponse.error.details);
+                }
+                else if (errorCode == PlayKit_ErrorCodes.PLAYER_INSUFFICIENT_CREDIT ||
+                         errorCode == PlayKit_ErrorCodes.INSUFFICIENT_CREDITS ||
+                         errorCode == PlayKit_ErrorCodes.INSUFFICIENT_DEVELOPER_BALANCE)
+                {
+                    // Generic insufficient balance
+                    var exception = new PlayKitApiErrorException(
+                        errorResponse.error.message ?? "Insufficient credits",
+                        errorCode,
+                        statusCode
+                    );
+                    playerClient.HandleInsufficientCredits(exception);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[AIChatProvider] Failed to parse billing error: {ex.Message}");
             }
         }
 

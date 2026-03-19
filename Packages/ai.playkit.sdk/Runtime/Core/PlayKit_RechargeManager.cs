@@ -325,6 +325,73 @@ namespace PlayKit_SDK
             return await _currentProvider.GetAvailableProductsAsync();
         }
 
+        /// <summary>
+        /// Increase the current token's spending limit by calling the backend API.
+        /// This only raises the spending cap — actual charges still come from the wallet during AI calls.
+        /// Gracefully handles 404 (old backend without this endpoint) by falling back to wallet recharge.
+        /// </summary>
+        /// <param name="amount">Amount in USD to add to the token's spending cap</param>
+        /// <returns>True if the limit was successfully increased</returns>
+        public async UniTask<bool> RechargeTokenLimitAsync(float amount)
+        {
+            if (amount <= 0)
+            {
+                Debug.LogWarning("[PlayKit_RechargeManager] Invalid recharge amount");
+                return false;
+            }
+
+            string token = _getPlayerToken?.Invoke();
+            if (string.IsNullOrEmpty(token))
+            {
+                Debug.LogWarning("[PlayKit_RechargeManager] No player token available for recharge");
+                return false;
+            }
+
+            try
+            {
+                string url = $"{_baseUrl}/api/token/recharge-limit";
+                string jsonBody = $"{{\"amount\":{amount}}}";
+
+                using (var webRequest = new UnityEngine.Networking.UnityWebRequest(url, "POST"))
+                {
+                    byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonBody);
+                    webRequest.uploadHandler = new UnityEngine.Networking.UploadHandlerRaw(bodyRaw);
+                    webRequest.downloadHandler = new UnityEngine.Networking.DownloadHandlerBuffer();
+                    webRequest.SetRequestHeader("Content-Type", "application/json");
+                    webRequest.SetRequestHeader("Authorization", $"Bearer {token}");
+                    PlayKitSDK.SetSDKHeaders(webRequest);
+
+                    var operation = webRequest.SendWebRequest();
+                    while (!operation.isDone)
+                    {
+                        await UniTask.Yield();
+                    }
+
+                    if (webRequest.result == UnityEngine.Networking.UnityWebRequest.Result.Success)
+                    {
+                        Debug.Log($"[PlayKit_RechargeManager] Token limit recharged by ${amount}");
+                        return true;
+                    }
+
+                    // Graceful fallback: old backend returns 404 for unknown endpoint
+                    if (webRequest.responseCode == 404)
+                    {
+                        Debug.LogWarning("[PlayKit_RechargeManager] Token recharge-limit endpoint not found (old backend?). Falling back to wallet recharge.");
+                        OpenRechargeWindow();
+                        return false;
+                    }
+
+                    Debug.LogWarning($"[PlayKit_RechargeManager] Token limit recharge failed: {webRequest.responseCode} - {webRequest.downloadHandler.text}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[PlayKit_RechargeManager] Token limit recharge error: {ex.Message}");
+                return false;
+            }
+        }
+
         private void SubscribeToProvider(IRechargeProvider provider)
         {
             provider.OnRechargeInitiated += () =>

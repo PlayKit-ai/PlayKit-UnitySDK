@@ -13,6 +13,10 @@
   "config.auth.logout": "退出登录",
   "config.auth.logout_title": "退出登录",
   "config.auth.logout_confirm": "确定要退出登录吗？你需要重新登录才能访问你的游戏。",
+  "config.auth.direct_key.foldout": "或：粘贴 Dashboard 创建的密钥",
+  "config.auth.direct_key.info": "你可以在 Dashboard 中创建密钥，然后粘贴到这里。无需通过浏览器登录流程，也无需知道账户密码。",
+  "config.auth.direct_key.label": "API 密钥",
+  "config.auth.direct_key.apply": "应用",
 
   "config.game.title": "游戏选择",
   "config.game.select": "选择游戏",

@@ -41,6 +41,8 @@ namespace PlayKit_SDK
 
         // UI State
         private bool _showAdvancedSettings = false;
+        private string _directKeyInput = "";
+        private bool _showDirectKeyInput = false;
 
         // Games list state
         private List<GameInfo> _gamesList = new List<GameInfo>();
@@ -569,6 +571,34 @@ namespace PlayKit_SDK
 
                 GUILayout.FlexibleSpace();
                 EditorGUILayout.EndHorizontal();
+
+                // Direct Key Input — alternative to Device Auth login
+                EditorGUILayout.Space(8);
+
+                _showDirectKeyInput = EditorGUILayout.Foldout(_showDirectKeyInput, L10n.Get("config.auth.direct_key.foldout"), true);
+                if (_showDirectKeyInput)
+                {
+                    EditorGUILayout.HelpBox(L10n.Get("config.auth.direct_key.info"), MessageType.Info);
+
+                    EditorGUILayout.BeginHorizontal();
+                    _directKeyInput = EditorGUILayout.TextField(L10n.Get("config.auth.direct_key.label"), _directKeyInput);
+
+                    GUI.enabled = !string.IsNullOrEmpty(_directKeyInput?.Trim());
+                    if (GUILayout.Button(L10n.Get("config.auth.direct_key.apply"), GUILayout.Width(60)))
+                    {
+                        string key = _directKeyInput.Trim();
+                        PlayKitSettings.LocalDeveloperToken = key;
+                        _directKeyInput = "";
+                        _showDirectKeyInput = false;
+                        Debug.Log("[PlayKit SDK] Direct key applied successfully.");
+                        // Trigger game list loading
+                        LoadGamesList();
+                        Repaint();
+                    }
+                    GUI.enabled = true;
+
+                    EditorGUILayout.EndHorizontal();
+                }
             }
 
             EditorGUILayout.EndVertical();
@@ -1521,6 +1551,19 @@ namespace PlayKit_SDK
                     }
                     else
                     {
+                        // Auto-logout on 401 (invalid/expired token)
+                        if (webRequest.responseCode == 401)
+                        {
+                            Debug.LogWarning("[PlayKit SDK] Stored token is invalid or expired. Logging out automatically.");
+                            PlayKitSettings.ClearLocalDeveloperToken();
+                            _gamesList.Clear();
+                            _gamesDisplayNames = new string[0];
+                            _selectedGameIndex = -1;
+                            _gamesLoadError = "";
+                            Repaint();
+                            return;
+                        }
+
                         _gamesLoadError = $"API Error: {webRequest.error}";
                     }
                 }

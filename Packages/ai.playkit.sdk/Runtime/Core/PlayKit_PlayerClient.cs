@@ -46,6 +46,13 @@ namespace PlayKit_SDK
         /// </summary>
         public event Action<PlayKitException> OnInsufficientCredits;
 
+        /// <summary>
+        /// Fired when the token's spending limit is exhausted (but wallet may still have balance).
+        /// The details include walletHasBalance and suggestedRechargeAmounts.
+        /// Use this to show a "top up session limit" UI instead of the generic "insufficient balance" prompt.
+        /// </summary>
+        public event Action<PlayKit_ApiErrorDetails> OnTokenSpendingLimitReached;
+
         // ADDED: Public property to access the result of the last JWT exchange.
         public JWTExchangeResponse LastExchangeResponse { get; private set; }
 
@@ -527,6 +534,36 @@ namespace PlayKit_SDK
         {
             Debug.LogWarning($"[PlayKit_PlayerClient] Insufficient credits: {exception.Message}");
             OnInsufficientCredits?.Invoke(exception);
+        }
+
+        /// <summary>
+        /// Handle token spending limit reached error.
+        /// The token's spending cap is exhausted but the wallet may still have balance.
+        /// </summary>
+        /// <param name="details">Error details including walletHasBalance and suggestedRechargeAmounts (may be null for older backends)</param>
+        public void HandleTokenSpendingLimitReached(PlayKit_ApiErrorDetails details)
+        {
+            Debug.LogWarning($"[PlayKit_PlayerClient] Token spending limit reached. Wallet has balance: {details?.walletHasBalance ?? false}");
+            OnTokenSpendingLimitReached?.Invoke(details);
+
+            // Auto-prompt: if wallet has balance, try to recharge token limit
+            if (AutoPromptRecharge && _rechargeManager != null)
+            {
+                if (details?.walletHasBalance == true)
+                {
+                    float suggestedAmount = (details.suggestedRechargeAmounts != null && details.suggestedRechargeAmounts.Length > 0)
+                        ? details.suggestedRechargeAmounts[0]
+                        : 5.0f;
+                    Debug.Log($"[PlayKit_PlayerClient] Auto-prompting token limit recharge: ${suggestedAmount}");
+                    _rechargeManager.RechargeTokenLimitAsync(suggestedAmount).Forget();
+                }
+                else
+                {
+                    // Wallet is also empty — fall back to wallet recharge
+                    Debug.Log("[PlayKit_PlayerClient] Wallet also empty, opening recharge window.");
+                    _rechargeManager.OpenRechargeWindow(AutoPromptRechargeSku);
+                }
+            }
         }
 
         // ... Other public and private methods remain the same ...

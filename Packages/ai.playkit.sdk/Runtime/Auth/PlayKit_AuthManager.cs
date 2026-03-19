@@ -69,6 +69,15 @@ namespace PlayKit_SDK.Auth
             }
         }
 
+        /// <summary>
+        /// Initialize the auth manager with a game ID and optional API key.
+        /// The apiKey can be a developer token or player token created from the Dashboard.
+        /// When provided, the key is used directly without triggering the login flow.
+        /// When omitted, AuthenticateAsync() will start a fresh Device Auth login.
+        /// </summary>
+        /// <param name="publishableKey">Game ID</param>
+        /// <param name="developerToken">Optional API key from Dashboard (developer or player token).
+        /// When provided, this key is used directly with its existing spending limit.</param>
         public void Setup(string publishableKey, string developerToken = null)
         {
             _gameId = publishableKey;
@@ -109,12 +118,32 @@ namespace PlayKit_SDK.Auth
         {
             SetLoadingVisible(true);
 
-            // If using a developer token, authentication is always considered successful.
+            // If using a directly provided key (developer token from Dashboard), validate it first.
             if (IsDeveloperToken)
             {
-                Debug.Log("[PlayKit SDK] Using developer token. Authentication successful.");
-                SetLoadingVisible(false);
-                return true;
+                Debug.Log("[PlayKit SDK] Validating directly provided key...");
+                if (PlayerClient != null)
+                {
+                    PlayerClient.SetPlayerToken(AuthToken);
+                }
+
+                bool keyValid = await IsTokenValidWithAPICheck();
+                if (keyValid)
+                {
+                    Debug.Log("[PlayKit SDK] Key validated successfully.");
+                    SetLoadingVisible(false);
+                    return true;
+                }
+
+                // Key is invalid — clear it and fall through to login flow
+                Debug.LogWarning("[PlayKit SDK] Provided key is invalid or expired.");
+                AuthToken = null;
+                IsDeveloperToken = false;
+                if (PlayerClient != null)
+                {
+                    PlayerClient.ClearPlayerToken();
+                }
+                // Fall through to Device Auth login below
             }
 
             // Check for explicitly set platform token (first-party apps)
@@ -147,48 +176,10 @@ namespace PlayKit_SDK.Auth
                 }
             }
 
-            // Step 1: Try loading tokens from storage
-            LoadTokens();
-
-            // Step 2: Check if token is valid or can be refreshed
-            if (!string.IsNullOrEmpty(AuthToken))
-            {
-                // Check if token is expired or about to expire
-                if (IsTokenExpiredOrExpiringSoon())
-                {
-                    Debug.Log("[PlayKit SDK] Token expired or expiring soon, attempting refresh...");
-                    if (await TryRefreshTokenAsync())
-                    {
-                        SetLoadingVisible(false);
-                        Debug.Log("[PlayKit SDK] Token refreshed successfully.");
-                        return true;
-                    }
-                    // Refresh failed, will need to re-login
-                    Debug.Log("[PlayKit SDK] Token refresh failed, will require re-login.");
-                }
-                else
-                {
-                    // Token not expired, verify with API
-                    if (await IsTokenValidWithAPICheck())
-                    {
-                        SetLoadingVisible(false);
-                        Debug.Log("[PlayKit SDK] Existing valid player token found and verified.");
-                        return true;
-                    }
-                    
-                    // Token invalid, try refresh
-                    Debug.Log("[PlayKit SDK] Token invalid, attempting refresh...");
-                    if (await TryRefreshTokenAsync())
-                    {
-                        SetLoadingVisible(false);
-                        Debug.Log("[PlayKit SDK] Token refreshed successfully after API check failure.");
-                        return true;
-                    }
-                }
-            }
-
-            // Step 3: No valid tokens, initiate login process
-            Debug.Log("[PlayKit SDK] No valid player token found. Initiating login process.");
+            // Always create a fresh token via login — do not reuse stored tokens.
+            // Each session gets a new token with a fresh spending limit.
+            ClearPlayerToken();
+            Debug.Log("[PlayKit SDK] Starting fresh login session.");
             SetLoadingVisible(false);
 
             return await ShowLoginWebAsync();

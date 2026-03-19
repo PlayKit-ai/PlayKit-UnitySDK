@@ -13,6 +13,10 @@
   "config.auth.logout": "Logout",
   "config.auth.logout_title": "Logout",
   "config.auth.logout_confirm": "Are you sure you want to logout? You will need to login again to access your games.",
+  "config.auth.direct_key.foldout": "Or: Paste a key from Dashboard",
+  "config.auth.direct_key.info": "You can create a key on the Dashboard and paste it here. This allows authentication without going through the browser login flow.",
+  "config.auth.direct_key.label": "API Key",
+  "config.auth.direct_key.apply": "Apply",
 
   "config.game.title": "Game Selection",
   "config.game.select": "Select Game",
