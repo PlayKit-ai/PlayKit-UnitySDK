@@ -350,7 +350,7 @@ namespace PlayKit_SDK
             try
             {
                 string url = $"{_baseUrl}/api/token/recharge-limit";
-                string jsonBody = $"{{\"amount\":{amount}}}";
+                string jsonBody = Newtonsoft.Json.JsonConvert.SerializeObject(new { amount });
 
                 using (var webRequest = new UnityEngine.Networking.UnityWebRequest(url, "POST"))
                 {
