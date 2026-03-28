@@ -13,7 +13,7 @@ namespace PlayKit_SDK.Auth
         /// <summary>
         /// Opens the PlayKit documentation in the default browser.
         /// </summary>
-        [MenuItem("PlayKit SDK/Documentation", priority = 52)]
+        [MenuItem("PlayKit/Documentation", priority = 52)]
         private static void OpenDocumentation()
         {
             Application.OpenURL("https://docs.playkit.ai");
@@ -24,7 +24,7 @@ namespace PlayKit_SDK.Auth
         /// <summary>
         /// Clears the locally stored Player Token using PlayerPrefs.
         /// </summary>
-        [MenuItem("PlayKit SDK/Clear Local Player Token", priority = 100)]
+        [MenuItem("PlayKit/Clear Local Player Token", priority = 100)]
         private static void ClearLocalPlayerToken()
         {
             // Call the static method from your existing AuthManager

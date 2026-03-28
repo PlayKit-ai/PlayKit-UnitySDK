@@ -133,7 +133,7 @@ namespace PlayKit_SDK.Editor
             return false;
         }
 
-        [MenuItem("PlayKit SDK/Refresh Script Defines")]
+        [MenuItem("PlayKit/Refresh Script Defines")]
         public static void RefreshScriptDefinesManual()
         {
             UpdateScriptDefines();

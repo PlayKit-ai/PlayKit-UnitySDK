@@ -245,7 +245,7 @@ namespace PlayKit_SDK.Editor
             }
         }
 
-        [MenuItem("PlayKit SDK/Install UniTask")]
+        [MenuItem("PlayKit/Install UniTask")]
         public static void InstallUniTaskManual()
         {
             if (IsUniTaskAvailable())
@@ -373,7 +373,7 @@ namespace PlayKit_SDK.Editor
 
         #endregion
 
-        [MenuItem("PlayKit SDK/Reset Dependency Check")]
+        [MenuItem("PlayKit/Reset Dependency Check")]
         public static void ResetDependencyCheck()
         {
             EditorPrefs.DeleteKey(SKIP_CHECK_KEY);

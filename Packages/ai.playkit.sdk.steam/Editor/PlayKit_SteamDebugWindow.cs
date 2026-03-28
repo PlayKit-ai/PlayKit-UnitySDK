@@ -73,7 +73,7 @@ namespace PlayKit_SDK.Steam.Editor
             public string error;
         }
 
-        [MenuItem("PlayKit SDK/Steam Addon/Debug Window")]
+        [MenuItem("PlayKit/Steam Addon/Debug Window")]
         public static void ShowWindow()
         {
             var window = GetWindow<PlayKit_SteamDebugWindow>(L10n.Get("steam.window.title"));

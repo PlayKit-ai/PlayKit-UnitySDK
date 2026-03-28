@@ -26,7 +26,7 @@ namespace PlayKit_SDK.Editor
             EditorApplication.delayCall += () => CheckForUpdatesAuto();
         }
 
-        [MenuItem("PlayKit SDK/Check for Updates")]
+        [MenuItem("PlayKit/Check for Updates")]
         private static void CheckForUpdatesManual()
         {
             CheckForUpdates(true);

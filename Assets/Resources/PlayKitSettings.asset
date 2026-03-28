@@ -12,11 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae5b7fd14fa3fe6469d003aa34738da9, type: 3}
   m_Name: PlayKitSettings
   m_EditorClassIdentifier: 
-  gameId: 5e58c3c0-a5ac-437e-b55f-ae34072c6b2e
+  gameId: 52f4057c-8ddc-42c2-931f-bc54e211f115
   defaultChatModel: deepseek-chat
   defaultImageModel: flux-1-schnell
   defaultTranscriptionModel: default-transcription-model
   default3DModel: default-3d-model
+  autoInitialize: 1
   ignoreDeveloperToken: 0
   customBaseUrl: 
   forceDeveloperTokenInBuild: 0

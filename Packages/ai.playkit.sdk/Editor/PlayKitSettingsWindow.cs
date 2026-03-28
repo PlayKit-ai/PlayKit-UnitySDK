@@ -122,7 +122,7 @@ namespace PlayKit_SDK
             public string message;
         }
 
-        [MenuItem("PlayKit SDK/Settings", priority = 0)]
+        [MenuItem("PlayKit/Settings", priority = 0)]
         public static void ShowWindow()
         {
             PlayKitSettingsWindow window = GetWindow<PlayKitSettingsWindow>(L10n.Get("window.title"));
