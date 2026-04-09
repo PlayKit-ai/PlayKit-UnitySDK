@@ -15,8 +15,8 @@ namespace PlayKit_SDK.Editor
     public static class PlayKit_UpdateChecker
     {
         // New versions API endpoint (returns latest version info with changelog)
-        private const string VERSION_API_URL = "https://playkit.ai/api/sdk/versions/unity?latest=true";
-        private const string DOWNLOAD_URL = "https://playkit.ai/dashboard";
+        private const string VERSION_API_URL = "https://api.playkit.ai/api/sdk/versions/unity?latest=true";
+        private const string DOWNLOAD_URL = "https://dashboard.playkit.ai";
         private const string LAST_CHECK_KEY = "PlayKit_SDK_LastUpdateCheck";
         private const string SKIP_VERSION_KEY = "PlayKit_SDK_SkipVersion";
 

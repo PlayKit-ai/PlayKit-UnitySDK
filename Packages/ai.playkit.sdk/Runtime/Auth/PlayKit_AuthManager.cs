@@ -58,7 +58,7 @@ namespace PlayKit_SDK.Auth
         public PlayKit_PlayerClient PlayerClient { get => _playerClient; }
         private LoadingSpinner standaloneLoadingObject;
 
-        private string ApiBaseUrl => PlayKitSettings.Instance?.BaseUrl ?? "https://playkit.ai";
+        private string ApiBaseUrl => PlayKitSettings.Instance?.BaseUrl ?? "https://api.playkit.ai";
 
         private void Awake()
         {

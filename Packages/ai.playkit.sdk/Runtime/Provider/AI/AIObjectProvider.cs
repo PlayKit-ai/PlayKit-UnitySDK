@@ -16,12 +16,27 @@ namespace PlayKit_SDK.Provider.AI
     /// </summary>
     internal class AIObjectProvider : IObjectProvider
     {
+        private const float RETRY_DELAY_SECONDS = 3f;
         private readonly Auth.PlayKit_AuthManager _authManager;
 
         public AIObjectProvider(Auth.PlayKit_AuthManager authManager, bool useOversea = false)
         {
             _authManager = authManager;
             // Note: useOversea parameter is deprecated, use PlayKitSettings.CustomBaseUrl instead
+        }
+
+        private static int GetMaxRetryCount()
+        {
+            var settings = PlayKitSettings.Instance;
+            return settings != null ? settings.AIRequestMaxRetryCount : 3;
+        }
+
+        private static bool IsRetryableError(UnityWebRequest request)
+        {
+            if (request.result == UnityWebRequest.Result.ConnectionError) return true;
+            if (request.result == UnityWebRequest.Result.DataProcessingError) return true;
+            var code = (int)request.responseCode;
+            return code >= 500 || code == 429 || code == 0;
         }
 
         private string GetChatUrl()
@@ -97,78 +112,96 @@ namespace PlayKit_SDK.Provider.AI
 
             var json = JsonConvert.SerializeObject(chatRequest, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
             Debug.Log($"[AIObjectProvider] Request JSON: {json}");
+            var postData = new UTF8Encoding().GetBytes(json);
 
-            using (var webRequest = new UnityWebRequest(GetChatUrl(), "POST"))
+            int maxRetries = GetMaxRetryCount();
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
-                webRequest.uploadHandler = new UploadHandlerRaw(new UTF8Encoding().GetBytes(json));
-                webRequest.downloadHandler = new DownloadHandlerBuffer();
-                webRequest.SetRequestHeader("Content-Type", "application/json");
-                webRequest.SetRequestHeader("Authorization", $"Bearer {GetAuthToken()}");
-                PlayKitSDK.SetSDKHeaders(webRequest);
-
-                try
+                using (var webRequest = new UnityWebRequest(GetChatUrl(), "POST"))
                 {
-                    await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken);
-                }
-                catch (Exception ex) when (!(ex is OperationCanceledException))
-                {
-                    Debug.LogError($"[AIObjectProvider] API request failed: {ex.Message}");
-                    return null;
-                }
+                    webRequest.uploadHandler = new UploadHandlerRaw(postData);
+                    webRequest.downloadHandler = new DownloadHandlerBuffer();
+                    webRequest.SetRequestHeader("Content-Type", "application/json");
+                    webRequest.SetRequestHeader("Authorization", $"Bearer {GetAuthToken()}");
+                    PlayKitSDK.SetSDKHeaders(webRequest);
 
-                if (webRequest.result != UnityWebRequest.Result.Success)
-                {
-                    Debug.LogError($"[AIObjectProvider] API Error: {webRequest.responseCode} - {webRequest.error}\n{webRequest.downloadHandler.text}");
-                    return null;
-                }
-
-                // Parse chat completion response
-                try
-                {
-                    var chatResponse = JsonConvert.DeserializeObject<ChatCompletionResponse>(webRequest.downloadHandler.text);
-
-                    if (chatResponse == null || chatResponse.Choices == null || chatResponse.Choices.Count == 0)
+                    try
                     {
-                        Debug.LogError("[AIObjectProvider] No choices in response");
-                        return null;
+                        await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken);
                     }
-
-                    var choice = chatResponse.Choices[0];
-                    var content = choice.Message?.GetTextContent();
-
-                    if (string.IsNullOrEmpty(content))
+                    catch (Exception ex) when (!(ex is OperationCanceledException))
                     {
-                        Debug.LogError("[AIObjectProvider] Empty content in response");
-                        return null;
-                    }
-
-                    // Parse the JSON content from the response
-                    var parsedObject = JsonConvert.DeserializeObject<T>(content);
-
-                    var response = new ObjectGenerationResponse<T>
-                    {
-                        Object = parsedObject,
-                        FinishReason = choice.FinishReason,
-                        Model = chatResponse.Model,
-                        Id = chatResponse.Id,
-                        Timestamp = chatResponse.Created.ToString(),
-                        Usage = chatResponse.Usage != null ? new ObjectUsage
+                        if (attempt < maxRetries && IsRetryableError(webRequest))
                         {
-                            InputTokens = chatResponse.Usage.PromptTokens,
-                            OutputTokens = chatResponse.Usage.CompletionTokens,
-                            TotalTokens = chatResponse.Usage.TotalTokens
-                        } : null
-                    };
+                            Debug.LogWarning($"[AIObjectProvider] Request attempt {attempt + 1} failed: {ex.Message}, retrying...");
+                            await UniTask.Delay(TimeSpan.FromSeconds(RETRY_DELAY_SECONDS), cancellationToken: cancellationToken);
+                            continue;
+                        }
+                        Debug.LogError($"[AIObjectProvider] API request failed: {ex.Message}");
+                        return null;
+                    }
 
-                    Debug.Log($"[AIObjectProvider] Successfully generated structured object of type {typeof(T).Name}");
-                    return response;
-                }
-                catch (JsonException ex)
-                {
-                    Debug.LogError($"[AIObjectProvider] Failed to parse response: {ex.Message}\nResponse: {webRequest.downloadHandler.text}");
-                    return null;
+                    if (webRequest.result != UnityWebRequest.Result.Success)
+                    {
+                        if (attempt < maxRetries && IsRetryableError(webRequest))
+                        {
+                            Debug.LogWarning($"[AIObjectProvider] Request attempt {attempt + 1} failed: {webRequest.responseCode}, retrying...");
+                            await UniTask.Delay(TimeSpan.FromSeconds(RETRY_DELAY_SECONDS), cancellationToken: cancellationToken);
+                            continue;
+                        }
+                        Debug.LogError($"[AIObjectProvider] API Error: {webRequest.responseCode} - {webRequest.error}\n{webRequest.downloadHandler.text}");
+                        return null;
+                    }
+
+                    // Parse chat completion response
+                    try
+                    {
+                        var chatResponse = JsonConvert.DeserializeObject<ChatCompletionResponse>(webRequest.downloadHandler.text);
+
+                        if (chatResponse == null || chatResponse.Choices == null || chatResponse.Choices.Count == 0)
+                        {
+                            Debug.LogError("[AIObjectProvider] No choices in response");
+                            return null;
+                        }
+
+                        var choice = chatResponse.Choices[0];
+                        var content = choice.Message?.GetTextContent();
+
+                        if (string.IsNullOrEmpty(content))
+                        {
+                            Debug.LogError("[AIObjectProvider] Empty content in response");
+                            return null;
+                        }
+
+                        var parsedObject = JsonConvert.DeserializeObject<T>(content);
+
+                        var response = new ObjectGenerationResponse<T>
+                        {
+                            Object = parsedObject,
+                            FinishReason = choice.FinishReason,
+                            Model = chatResponse.Model,
+                            Id = chatResponse.Id,
+                            Timestamp = chatResponse.Created.ToString(),
+                            Usage = chatResponse.Usage != null ? new ObjectUsage
+                            {
+                                InputTokens = chatResponse.Usage.PromptTokens,
+                                OutputTokens = chatResponse.Usage.CompletionTokens,
+                                TotalTokens = chatResponse.Usage.TotalTokens
+                            } : null
+                        };
+
+                        Debug.Log($"[AIObjectProvider] Successfully generated structured object of type {typeof(T).Name}");
+                        return response;
+                    }
+                    catch (JsonException ex)
+                    {
+                        Debug.LogError($"[AIObjectProvider] Failed to parse response: {ex.Message}\nResponse: {webRequest.downloadHandler.text}");
+                        return null;
+                    }
                 }
             }
+
+            return null;
         }
 
         public async UniTask<ObjectGenerationResponse<object>> GenerateObjectAsync(

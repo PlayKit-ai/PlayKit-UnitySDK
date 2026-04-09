@@ -62,7 +62,7 @@ namespace PlayKit_SDK.Auth
         [SerializeField] private GameObject dialogue;
 
         // BaseUrl is now retrieved from PlayKitSettings
-        private string ApiBaseUrl => PlayKitSettings.Instance?.BaseUrl ?? "https://playkit.ai";
+        private string ApiBaseUrl => PlayKitSettings.Instance?.BaseUrl ?? "https://api.playkit.ai";
 
         // --- Public Properties ---
         public PlayKit_AuthManager AuthManager { get; set; }

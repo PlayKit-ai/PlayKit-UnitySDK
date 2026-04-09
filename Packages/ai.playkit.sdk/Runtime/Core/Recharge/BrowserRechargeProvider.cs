@@ -71,8 +71,8 @@ namespace PlayKit_SDK.Recharge
         /// </summary>
         public string GetRechargeUrl()
         {
-            // Default recharge portal path is /recharge
-            string baseRechargeUrl = RechargePortalUrl ?? $"{_baseUrl}/recharge";
+            // Default recharge portal URL
+            string baseRechargeUrl = RechargePortalUrl ?? "https://players.playkit.ai/recharge";
             string playerToken = _getPlayerToken?.Invoke();
 
             if (string.IsNullOrEmpty(playerToken))

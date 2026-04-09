@@ -94,7 +94,7 @@ namespace PlayKit_SDK.Auth
                 Debug.Log("[PlayKit_DeviceAuthFlow] PKCE parameters generated");
 
                 // Step 2: Initiate device auth session
-                var baseUrl = PlayKitSettings.Instance?.BaseUrl ?? "https://playkit.ai";
+                var baseUrl = PlayKitSettings.Instance?.BaseUrl ?? "https://api.playkit.ai";
                 var initResult = await InitiateDeviceAuthAsync(baseUrl, gameId, scope, _pollCts.Token);
 
                 if (!initResult.Success)

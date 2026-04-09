@@ -131,6 +131,10 @@
   "config.advanced.custom_url.tooltip": "覆蓋預設的 API 基礎 URL。留空使用預設值 (https://api.playkit.ai)。",
   "config.advanced.effective_url": "目前生效 URL：",
 
+  "config.advanced.retry.label": "AI 請求重試",
+  "config.advanced.retry.max_count": "最大重試次數",
+  "config.advanced.retry.tooltip": "AI 請求（對話、圖像、轉錄、結構化物件）失敗後的最大自動重試次數。設為 0 則停用重試。僅對臨時性錯誤（網路故障、伺服器錯誤、速率限制）進行重試。",
+
   "config.build_token.title": "⚠️ 危險區域 - 建置時注入令牌",
   "config.build_token.warning": "警告：將開發者令牌注入到建置中。令牌會被嵌入到建置檔案中，可透過反編譯提取。僅用於內部測試建置，絕對不要用於正式環境！",
   "config.build_token.enable": "強制在建置時注入開發者令牌",

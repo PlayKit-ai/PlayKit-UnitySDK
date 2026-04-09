@@ -14,12 +14,27 @@ namespace PlayKit_SDK.Provider.AI
     /// </summary>
     internal class AIChatProvider : IChatProvider
     {
+        private const float RETRY_DELAY_SECONDS = 3f;
         private readonly Auth.PlayKit_AuthManager _authManager;
 
         public AIChatProvider(Auth.PlayKit_AuthManager authManager, bool useOversea = false)
         {
             _authManager = authManager;
             // Note: useOversea parameter is deprecated, use PlayKitSettings.CustomBaseUrl instead
+        }
+
+        private static int GetMaxRetryCount()
+        {
+            var settings = PlayKitSettings.Instance;
+            return settings != null ? settings.AIRequestMaxRetryCount : 3;
+        }
+
+        private static bool IsRetryableError(UnityWebRequest request)
+        {
+            if (request.result == UnityWebRequest.Result.ConnectionError) return true;
+            if (request.result == UnityWebRequest.Result.DataProcessingError) return true;
+            var code = (int)request.responseCode;
+            return code >= 500 || code == 429 || code == 0;
         }
 
         private string GetChatUrl()
@@ -42,88 +57,123 @@ namespace PlayKit_SDK.Provider.AI
         }
 
         public async UniTask<ChatCompletionResponse> ChatCompletionAsync(
-            ChatCompletionRequest request, 
+            ChatCompletionRequest request,
             System.Threading.CancellationToken cancellationToken = default)
         {
             // Debug.Log("[AIChatProvider] ChatCompletionAsync");
-            
+
             // Convert to AI endpoint format if needed (currently same as OpenAI format)
             var json = JsonConvert.SerializeObject(request, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
-            
-            using (var webRequest = new UnityWebRequest(GetChatUrl(), "POST"))
+            var postData = new UTF8Encoding().GetBytes(json);
+
+            int maxRetries = GetMaxRetryCount();
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
-                webRequest.uploadHandler = new UploadHandlerRaw(new UTF8Encoding().GetBytes(json));
-                webRequest.downloadHandler = new DownloadHandlerBuffer();
-                webRequest.SetRequestHeader("Content-Type", "application/json");
-                webRequest.SetRequestHeader("Authorization", $"Bearer {GetAuthToken()}");
-                PlayKitSDK.SetSDKHeaders(webRequest);
-
-                try
+                using (var webRequest = new UnityWebRequest(GetChatUrl(), "POST"))
                 {
-                    await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken);
-                }
-                catch (Exception ex) when (!(ex is OperationCanceledException))
-                {
-                    Debug.LogError($"[AIChatProvider] API request failed: {ex.Message}");
-                    return null;
-                }
-                
-                if (webRequest.result != UnityWebRequest.Result.Success)
-                {
-                    Debug.LogError($"[AIChatProvider] API Error: {webRequest.responseCode} - {webRequest.error}\n{webRequest.downloadHandler.text}");
+                    webRequest.uploadHandler = new UploadHandlerRaw(postData);
+                    webRequest.downloadHandler = new DownloadHandlerBuffer();
+                    webRequest.SetRequestHeader("Content-Type", "application/json");
+                    webRequest.SetRequestHeader("Authorization", $"Bearer {GetAuthToken()}");
+                    PlayKitSDK.SetSDKHeaders(webRequest);
 
-                    // Try to parse error response for billing/limit errors
-                    TryHandleBillingError(webRequest.downloadHandler.text, (int)webRequest.responseCode);
+                    try
+                    {
+                        await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken);
+                    }
+                    catch (Exception ex) when (!(ex is OperationCanceledException))
+                    {
+                        if (attempt < maxRetries && IsRetryableError(webRequest))
+                        {
+                            Debug.LogWarning($"[AIChatProvider] Request attempt {attempt + 1} failed: {ex.Message}, retrying...");
+                            await UniTask.Delay(TimeSpan.FromSeconds(RETRY_DELAY_SECONDS), cancellationToken: cancellationToken);
+                            continue;
+                        }
+                        Debug.LogError($"[AIChatProvider] API request failed: {ex.Message}");
+                        return null;
+                    }
 
-                    return null;
+                    if (webRequest.result != UnityWebRequest.Result.Success)
+                    {
+                        if (attempt < maxRetries && IsRetryableError(webRequest))
+                        {
+                            Debug.LogWarning($"[AIChatProvider] Request attempt {attempt + 1} failed: {webRequest.responseCode}, retrying...");
+                            await UniTask.Delay(TimeSpan.FromSeconds(RETRY_DELAY_SECONDS), cancellationToken: cancellationToken);
+                            continue;
+                        }
+
+                        Debug.LogError($"[AIChatProvider] API Error: {webRequest.responseCode} - {webRequest.error}\n{webRequest.downloadHandler.text}");
+                        TryHandleBillingError(webRequest.downloadHandler.text, (int)webRequest.responseCode);
+                        return null;
+                    }
+
+                    // Parse response - AI endpoint returns OpenAI compatible format for non-streaming
+                    return JsonConvert.DeserializeObject<ChatCompletionResponse>(webRequest.downloadHandler.text);
                 }
-                
-                // Parse response - AI endpoint returns OpenAI compatible format for non-streaming
-                return JsonConvert.DeserializeObject<ChatCompletionResponse>(webRequest.downloadHandler.text);
             }
+
+            return null;
         }
 
         public async UniTask ChatCompletionStreamAsync(
-            ChatCompletionRequest request, 
+            ChatCompletionRequest request,
             Action<string> onTextDelta,
-            Action<StreamCompletionResponse> onLegacyResponse, 
-            Action onFinally, 
+            Action<StreamCompletionResponse> onLegacyResponse,
+            Action onFinally,
             System.Threading.CancellationToken cancellationToken = default)
         {
             // Debug.Log("[AIChatProvider] ChatCompletionStreamAsync");
-            
+
             var json = JsonConvert.SerializeObject(request, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
-            
-            using (var webRequest = new UnityWebRequest(GetChatUrl(), "POST"))
+            var postData = new UTF8Encoding().GetBytes(json);
+
+            int maxRetries = GetMaxRetryCount();
+            try
             {
-                webRequest.uploadHandler = new UploadHandlerRaw(new UTF8Encoding().GetBytes(json));
-                webRequest.downloadHandler = new StreamingDownloadHandler(onTextDelta, onLegacyResponse);
-                webRequest.SetRequestHeader("Content-Type", "application/json");
-                webRequest.SetRequestHeader("Authorization", $"Bearer {GetAuthToken()}");
-                PlayKitSDK.SetSDKHeaders(webRequest);
-
-                try
+                for (int attempt = 0; attempt <= maxRetries; attempt++)
                 {
-                    await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken);
-                }
-                catch (Exception ex) when (!(ex is OperationCanceledException))
-                {
-                    Debug.LogError($"[AIChatProvider] API stream request failed: {ex.Message}");
-
-                    // Try to parse billing error from response (e.g., 402 TOKEN_SPENDING_LIMIT_REACHED)
-                    if (webRequest.downloadHandler != null)
+                    var downloadHandler = new StreamingDownloadHandler(onTextDelta, onLegacyResponse);
+                    using (var webRequest = new UnityWebRequest(GetChatUrl(), "POST"))
                     {
+                        webRequest.uploadHandler = new UploadHandlerRaw(postData);
+                        webRequest.downloadHandler = downloadHandler;
+                        webRequest.SetRequestHeader("Content-Type", "application/json");
+                        webRequest.SetRequestHeader("Authorization", $"Bearer {GetAuthToken()}");
+                        PlayKitSDK.SetSDKHeaders(webRequest);
+
                         try
                         {
-                            TryHandleBillingError(webRequest.downloadHandler.text, (int)webRequest.responseCode);
+                            await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken);
                         }
-                        catch { /* ignore parse failures in streaming error path */ }
+                        catch (Exception ex) when (!(ex is OperationCanceledException))
+                        {
+                            // Only retry if no data was streamed yet (safe to restart)
+                            if (attempt < maxRetries && !downloadHandler.HasReceivedData && IsRetryableError(webRequest))
+                            {
+                                Debug.LogWarning($"[AIChatProvider] Stream request attempt {attempt + 1} failed: {ex.Message}, retrying...");
+                                await UniTask.Delay(TimeSpan.FromSeconds(RETRY_DELAY_SECONDS), cancellationToken: cancellationToken);
+                                continue;
+                            }
+
+                            Debug.LogError($"[AIChatProvider] API stream request failed: {ex.Message}");
+
+                            if (webRequest.downloadHandler != null)
+                            {
+                                try
+                                {
+                                    TryHandleBillingError(webRequest.downloadHandler.text, (int)webRequest.responseCode);
+                                }
+                                catch { /* ignore parse failures in streaming error path */ }
+                            }
+                        }
+
+                        break; // success or non-retryable error
                     }
                 }
-                finally
-                {
-                    onFinally?.Invoke();
-                }
+            }
+            finally
+            {
+                onFinally?.Invoke();
             }
         }
 
@@ -172,16 +222,18 @@ namespace PlayKit_SDK.Provider.AI
         {
             private readonly Action<string> _onTextDelta;
             private readonly Action<StreamCompletionResponse> _onLegacyResponse;
-            
-            public StreamingDownloadHandler(Action<string> onTextDelta, Action<StreamCompletionResponse> onLegacyResponse) 
-            { 
+            public bool HasReceivedData { get; private set; }
+
+            public StreamingDownloadHandler(Action<string> onTextDelta, Action<StreamCompletionResponse> onLegacyResponse)
+            {
                 _onTextDelta = onTextDelta;
                 _onLegacyResponse = onLegacyResponse;
             }
-            
+
             protected override bool ReceiveData(byte[] data, int dataLength)
             {
                 if (data == null || dataLength == 0) return true;
+                HasReceivedData = true;
                 
                 var lines = Encoding.UTF8.GetString(data, 0, dataLength).Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
                 

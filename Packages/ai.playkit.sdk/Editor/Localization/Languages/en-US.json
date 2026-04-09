@@ -124,6 +124,10 @@
   "config.advanced.custom_url.tooltip": "Override the default API base URL. Leave empty to use default (https://api.playkit.ai).",
   "config.advanced.effective_url": "Effective URL:",
 
+  "config.advanced.retry.label": "AI Request Retry",
+  "config.advanced.retry.max_count": "Max Retry Count",
+  "config.advanced.retry.tooltip": "Maximum number of automatic retry attempts for failed AI requests (chat, image, transcription, object). Set to 0 to disable retry. Only retries on transient errors (network failures, server errors, rate limits).",
+
   "config.build_token.title": "⚠️ DANGER ZONE - Build Token Injection",
   "config.build_token.warning": "WARNING: Injects developer token into builds. Token will be embedded in the build and accessible via decompilation. ONLY use for internal testing builds, NEVER for production!",
   "config.build_token.enable": "Force Developer Token Injection At Build",

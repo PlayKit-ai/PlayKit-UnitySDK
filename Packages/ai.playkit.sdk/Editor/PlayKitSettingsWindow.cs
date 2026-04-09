@@ -630,7 +630,7 @@ namespace PlayKit_SDK
                 EditorGUILayout.BeginHorizontal();
                 if (GUILayout.Button("🌐 Open Dashboard", GUILayout.Height(30)))
                 {
-                    Application.OpenURL("https://playkit.ai/dashboard");
+                    Application.OpenURL("https://dashboard.playkit.ai");
                 }
                 if (GUILayout.Button(L10n.Get("config.game.refresh"), GUILayout.Height(30)))
                 {
@@ -874,6 +874,28 @@ namespace PlayKit_SDK
 
             string effectiveUrl = settings.BaseUrl;
             EditorGUILayout.LabelField(L10n.Get("config.advanced.effective_url"), effectiveUrl, EditorStyles.miniLabel);
+
+            // AI Request Retry
+            EditorGUILayout.Space(10);
+            GUILayout.Label(L10n.Get("config.advanced.retry.label"), EditorStyles.boldLabel);
+
+            SerializedProperty retryCountProp = serializedSettings.FindProperty("aiRequestMaxRetryCount");
+            EditorGUI.BeginChangeCheck();
+            retryCountProp.intValue = EditorGUILayout.IntSlider(
+                new GUIContent(
+                    L10n.Get("config.advanced.retry.max_count"),
+                    L10n.Get("config.advanced.retry.tooltip")
+                ),
+                retryCountProp.intValue,
+                0,
+                10
+            );
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                serializedSettings.ApplyModifiedProperties();
+                EditorUtility.SetDirty(settings);
+            }
 
             EditorGUILayout.Space(10);
 

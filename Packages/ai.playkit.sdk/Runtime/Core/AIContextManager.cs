@@ -23,6 +23,7 @@ namespace PlayKit_SDK
         #region Singleton
 
         private static AIContextManager _instance;
+        private static bool _applicationQuitting;
 
         /// <summary>
         /// Gets the singleton instance of AIContextManager.
@@ -31,7 +32,7 @@ namespace PlayKit_SDK
         {
             get
             {
-                if (_instance == null)
+                if (_instance == null && !_applicationQuitting)
                 {
                     Debug.LogWarning("[AIContextManager] Instance not initialized. Make sure PlayKit_SDK is initialized.");
                 }
@@ -388,7 +389,7 @@ Conversation:
             }
 
             _instance = this;
-            // Don't log initialization message to reduce console noise
+            _applicationQuitting = false;
         }
 
         private void Start()
@@ -398,6 +399,11 @@ Conversation:
             {
                 StartAutoCompactCheck();
             }
+        }
+
+        private void OnApplicationQuit()
+        {
+            _applicationQuitting = true;
         }
 
         private void OnDestroy()

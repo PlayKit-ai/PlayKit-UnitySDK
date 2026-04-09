@@ -12,7 +12,7 @@ namespace PlayKit_SDK
     public class PlayKit_PlayerClient : MonoBehaviour
     {
         // BaseUrl is now retrieved from PlayKitSettings
-        private string BaseUrl => PlayKitSettings.Instance?.BaseUrl ?? "https://playkit.ai";
+        private string BaseUrl => PlayKitSettings.Instance?.BaseUrl ?? "https://api.playkit.ai";
 
         private int timeoutSeconds = 30;
         private int maxRetryCount = 3;

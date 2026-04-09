@@ -41,6 +41,10 @@ namespace PlayKit_SDK
         [Tooltip("Override the default API base URL. Leave empty to use default (https://api.playkit.ai).")]
         [SerializeField] private string customBaseUrl = "";
 
+        [Tooltip("Maximum number of retry attempts for failed AI requests. Set to 0 to disable retry.")]
+        [Range(0, 10)]
+        [SerializeField] private int aiRequestMaxRetryCount = 3;
+
         [Header("Build Token Injection")]
         [Tooltip("Injects developer token into builds. Token will be embedded in the build and accessible via decompilation. ONLY use for internal testing builds, NEVER for production!")]
         [SerializeField] private bool forceDeveloperTokenInBuild = false;
@@ -158,6 +162,7 @@ namespace PlayKit_SDK
         /// </summary>
         public bool ForceDeveloperTokenInBuild => forceDeveloperTokenInBuild;
         public string CustomBaseUrl => customBaseUrl;
+        public int AIRequestMaxRetryCount => aiRequestMaxRetryCount;
 
         // AI Context Manager Settings
         public bool EnableAutoCompact => enableAutoCompact;

@@ -105,6 +105,10 @@
   "config.advanced.custom_url.tooltip": "기본 API 기본 URL을 재정의합니다. 기본값 (https://api.playkit.ai)을 사용하려면 비워 두세요.",
   "config.advanced.effective_url": "유효한 URL：",
 
+  "config.advanced.retry.label": "AI 요청 재시도",
+  "config.advanced.retry.max_count": "최대 재시도 횟수",
+  "config.advanced.retry.tooltip": "AI 요청(채팅, 이미지, 음성 인식, 객체) 실패 시 최대 자동 재시도 횟수. 0으로 설정하면 재시도를 비활성화합니다. 일시적 오류(네트워크 장애, 서버 오류, 속도 제한)에만 재시도합니다.",
+
   "config.build_token.title": "⚠️ 위험 구역 - 빌드 시 토큰 주입",
   "config.build_token.warning": "경고: 빌드에 개발자 토큰을 주입합니다. 토큰이 빌드 파일에 포함되어 디컴파일로 추출 가능합니다. 내부 테스트 빌드에만 사용하고 프로덕션에서는 절대 사용하지 마세요!",
   "config.build_token.enable": "빌드 시 개발자 토큰 강제 주입",

@@ -117,6 +117,10 @@
   "config.advanced.custom_url.tooltip": "デフォルトの API ベース URL をオーバーライドします。デフォルト (https://api.playkit.ai) を使用するには空白のままにしてください。",
   "config.advanced.effective_url": "有効な URL：",
 
+  "config.advanced.retry.label": "AIリクエストのリトライ",
+  "config.advanced.retry.max_count": "最大リトライ回数",
+  "config.advanced.retry.tooltip": "AIリクエスト（チャット、画像、音声認識、オブジェクト）失敗時の最大自動リトライ回数。0に設定するとリトライを無効にします。一時的なエラー（ネットワーク障害、サーバーエラー、レート制限）のみリトライします。",
+
   "config.build_token.title": "⚠️ 危険ゾーン - ビルド時のトークン注入",
   "config.build_token.warning": "警告：ビルドに開発者トークンを注入します。トークンはビルドファイルに埋め込まれ、逆コンパイルで抽出可能です。内部テストビルドのみに使用し、本番環境では絶対に使用しないでください！",
   "config.build_token.enable": "ビルド時に開発者トークンを強制注入",

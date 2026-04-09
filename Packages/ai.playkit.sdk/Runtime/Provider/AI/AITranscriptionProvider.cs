@@ -14,12 +14,27 @@ namespace PlayKit_SDK.Provider.AI
     /// </summary>
     internal class AITranscriptionProvider : ITranscriptionProvider
     {
+        private const float RETRY_DELAY_SECONDS = 3f;
         private readonly Auth.PlayKit_AuthManager _authManager;
 
         public AITranscriptionProvider(Auth.PlayKit_AuthManager authManager, bool useOversea = false)
         {
             _authManager = authManager;
             // Note: useOversea parameter is deprecated, use PlayKitSettings.CustomBaseUrl instead
+        }
+
+        private static int GetMaxRetryCount()
+        {
+            var settings = PlayKitSettings.Instance;
+            return settings != null ? settings.AIRequestMaxRetryCount : 3;
+        }
+
+        private static bool IsRetryableError(UnityWebRequest request)
+        {
+            if (request.result == UnityWebRequest.Result.ConnectionError) return true;
+            if (request.result == UnityWebRequest.Result.DataProcessingError) return true;
+            var code = (int)request.responseCode;
+            return code >= 500 || code == 429 || code == 0;
         }
 
         private string GetTranscriptionUrl()
@@ -45,39 +60,56 @@ namespace PlayKit_SDK.Provider.AI
             TranscriptionRequest request,
             CancellationToken cancellationToken = default)
         {
-            // Serialize request to JSON
             var json = JsonConvert.SerializeObject(request, new JsonSerializerSettings
             {
                 NullValueHandling = NullValueHandling.Ignore
             });
+            var postData = new UTF8Encoding().GetBytes(json);
 
-            using (var webRequest = new UnityWebRequest(GetTranscriptionUrl(), "POST"))
+            int maxRetries = GetMaxRetryCount();
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
             {
-                webRequest.uploadHandler = new UploadHandlerRaw(new UTF8Encoding().GetBytes(json));
-                webRequest.downloadHandler = new DownloadHandlerBuffer();
-                webRequest.SetRequestHeader("Content-Type", "application/json");
-                webRequest.SetRequestHeader("Authorization", $"Bearer {GetAuthToken()}");
-                PlayKitSDK.SetSDKHeaders(webRequest);
-
-                try
+                using (var webRequest = new UnityWebRequest(GetTranscriptionUrl(), "POST"))
                 {
-                    await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken);
-                }
-                catch (Exception ex) when (!(ex is OperationCanceledException))
-                {
-                    Debug.LogError($"[AITranscriptionProvider] API request failed: {ex.Message}");
-                    return null;
-                }
+                    webRequest.uploadHandler = new UploadHandlerRaw(postData);
+                    webRequest.downloadHandler = new DownloadHandlerBuffer();
+                    webRequest.SetRequestHeader("Content-Type", "application/json");
+                    webRequest.SetRequestHeader("Authorization", $"Bearer {GetAuthToken()}");
+                    PlayKitSDK.SetSDKHeaders(webRequest);
 
-                if (webRequest.result != UnityWebRequest.Result.Success)
-                {
-                    Debug.LogError($"[AITranscriptionProvider] API Error: {webRequest.responseCode} - {webRequest.error}\n{webRequest.downloadHandler.text}");
-                    return null;
-                }
+                    try
+                    {
+                        await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken);
+                    }
+                    catch (Exception ex) when (!(ex is OperationCanceledException))
+                    {
+                        if (attempt < maxRetries && IsRetryableError(webRequest))
+                        {
+                            Debug.LogWarning($"[AITranscriptionProvider] Request attempt {attempt + 1} failed: {ex.Message}, retrying...");
+                            await UniTask.Delay(TimeSpan.FromSeconds(RETRY_DELAY_SECONDS), cancellationToken: cancellationToken);
+                            continue;
+                        }
+                        Debug.LogError($"[AITranscriptionProvider] API request failed: {ex.Message}");
+                        return null;
+                    }
 
-                // Parse response
-                return JsonConvert.DeserializeObject<TranscriptionResponse>(webRequest.downloadHandler.text);
+                    if (webRequest.result != UnityWebRequest.Result.Success)
+                    {
+                        if (attempt < maxRetries && IsRetryableError(webRequest))
+                        {
+                            Debug.LogWarning($"[AITranscriptionProvider] Request attempt {attempt + 1} failed: {webRequest.responseCode}, retrying...");
+                            await UniTask.Delay(TimeSpan.FromSeconds(RETRY_DELAY_SECONDS), cancellationToken: cancellationToken);
+                            continue;
+                        }
+                        Debug.LogError($"[AITranscriptionProvider] API Error: {webRequest.responseCode} - {webRequest.error}\n{webRequest.downloadHandler.text}");
+                        return null;
+                    }
+
+                    return JsonConvert.DeserializeObject<TranscriptionResponse>(webRequest.downloadHandler.text);
+                }
             }
+
+            return null;
         }
     }
 }

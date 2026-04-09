@@ -55,7 +55,7 @@ namespace PlayKit_SDK.Editor
                 OnStatusUpdate?.Invoke("Preparing...");
 
                 // Step 2: Initiate device auth session (no gameId needed for global token)
-                var baseUrl = PlayKitSettings.Instance?.BaseUrl ?? "https://playkit.ai";
+                var baseUrl = PlayKitSettings.Instance?.BaseUrl ?? "https://api.playkit.ai";
                 var initResult = await InitiateDeviceAuthAsync(baseUrl, scope);
 
                 if (!initResult.Success)
