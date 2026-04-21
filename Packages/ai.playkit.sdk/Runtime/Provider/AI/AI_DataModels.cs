@@ -15,44 +15,72 @@ namespace PlayKit_SDK.Provider.AI
     #region Multimodal Content Types
 
     /// <summary>
-    /// Content part for multimodal messages (text or image)
-    /// Uses Vercel AI SDK format: {type: "image", image: "..."} for images
+    /// Content part for multimodal messages (text, image, or audio).
+    /// All parts use OpenAI format. The server converts to Vercel AI SDK format.
+    /// Image: {type: "image_url", image_url: {url: "data:image/png;base64,...", detail: "auto"}}
+    /// Audio: {type: "input_audio", input_audio: {data: "base64...", format: "wav"}}
     /// </summary>
     [System.Serializable]
     public class ChatContentPart
     {
         [JsonProperty("type")]
-        public string Type { get; set; } // "text" or "image"
+        public string Type { get; set; }
 
         [JsonProperty("text", NullValueHandling = NullValueHandling.Ignore)]
         public string Text { get; set; }
 
-        [JsonProperty("image", NullValueHandling = NullValueHandling.Ignore)]
-        public string Image { get; set; }
+        [JsonProperty("image_url", NullValueHandling = NullValueHandling.Ignore)]
+        public ImageUrlData ImageUrl { get; set; }
 
-        [JsonProperty("detail", NullValueHandling = NullValueHandling.Ignore)]
-        public string Detail { get; set; }
+        [JsonProperty("input_audio", NullValueHandling = NullValueHandling.Ignore)]
+        public InputAudioData InputAudio { get; set; }
 
-        /// <summary>
-        /// Create a text content part
-        /// </summary>
         public static ChatContentPart CreateText(string text)
         {
             return new ChatContentPart { Type = "text", Text = text };
         }
 
-        /// <summary>
-        /// Create an image content part from base64 data (Vercel AI SDK format)
-        /// </summary>
         public static ChatContentPart CreateImage(string base64Data, string detail = "auto")
         {
             return new ChatContentPart
             {
-                Type = "image",
-                Image = $"data:image/png;base64,{base64Data}",
-                Detail = detail
+                Type = "image_url",
+                ImageUrl = new ImageUrlData
+                {
+                    Url = $"data:image/png;base64,{base64Data}",
+                    Detail = detail
+                }
             };
         }
+
+        public static ChatContentPart CreateAudio(string base64Data, string format = "wav")
+        {
+            return new ChatContentPart
+            {
+                Type = "input_audio",
+                InputAudio = new InputAudioData { Data = base64Data, Format = format }
+            };
+        }
+    }
+
+    [System.Serializable]
+    public class ImageUrlData
+    {
+        [JsonProperty("url")]
+        public string Url { get; set; }
+
+        [JsonProperty("detail", NullValueHandling = NullValueHandling.Ignore)]
+        public string Detail { get; set; }
+    }
+
+    [System.Serializable]
+    public class InputAudioData
+    {
+        [JsonProperty("data")]
+        public string Data { get; set; }
+
+        [JsonProperty("format")]
+        public string Format { get; set; }
     }
 
     #endregion
@@ -97,27 +125,37 @@ namespace PlayKit_SDK.Provider.AI
         }
 
         /// <summary>
-        /// Set content as multimodal (text + images)
+        /// Set content as multimodal (text + images + audio)
         /// </summary>
-        public void SetMultimodalContent(string text, List<string> imageBase64List, string detail = "auto")
+        public void SetMultimodalContent(
+            string text,
+            List<string> imageBase64List = null,
+            string imageDetail = "auto",
+            List<(string base64, string format)> audioList = null)
         {
             var parts = new List<ChatContentPart>();
-            
-            // Add text part first
+
             if (!string.IsNullOrEmpty(text))
             {
                 parts.Add(ChatContentPart.CreateText(text));
             }
-            
-            // Add image parts
+
             if (imageBase64List != null)
             {
                 foreach (var base64 in imageBase64List)
                 {
-                    parts.Add(ChatContentPart.CreateImage(base64, detail));
+                    parts.Add(ChatContentPart.CreateImage(base64, imageDetail));
                 }
             }
-            
+
+            if (audioList != null)
+            {
+                foreach (var (base64, format) in audioList)
+                {
+                    parts.Add(ChatContentPart.CreateAudio(base64, format));
+                }
+            }
+
             Content = parts;
         }
     }

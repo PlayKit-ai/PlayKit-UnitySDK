@@ -22,6 +22,10 @@ namespace PlayKit_SDK
         [Tooltip("Optional: Attach a PlayKit_MicrophoneRecorder for integrated recording functionality 可选：附加PlayKit_MicrophoneRecorder组件以集成录制功能")]
         [SerializeField] private PlayKit_MicrophoneRecorder microphoneRecorder;
 
+        [Header("Audio Pass-Through 音频直通")]
+        [Tooltip("When enabled, audio is sent directly to the chat model as a multimodal input_audio part instead of being transcribed first. This reduces latency by skipping the STT step, but requires a model that supports audio input. 启用后，音频将直接作为多模态音频部分发送给聊天模型，跳过语音转文字步骤以降低延迟，但需要支持音频输入的模型。")]
+        [SerializeField] private bool passAudioDirectly = false;
+
         [Header("Always Listening Behavior 始终监听行为")]
         [Tooltip("Allow new transcriptions to interrupt an in-progress NPC stream 允许新的转录结果打断正在进行的NPC流")]
         [SerializeField] private bool interruptible = true;
@@ -48,6 +52,17 @@ namespace PlayKit_SDK
         /// The transcription model being used
         /// </summary>
         public string TranscriptionModel => transcriptionModel;
+
+        /// <summary>
+        /// When true, audio is sent directly to the chat model as multimodal input
+        /// instead of going through STT first. Reduces latency but requires a model
+        /// that supports audio input (e.g. gpt-4o-audio).
+        /// </summary>
+        public bool PassAudioDirectly
+        {
+            get => passAudioDirectly;
+            set => passAudioDirectly = value;
+        }
 
         /// <summary>
         /// Whether new transcriptions can interrupt an in-progress NPC stream.
@@ -117,13 +132,20 @@ namespace PlayKit_SDK
 
             try
             {
-                // Step 1: Transcribe audio to text
-                var transcription = await TranscribeAudio(audioClip, language, token);
-                if (transcription == null) return null;
-
-                // Step 2: Use transcribed text to talk with NPC
-                var response = await _npcClient.Talk(transcription, token);
-                return response;
+                if (passAudioDirectly)
+                {
+                    var msg = new Public.PlayKit_ChatMessage { Role = "user", Content = "" };
+                    msg.AddAudio(audioClip);
+                    var response = await _npcClient.TalkWithMessage(msg, token);
+                    return response;
+                }
+                else
+                {
+                    var transcription = await TranscribeAudio(audioClip, language, token);
+                    if (transcription == null) return null;
+                    var response = await _npcClient.Talk(transcription, token);
+                    return response;
+                }
             }
             catch (Exception ex)
             {
@@ -163,26 +185,42 @@ namespace PlayKit_SDK
 
             try
             {
-                // Step 1: Transcribe audio to text
-                var transcription = await TranscribeAudio(audioClip, language, token);
-                if (transcription == null)
+                if (passAudioDirectly)
                 {
-                    IsProcessing = false;
-                    onComplete?.Invoke(null);
-                    return;
+                    var msg = new Public.PlayKit_ChatMessage { Role = "user", Content = "" };
+                    msg.AddAudio(audioClip);
+                    await _npcClient.TalkStreamWithMessage(
+                        msg,
+                        onChunk,
+                        completeResponse =>
+                        {
+                            IsProcessing = false;
+                            onComplete?.Invoke(completeResponse);
+                        },
+                        token
+                    );
                 }
-
-                // Step 2: Stream NPC response
-                await _npcClient.TalkStream(
-                    transcription,
-                    onChunk,
-                    completeResponse =>
+                else
+                {
+                    var transcription = await TranscribeAudio(audioClip, language, token);
+                    if (transcription == null)
                     {
                         IsProcessing = false;
-                        onComplete?.Invoke(completeResponse);
-                    },
-                    token
-                );
+                        onComplete?.Invoke(null);
+                        return;
+                    }
+
+                    await _npcClient.TalkStream(
+                        transcription,
+                        onChunk,
+                        completeResponse =>
+                        {
+                            IsProcessing = false;
+                            onComplete?.Invoke(completeResponse);
+                        },
+                        token
+                    );
+                }
             }
             catch (Exception ex)
             {
@@ -686,75 +724,81 @@ namespace PlayKit_SDK
 
             try
             {
-                // Step 1: Transcribe (runs in parallel with other transcriptions)
-                var transcription = await TranscribeAudio(audioClip, _alwaysListeningLanguage, token);
+                string transcription = null;
 
-                _pendingTranscriptions--;
-
-                if (string.IsNullOrEmpty(transcription))
+                if (passAudioDirectly)
                 {
-                    Debug.LogWarning($"[VoiceModule] Transcription returned empty (gen={generation}), skipping");
-                    if (_pendingTranscriptions <= 0)
+                    _pendingTranscriptions--;
+                }
+                else
+                {
+                    transcription = await TranscribeAudio(audioClip, _alwaysListeningLanguage, token);
+                    _pendingTranscriptions--;
+
+                    if (string.IsNullOrEmpty(transcription))
                     {
-                        _pendingTranscriptions = 0;
-                        if (!_npcClient.IsTalking) IsProcessing = false;
+                        Debug.LogWarning($"[VoiceModule] Transcription returned empty (gen={generation}), skipping");
+                        if (_pendingTranscriptions <= 0)
+                        {
+                            _pendingTranscriptions = 0;
+                            if (!_npcClient.IsTalking) IsProcessing = false;
+                        }
+                        return;
                     }
-                    return;
                 }
 
-                // Step 2: Generation check — discard if a newer recording was already forwarded
                 if (generation < _lastForwardedGeneration)
                 {
-                    Debug.Log($"[VoiceModule] Stale transcription (gen={generation} < last={_lastForwardedGeneration}), discarding");
+                    Debug.Log($"[VoiceModule] Stale result (gen={generation} < last={_lastForwardedGeneration}), discarding");
                     return;
                 }
 
                 _lastForwardedGeneration = generation;
                 IsProcessing = true;
 
-                // Step 3: Handle NPC state based on interruptible setting
                 if (_npcClient.IsTalking)
                 {
                     if (interruptible)
                     {
-                        // Interrupt current NPC stream
                         _npcClient.InterruptCurrentTalk();
 
-                        // Merge with previous user text: revert stale user message, combine texts
-                        if (!string.IsNullOrEmpty(_accumulatedUserText))
+                        if (!passAudioDirectly && !string.IsNullOrEmpty(_accumulatedUserText))
                         {
-                            _npcClient.RevertChatMessages(1); // Remove the stale user message
+                            _npcClient.RevertChatMessages(1);
                             transcription = _accumulatedUserText + " " + transcription;
                             Debug.Log($"[VoiceModule] Merged user text: '{transcription}'");
                         }
                     }
                     else
                     {
-                        // Non-interruptible: wait for current talk to finish
                         Debug.Log($"[VoiceModule] Waiting for current NPC talk to finish (non-interruptible mode)");
                         await UniTask.WaitUntil(() => !_npcClient.IsTalking, cancellationToken: token);
                     }
                 }
 
-                // Track accumulated text for potential future merging
-                _accumulatedUserText = transcription;
+                if (!passAudioDirectly)
+                    _accumulatedUserText = transcription;
 
-                // Step 4: Stream NPC response
-                await _npcClient.TalkStream(
-                    transcription,
-                    _alwaysListeningOnChunk,
-                    response =>
+                Action<string> onDone = response =>
+                {
+                    if (generation >= _lastForwardedGeneration)
                     {
-                        // Only reset state if this is still the latest generation
-                        if (generation >= _lastForwardedGeneration)
-                        {
-                            IsProcessing = false;
-                            _accumulatedUserText = null;
-                        }
-                        _alwaysListeningOnComplete?.Invoke(response);
-                    },
-                    token
-                );
+                        IsProcessing = false;
+                        _accumulatedUserText = null;
+                    }
+                    _alwaysListeningOnComplete?.Invoke(response);
+                };
+
+                if (passAudioDirectly)
+                {
+                    var msg = new Public.PlayKit_ChatMessage { Role = "user", Content = "" };
+                    msg.AddAudio(audioClip);
+                    await _npcClient.TalkStreamWithMessage(msg, _alwaysListeningOnChunk, onDone, token);
+                }
+                else
+                {
+                    await _npcClient.TalkStream(transcription, _alwaysListeningOnChunk, onDone, token);
+                }
             }
             catch (Exception ex)
             {

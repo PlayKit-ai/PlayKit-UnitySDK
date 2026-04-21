@@ -20,9 +20,6 @@ namespace PlayKit_SDK.Services
             _chatProvider = chatProvider;
         }
 
-        /// <summary>
-        /// Convert public message to internal message format, handling multimodal content
-        /// </summary>
         private ChatMessage ConvertToInternalMessage(PlayKit_ChatMessage m)
         {
             var internalMsg = new ChatMessage
@@ -32,28 +29,44 @@ namespace PlayKit_SDK.Services
                 ToolCalls = m.ToolCalls
             };
 
-            // Check if message has images (multimodal)
-            if (m.HasImages)
+            if (m.IsMultimodal)
             {
-                // Build multimodal content
-                var base64List = new List<string>();
-                string detail = "auto";
-                
-                foreach (var img in m.Images)
+                List<string> imageBase64List = null;
+                string imageDetail = "auto";
+
+                if (m.HasImages)
                 {
-                    var base64 = img.GetBase64Data();
-                    if (!string.IsNullOrEmpty(base64))
+                    imageBase64List = new List<string>();
+                    foreach (var img in m.Images)
                     {
-                        base64List.Add(base64);
-                        detail = img.Detail ?? "auto";
+                        var base64 = img.GetBase64Data();
+                        if (!string.IsNullOrEmpty(base64))
+                        {
+                            imageBase64List.Add(base64);
+                            imageDetail = img.Detail ?? "auto";
+                        }
                     }
                 }
-                
-                internalMsg.SetMultimodalContent(m.Content, base64List, detail);
+
+                List<(string base64, string format)> audioList = null;
+
+                if (m.HasAudios)
+                {
+                    audioList = new List<(string, string)>();
+                    foreach (var audio in m.Audios)
+                    {
+                        var base64 = audio.GetBase64Data();
+                        if (!string.IsNullOrEmpty(base64))
+                        {
+                            audioList.Add((base64, audio.Format ?? "wav"));
+                        }
+                    }
+                }
+
+                internalMsg.SetMultimodalContent(m.Content, imageBase64List, imageDetail, audioList);
             }
             else
             {
-                // Simple text content
                 internalMsg.SetTextContent(m.Content);
             }
 

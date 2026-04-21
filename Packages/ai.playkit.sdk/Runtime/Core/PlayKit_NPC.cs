@@ -471,6 +471,82 @@ namespace PlayKit_SDK
             }
         }
 
+        /// <summary>
+        /// Send a pre-built multimodal message (e.g. containing audio) and get a response.
+        /// The message is added to conversation history as-is.
+        /// </summary>
+        public async UniTask<string> TalkWithMessage(PlayKit_ChatMessage userMessage, CancellationToken? cancellationToken = null)
+        {
+            if (_isTalking) { Debug.LogWarning("[NPCClient] Already processing a request."); return null; }
+            var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
+            _isTalking = true;
+            if (InitializationFailed || _chatClient == null) { _isTalking = false; return null; }
+            await UniTask.WaitUntil(() => IsReady, cancellationToken: token);
+
+            AIContextManager.Instance?.RecordConversation(this);
+            userMessage.Role = "user";
+            _conversationHistory.Add(userMessage);
+
+            try
+            {
+                var config = new Public.PlayKit_ChatConfig(_conversationHistory.ToList());
+                var result = await _chatClient.TextGenerationAsync(config, token);
+                if (result.Success && !string.IsNullOrEmpty(result.Response))
+                {
+                    _conversationHistory.Add(new Public.PlayKit_ChatMessage { Role = "assistant", Content = result.Response });
+                    _isTalking = false;
+                    return result.Response;
+                }
+                _isTalking = false;
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[NPCClient] TalkWithMessage failed: {ex.Message}");
+                _isTalking = false;
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Send a pre-built multimodal message and get a streaming response.
+        /// </summary>
+        public async UniTask TalkStreamWithMessage(PlayKit_ChatMessage userMessage, Action<string> onChunk, Action<string> onComplete, CancellationToken? cancellationToken = null)
+        {
+            if (_isTalking) { Debug.LogWarning("[NPCClient] Already processing a request."); onComplete?.Invoke(null); return; }
+            var token = cancellationToken ?? this.GetCancellationTokenOnDestroy();
+            _isTalking = true;
+            if (InitializationFailed || _chatClient == null) { _isTalking = false; onComplete?.Invoke(null); return; }
+            await UniTask.WaitUntil(() => IsReady, cancellationToken: token);
+
+            AIContextManager.Instance?.RecordConversation(this);
+            userMessage.Role = "user";
+            _conversationHistory.Add(userMessage);
+
+            try
+            {
+                var config = new Public.PlayKit_ChatStreamConfig(_conversationHistory.ToList());
+                await _chatClient.TextChatStreamAsync(config,
+                    chunk => onChunk?.Invoke(chunk),
+                    completeResponse =>
+                    {
+                        if (!string.IsNullOrEmpty(completeResponse))
+                        {
+                            _conversationHistory.Add(new Public.PlayKit_ChatMessage { Role = "assistant", Content = completeResponse });
+                        }
+                        _isTalking = false;
+                        onComplete?.Invoke(completeResponse);
+                    }
+                );
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[NPCClient] TalkStreamWithMessage failed: {ex.Message}");
+                _isTalking = false;
+                onComplete?.Invoke(null);
+            }
+        }
+
         #endregion
 
         #region Internal Implementation
