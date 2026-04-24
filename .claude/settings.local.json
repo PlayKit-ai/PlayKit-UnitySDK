@@ -6,7 +6,9 @@
       "Bash(grep:*)",
       "Bash(dir:*)",
       "Bash(findstr:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(xargs strings:*)",
+      "WebFetch(domain:models.dev)"
     ],
     "deny": [],
     "ask": []
