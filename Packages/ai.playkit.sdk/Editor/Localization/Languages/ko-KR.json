@@ -237,6 +237,9 @@
 
   "voice.section.behavior": "상시 리스닝 동작",
   "voice.behavior.interruptible": "인터럽트 가능",
+  "voice.behavior.pass_audio_directly": "오디오 패스스루",
+  "voice.behavior.pass_audio_directly.tooltip": "먼저 전사하지 않고 오디오를 채팅 모델로 직접 전송",
+  "voice.behavior.pass_audio_directly.help": "활성화하면 오디오가 멀티모달 input_audio로 전송되어 음성-텍스트 단계를 건너뛰어 지연이 줄어듭니다. 오디오 입력을 지원하는 채팅 모델이 필요합니다.",
   "voice.behavior.interruptible.tooltip": "새로운 음성 입력이 진행 중인 NPC 응답을 중단하도록 허용",
   "voice.behavior.interruptible.help": "활성화하면 새로운 음성 인식 결과가 현재 NPC 스트림을 중단하고 사용자 메시지를 병합합니다. 비활성화하면 현재 응답 완료를 기다립니다.",
 

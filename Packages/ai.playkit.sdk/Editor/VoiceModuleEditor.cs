@@ -16,6 +16,7 @@ namespace PlayKit_SDK.Editor
         private SerializedProperty transcriptionModelProp;
         private SerializedProperty defaultLanguageProp;
         private SerializedProperty microphoneRecorderProp;
+        private SerializedProperty passAudioDirectlyProp;
         private SerializedProperty interruptibleProp;
         private SerializedProperty logTranscriptionProp;
 
@@ -36,6 +37,7 @@ namespace PlayKit_SDK.Editor
             transcriptionModelProp = serializedObject.FindProperty("transcriptionModel");
             defaultLanguageProp = serializedObject.FindProperty("defaultLanguage");
             microphoneRecorderProp = serializedObject.FindProperty("microphoneRecorder");
+            passAudioDirectlyProp = serializedObject.FindProperty("passAudioDirectly");
             interruptibleProp = serializedObject.FindProperty("interruptible");
             logTranscriptionProp = serializedObject.FindProperty("logTranscription");
         }
@@ -183,6 +185,16 @@ namespace PlayKit_SDK.Editor
             if (showBehaviorSettings)
             {
                 EditorGUILayout.BeginVertical(boxStyle);
+
+                // Audio pass-through toggle
+                var passThroughContent = new GUIContent(
+                    L.Get("voice.behavior.pass_audio_directly"),
+                    L.Get("voice.behavior.pass_audio_directly.tooltip")
+                );
+                EditorGUILayout.PropertyField(passAudioDirectlyProp, passThroughContent);
+                EditorGUILayout.HelpBox(L.Get("voice.behavior.pass_audio_directly.help"), MessageType.None);
+
+                EditorGUILayout.Space(5);
 
                 // Interruptible toggle
                 var toggleContent = new GUIContent(

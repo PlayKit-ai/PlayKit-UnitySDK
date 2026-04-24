@@ -228,6 +228,9 @@
   "voice.microphone.create": "创建录音器",
 
   "voice.behavior.interruptible": "可打断",
+  "voice.behavior.pass_audio_directly": "音频直通",
+  "voice.behavior.pass_audio_directly.tooltip": "将音频直接发送给聊天模型，而不是先转录",
+  "voice.behavior.pass_audio_directly.help": "启用后，音频将作为多模态 input_audio 发送并跳过语音转文字，从而降低延迟。需要聊天模型支持音频输入。",
   "voice.behavior.interruptible.tooltip": "允许新的语音输入打断正在进行的 NPC 回复",
   "voice.behavior.interruptible.help": "启用后，新的转录结果会打断当前 NPC 流并合并用户消息。禁用时，等待当前回复完成。",
 

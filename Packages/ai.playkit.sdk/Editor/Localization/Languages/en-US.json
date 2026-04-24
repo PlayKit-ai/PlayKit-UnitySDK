@@ -247,6 +247,9 @@
   "voice.microphone.create": "Create Recorder",
 
   "voice.behavior.interruptible": "Interruptible",
+  "voice.behavior.pass_audio_directly": "Audio Pass-Through",
+  "voice.behavior.pass_audio_directly.tooltip": "Send audio directly to the chat model instead of transcribing first",
+  "voice.behavior.pass_audio_directly.help": "When enabled, audio is sent as multimodal input_audio and bypasses speech-to-text for lower latency. Requires a chat model that supports audio input.",
   "voice.behavior.interruptible.tooltip": "Allow new voice input to interrupt an in-progress NPC response",
   "voice.behavior.interruptible.help": "When enabled, new transcriptions will interrupt the current NPC stream and merge user messages. When disabled, waits for the current response to finish.",
 

@@ -249,6 +249,9 @@
 
   "voice.section.behavior": "常時リスニング動作",
   "voice.behavior.interruptible": "割り込み可能",
+  "voice.behavior.pass_audio_directly": "オーディオ直通",
+  "voice.behavior.pass_audio_directly.tooltip": "先に文字起こしせず、音声をチャットモデルへ直接送信",
+  "voice.behavior.pass_audio_directly.help": "有効にすると、音声は多モーダル input_audio として送信され、音声認識をスキップして低遅延になります。音声入力対応のチャットモデルが必要です。",
   "voice.behavior.interruptible.tooltip": "新しい音声入力で進行中のNPC応答を中断することを許可",
   "voice.behavior.interruptible.help": "有効にすると、新しい音声認識結果が現在のNPCストリームを中断し、ユーザーメッセージを結合します。無効の場合、現在の応答完了を待ちます。",
 

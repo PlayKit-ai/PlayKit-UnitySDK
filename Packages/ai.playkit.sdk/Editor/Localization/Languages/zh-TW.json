@@ -257,6 +257,9 @@
 
   "voice.section.behavior": "始終監聽行為",
   "voice.behavior.interruptible": "可打斷",
+  "voice.behavior.pass_audio_directly": "音訊直通",
+  "voice.behavior.pass_audio_directly.tooltip": "將音訊直接傳給聊天模型，而不是先轉錄",
+  "voice.behavior.pass_audio_directly.help": "啟用後，音訊會以多模態 input_audio 直接送出並略過語音轉文字，以降低延遲。需要聊天模型支援音訊輸入。",
   "voice.behavior.interruptible.tooltip": "允許新的語音輸入打斷正在進行的 NPC 回覆",
   "voice.behavior.interruptible.help": "啟用後，新的轉錄結果會打斷目前 NPC 流並合併使用者訊息。停用時，等待目前回覆完成。",
 
