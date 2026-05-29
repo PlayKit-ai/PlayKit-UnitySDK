@@ -148,6 +148,30 @@ namespace PlayKit_SDK.Public
     }
 
     /// <summary>
+    /// How NPC actions are delivered by the model.
+    /// NPC动作的返回方式。
+    /// </summary>
+    public enum NpcActionMode
+    {
+        /// <summary>
+        /// OpenAI-style function calling (tool_calls). The model returns tool calls separately
+        /// from the reply text; action results can be reported back for an agentic loop. (Default)
+        /// OpenAI 风格的函数调用（tool_calls）。模型把动作作为独立的 tool call 返回；可把执行结果回写形成多轮。（默认）
+        /// </summary>
+        ToolCall = 0,
+
+        /// <summary>
+        /// Markup mode: the model embeds actions inline in the reply text as <c>[[{"action":"name","args":{...}}]]</c>
+        /// markup, so the action and the dialogue text are returned together in a single response (no extra
+        /// round-trip). The SDK strips the markup before returning the text and dispatches the actions.
+        /// Markup actions are fire-and-forget — their results are NOT fed back into the conversation.
+        /// 标记模式：模型把动作以 <c>[[{"action":"name","args":{...}}]]</c> 标记内联在回复文本里，动作与台词在同一次回复中一起返回（无需额外往返）。
+        /// SDK 会在返回文本前剥离这些标记并派发动作。标记模式下的动作是“即发即忘”的，其执行结果不会回写到对话中。
+        /// </summary>
+        Markup = 1
+    }
+
+    /// <summary>
     /// Action parameter type enumeration
     /// </summary>
     public enum NpcActionParamType

@@ -26,6 +26,15 @@ namespace PlayKit_SDK
         [Tooltip("Chat model name to use (leave empty to use SDK default) 使用的对话模型名称（留空则使用SDK默认值）")]
         [SerializeField] private string chatModel;
 
+        [Header("Action Settings 动作设置")]
+        [Tooltip("How actions are delivered (only matters when an ActionsModule with enabled actions is attached).\n" +
+                 "ToolCall: OpenAI function calling — actions come back separately from the reply text; results can be reported back for an agentic loop.\n" +
+                 "Markup: actions are embedded inline in the reply text as [[{\"action\":\"name\",\"args\":{...}}]] markup and returned together with the text in one response (no extra round-trip); markup is stripped before the text is returned; markup actions are fire-and-forget.\n" +
+                 "动作的返回方式（仅在挂了带启用动作的 ActionsModule 时有效）。\n" +
+                 "ToolCall：OpenAI 函数调用 —— 动作与回复文本分开返回，可把结果回写形成多轮。\n" +
+                 "Markup：动作以 [[{\"action\":\"name\",\"args\":{...}}]] 标记内联在回复文本里，与文本在同一次回复中一起返回（无需额外往返）；返回前会剥离标记；标记动作即发即忘。")]
+        [SerializeField] private NpcActionMode actionMode = NpcActionMode.ToolCall;
+
         [Header("Reply Prediction Settings 回复预测设置")]
         [Tooltip("Automatically generate player reply predictions after NPC responds 在NPC回复后自动生成玩家回复预测")]
         [SerializeField] private bool generateReplyPrediction = false;
@@ -35,6 +44,17 @@ namespace PlayKit_SDK
         [SerializeField] private int predictionCount = 4;
 
         public string CharacterDesign => characterDesign;
+
+        /// <summary>
+        /// How NPC actions are delivered. See <see cref="NpcActionMode"/>.
+        /// Can be changed at runtime; it only affects subsequent Talk() calls and only when an
+        /// ActionsModule with enabled actions is attached.
+        /// </summary>
+        public NpcActionMode ActionMode
+        {
+            get => actionMode;
+            set => actionMode = value;
+        }
 
         private PlayKit_AIChatClient _chatClient;
         private List<PlayKit_ChatMessage> _conversationHistory = new List<PlayKit_ChatMessage>();
@@ -186,7 +206,8 @@ namespace PlayKit_SDK
 
         /// <summary>
         /// Send a message to the NPC and get a response.
-        /// If ActionsModule is attached and has enabled actions, tool calling is automatically used.
+        /// If ActionsModule is attached and has enabled actions, actions are automatically used
+        /// (tool calling, or inline [[...]] markup when ActionMode is Markup).
         /// The conversation history is automatically managed.
         /// </summary>
         /// <param name="message">The message to send to the NPC</param>
@@ -240,6 +261,8 @@ namespace PlayKit_SDK
             // Check if we should use actions
             if (HasEnabledActions)
             {
+                if (actionMode == NpcActionMode.Markup)
+                    return await TalkMarkupInternal(message, null, token);
                 return await TalkWithActionsInternal(message, token);
             }
             else
@@ -250,12 +273,15 @@ namespace PlayKit_SDK
 
         /// <summary>
         /// Send a message to the NPC and get a streaming response.
-        /// If ActionsModule is attached and has enabled actions, tool calling is automatically used.
+        /// If ActionsModule is attached and has enabled actions, actions are automatically used
+        /// (tool calling, or inline [[...]] markup when ActionMode is Markup).
         /// The conversation history is automatically managed.
         /// </summary>
         /// <param name="message">The message to send to the NPC</param>
         /// <param name="onChunk">Called for each piece of the response as it streams in</param>
-        /// <param name="onComplete">Called when the complete response is ready</param>
+        /// <param name="onComplete">Called when the complete response is ready. In Markup action mode this is the
+        /// canonical markup-stripped text; the concatenation of the onChunk pieces may differ from it by
+        /// leading/trailing whitespace around stripped markers.</param>
         /// <param name="cancellationToken">Cancellation token (defaults to OnDestroyCancellationToken)</param>
         public async UniTask TalkStream(string message, Action<string> onChunk, Action<string> onComplete, CancellationToken? cancellationToken = null)
         {
@@ -305,7 +331,10 @@ namespace PlayKit_SDK
             // Check if we should use actions
             if (HasEnabledActions)
             {
-                await TalkWithActionsStreamInternal(message, onChunk, onComplete, token);
+                if (actionMode == NpcActionMode.Markup)
+                    await TalkMarkupStreamInternal(message, null, onChunk, onComplete, token);
+                else
+                    await TalkWithActionsStreamInternal(message, onChunk, onComplete, token);
             }
             else
             {
@@ -386,6 +415,8 @@ namespace PlayKit_SDK
             // Check if we should use actions
             if (HasEnabledActions)
             {
+                if (actionMode == NpcActionMode.Markup)
+                    return await TalkMarkupInternal(message, images, token);
                 return await TalkWithActionsAndImagesInternal(message, images, token);
             }
             else
@@ -400,7 +431,9 @@ namespace PlayKit_SDK
         /// <param name="message">The text message to send to the NPC</param>
         /// <param name="image">The image to include with the message</param>
         /// <param name="onChunk">Called for each piece of the response as it streams in</param>
-        /// <param name="onComplete">Called when the complete response is ready</param>
+        /// <param name="onComplete">Called when the complete response is ready. In Markup action mode this is the
+        /// canonical markup-stripped text; the concatenation of the onChunk pieces may differ from it by
+        /// leading/trailing whitespace around stripped markers.</param>
         /// <param name="cancellationToken">Cancellation token (defaults to OnDestroyCancellationToken)</param>
         public async UniTask TalkStream(string message, Texture2D image, Action<string> onChunk, Action<string> onComplete, CancellationToken? cancellationToken = null)
         {
@@ -413,7 +446,9 @@ namespace PlayKit_SDK
         /// <param name="message">The text message to send to the NPC</param>
         /// <param name="images">The images to include with the message</param>
         /// <param name="onChunk">Called for each piece of the response as it streams in</param>
-        /// <param name="onComplete">Called when the complete response is ready</param>
+        /// <param name="onComplete">Called when the complete response is ready. In Markup action mode this is the
+        /// canonical markup-stripped text; the concatenation of the onChunk pieces may differ from it by
+        /// leading/trailing whitespace around stripped markers.</param>
         /// <param name="cancellationToken">Cancellation token (defaults to OnDestroyCancellationToken)</param>
         public async UniTask TalkStream(string message, List<Texture2D> images, Action<string> onChunk, Action<string> onComplete, CancellationToken? cancellationToken = null)
         {
@@ -463,7 +498,10 @@ namespace PlayKit_SDK
             // Check if we should use actions
             if (HasEnabledActions)
             {
-                await TalkWithActionsAndImagesStreamInternal(message, images, onChunk, onComplete, token);
+                if (actionMode == NpcActionMode.Markup)
+                    await TalkMarkupStreamInternal(message, images, onChunk, onComplete, token);
+                else
+                    await TalkWithActionsAndImagesStreamInternal(message, images, onChunk, onComplete, token);
             }
             else
             {
@@ -474,6 +512,8 @@ namespace PlayKit_SDK
         /// <summary>
         /// Send a pre-built multimodal message (e.g. containing audio) and get a response.
         /// The message is added to conversation history as-is.
+        /// Note: this overload always does a plain text request — it does not use actions
+        /// (neither tool calling nor markup mode), regardless of ActionsModule / ActionMode.
         /// </summary>
         public async UniTask<string> TalkWithMessage(PlayKit_ChatMessage userMessage, CancellationToken? cancellationToken = null)
         {
@@ -510,6 +550,8 @@ namespace PlayKit_SDK
 
         /// <summary>
         /// Send a pre-built multimodal message and get a streaming response.
+        /// Note: this overload always does a plain text request — it does not use actions
+        /// (neither tool calling nor markup mode), regardless of ActionsModule / ActionMode.
         /// </summary>
         public async UniTask TalkStreamWithMessage(PlayKit_ChatMessage userMessage, Action<string> onChunk, Action<string> onComplete, CancellationToken? cancellationToken = null)
         {
@@ -1186,6 +1228,207 @@ namespace PlayKit_SDK
                 onComplete?.Invoke(null);
             }
         }
+
+        #region Markup Mode (actions embedded inline in the reply text)
+
+        /// <summary>
+        /// Build the per-request message list for markup mode: a copy of the conversation history with the
+        /// markup rulebook (format + available actions) appended to the system message. The stored
+        /// conversation history is not modified.
+        /// </summary>
+        private List<PlayKit_ChatMessage> BuildMarkupRequestMessages()
+        {
+            var actions = _actionsModule.EnabledActions
+                .Where(a => a != null && a.enabled)
+                .ToList();
+            var instruction = NpcActionMarkup.BuildSystemInstruction(actions);
+
+            var messages = new List<PlayKit_ChatMessage>(_conversationHistory.Count + 1);
+            bool injected = false;
+            foreach (var m in _conversationHistory)
+            {
+                if (!injected && m != null && m.Role == "system" && !string.IsNullOrEmpty(instruction))
+                {
+                    messages.Add(new PlayKit_ChatMessage
+                    {
+                        Role = "system",
+                        Content = string.IsNullOrEmpty(m.Content) ? instruction : m.Content + "\n\n" + instruction
+                    });
+                    injected = true;
+                }
+                else
+                {
+                    messages.Add(m);
+                }
+            }
+            if (!injected && !string.IsNullOrEmpty(instruction))
+            {
+                messages.Insert(0, new PlayKit_ChatMessage { Role = "system", Content = instruction });
+            }
+            return messages;
+        }
+
+        /// <summary>
+        /// Markup-mode talk: plain text generation with the action rulebook injected; the reply is parsed
+        /// for inline [[...]] markup, the markup is stripped, and the actions are dispatched. Used for both
+        /// the text-only and the with-images Talk() overloads (images are already on the user message).
+        /// </summary>
+        private async UniTask<string> TalkMarkupInternal(string message, List<Texture2D> images, CancellationToken token)
+        {
+            AIContextManager.Instance?.RecordConversation(this);
+
+            var userMsg = new PlayKit_ChatMessage { Role = "user", Content = message };
+            if (images != null)
+            {
+                foreach (var img in images)
+                {
+                    if (img != null) userMsg.AddImage(img);
+                }
+            }
+            _conversationHistory.Add(userMsg);
+
+            try
+            {
+                var config = new PlayKit_ChatConfig(BuildMarkupRequestMessages());
+                var result = await _chatClient.TextGenerationAsync(config, token);
+
+                if (result.Success && !string.IsNullOrEmpty(result.Response))
+                {
+                    var parsed = NpcActionMarkup.Parse(result.Response);
+
+                    // Store the clean (markup-stripped) text in history; the rulebook is re-injected each request.
+                    _conversationHistory.Add(new PlayKit_ChatMessage
+                    {
+                        Role = "assistant",
+                        Content = parsed.CleanText
+                    });
+
+                    if (parsed.ToolCalls.Count > 0)
+                    {
+                        ProcessActionCalls(parsed.ToolCalls);
+                    }
+
+                    _isTalking = false;
+
+                    if (generateReplyPrediction)
+                    {
+                        TriggerReplyPredictionAsync(token).Forget();
+                    }
+
+                    return parsed.CleanText;
+                }
+
+                _isTalking = false;
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _isTalking = false;
+                Debug.LogError($"[NPCClient] Error in markup Talk: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Streaming markup-mode talk: streams plain text with the rulebook injected, strips [[...]] markup
+        /// from the streamed text on the fly, and dispatches the actions once the full reply has arrived.
+        /// </summary>
+        private async UniTask TalkMarkupStreamInternal(string message, List<Texture2D> images, Action<string> onChunk, Action<string> onComplete, CancellationToken token)
+        {
+            AIContextManager.Instance?.RecordConversation(this);
+
+            var userMsg = new PlayKit_ChatMessage { Role = "user", Content = message };
+            if (images != null)
+            {
+                foreach (var img in images)
+                {
+                    if (img != null) userMsg.AddImage(img);
+                }
+            }
+            _conversationHistory.Add(userMsg);
+
+            _currentTalkCts?.Dispose();
+            var myCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            _currentTalkCts = myCts;
+
+            var filter = new NpcActionMarkup.StreamFilter();
+
+            try
+            {
+                var config = new PlayKit_ChatStreamConfig(BuildMarkupRequestMessages());
+
+                await _chatClient.TextChatStreamAsync(config,
+                    chunk =>
+                    {
+                        if (_currentTalkCts != myCts) return; // Stale — interrupted
+                        var clean = filter.PushChunk(chunk);
+                        if (!string.IsNullOrEmpty(clean)) onChunk?.Invoke(clean);
+                    },
+                    completeResponse =>
+                    {
+                        if (_currentTalkCts != myCts) return; // Stale — interrupted
+                        _isTalking = false;
+                        _currentTalkCts = null;
+                        myCts.Dispose();
+
+                        var tail = filter.Flush();
+                        if (!string.IsNullOrEmpty(tail)) onChunk?.Invoke(tail);
+
+                        if (!string.IsNullOrEmpty(completeResponse))
+                        {
+                            var parsed = NpcActionMarkup.Parse(completeResponse);
+
+                            _conversationHistory.Add(new PlayKit_ChatMessage
+                            {
+                                Role = "assistant",
+                                Content = parsed.CleanText
+                            });
+
+                            if (parsed.ToolCalls.Count > 0)
+                            {
+                                ProcessActionCalls(parsed.ToolCalls);
+                            }
+
+                            if (generateReplyPrediction)
+                            {
+                                TriggerReplyPredictionAsync(token).Forget();
+                            }
+
+                            onComplete?.Invoke(parsed.CleanText);
+                        }
+                        else
+                        {
+                            onComplete?.Invoke(null);
+                        }
+                    },
+                    myCts.Token
+                );
+            }
+            catch (OperationCanceledException)
+            {
+                if (_currentTalkCts == myCts)
+                {
+                    _isTalking = false;
+                    _currentTalkCts = null;
+                    myCts.Dispose();
+                }
+                Debug.Log("[NPCClient] Streaming markup talk interrupted");
+            }
+            catch (Exception ex)
+            {
+                if (_currentTalkCts == myCts)
+                {
+                    _isTalking = false;
+                    _currentTalkCts = null;
+                    myCts.Dispose();
+                }
+                Debug.LogError($"[NPCClient] Error in streaming markup talk: {ex.Message}");
+                onChunk?.Invoke(null);
+                onComplete?.Invoke(null);
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// Process action calls and fire events
