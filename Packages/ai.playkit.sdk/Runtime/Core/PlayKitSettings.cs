@@ -26,6 +26,9 @@ namespace PlayKit_SDK
         [Tooltip("Default transcription (speech-to-text) model. Leave empty to use server default.")]
         [SerializeField] private string defaultTranscriptionModel = "default-transcription-model";
 
+        [Tooltip("Default text-to-speech (TTS) model. Leave empty to use server default.")]
+        [SerializeField] private string defaultTTSModel = "default-tts-model";
+
         [Tooltip("Default 3D model generation model. Leave empty to use server default.")]
         [SerializeField] private string default3DModel = "default-3d-model";
 
@@ -153,6 +156,7 @@ namespace PlayKit_SDK
         public string DefaultChatModel => defaultChatModel;
         public string DefaultImageModel => defaultImageModel;
         public string DefaultTranscriptionModel => defaultTranscriptionModel;
+        public string DefaultTTSModel => defaultTTSModel;
         public string Default3DModel => default3DModel;
         public bool AutoInitialize => autoInitialize;
         public bool IgnoreDeveloperToken => ignoreDeveloperToken;

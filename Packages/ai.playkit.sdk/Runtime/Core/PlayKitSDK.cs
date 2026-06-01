@@ -116,6 +116,7 @@ namespace PlayKit_SDK
         private static Provider.IImageProvider _imageProvider;
         private static Provider.AI.IObjectProvider _objectProvider;
         private static Provider.ITranscriptionProvider _transcriptionProvider;
+        private static Provider.ISpeechProvider _speechProvider;
         private static PlayKit_RechargeManager _rechargeManager;
         private static string _lastInitializationError;
 
@@ -328,6 +329,7 @@ namespace PlayKit_SDK
             _imageProvider = new Provider.AI.AIImageProvider(PlayKitAuthManager);
             _objectProvider = new Provider.AI.AIObjectProvider(PlayKitAuthManager);
             _transcriptionProvider = new Provider.AI.AITranscriptionProvider(PlayKitAuthManager);
+            _speechProvider = new Provider.AI.AISpeechProvider(PlayKitAuthManager);
 
             // Initialize RechargeManager with balance getter for modal support
             _rechargeManager = new PlayKit_RechargeManager();
@@ -559,6 +561,36 @@ namespace PlayKit_SDK
 
                 var transcriptionService = new Services.TranscriptionService(_transcriptionProvider);
                 return new PlayKit_AudioTranscriptionClient(modelName, transcriptionService);
+            }
+
+            /// <summary>
+            /// Creates a text-to-speech client for synthesizing spoken audio from text
+            /// </summary>
+            /// <param name="modelName">The TTS model to use. Defaults to the configured Default TTS Model.</param>
+            /// <returns>A text-to-speech client</returns>
+            public static PlayKit_TextToSpeechClient CreateTextToSpeechClient(string modelName = null)
+            {
+                if (!Instance)
+                {
+                    Debug.LogError("[PlayKit SDK] SDK instance not found. This should not happen with auto-initialization.");
+                    return null;
+                }
+                if (!_isInitialized)
+                {
+                    Debug.LogError("[PlayKit SDK] SDK not initialized. Please call PlayKit_SDK.InitializeAsync() and wait for it to complete first.");
+                    return null;
+                }
+
+                // Load default model from settings if not specified
+                string model = modelName ?? PlayKitSettings.Instance?.DefaultTTSModel;
+                if (string.IsNullOrEmpty(model))
+                {
+                    Debug.LogError("[PlayKit SDK] No TTS model specified. Please set Default TTS Model in Tools > PlayKit SDK > Settings or provide a model name.");
+                    return null;
+                }
+
+                var speechService = new Services.SpeechService(_speechProvider);
+                return new PlayKit_TextToSpeechClient(model, speechService);
             }
 
         }

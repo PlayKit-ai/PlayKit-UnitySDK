@@ -335,4 +335,75 @@ namespace PlayKit_SDK.Public
         public float End;
         public string Text;
     }
+
+    // Text-to-Speech
+    [System.Serializable]
+    public class PlayKit_SpeechResult
+    {
+        public bool Success { get; }
+        /// <summary>Raw audio bytes returned by the API (16-bit signed little-endian PCM).</summary>
+        public byte[] AudioData { get; }
+        /// <summary>Reported audio format / content type.</summary>
+        public string Format { get; }
+        /// <summary>Number of characters billed for this request.</summary>
+        public int UsageCharacters { get; }
+        /// <summary>Length of the generated audio in milliseconds, when reported.</summary>
+        public float? AudioLengthMs { get; }
+        /// <summary>PCM sample rate (the rate requested; the endpoint does not echo it back).</summary>
+        public int SampleRate { get; }
+        /// <summary>PCM channel count.</summary>
+        public int Channels { get; }
+        public string Error { get; }
+
+        public PlayKit_SpeechResult(byte[] audioData, string format, int usageCharacters, float? audioLengthMs, int sampleRate, int channels)
+        {
+            Success = true;
+            AudioData = audioData;
+            Format = format;
+            UsageCharacters = usageCharacters;
+            AudioLengthMs = audioLengthMs;
+            SampleRate = sampleRate;
+            Channels = channels;
+        }
+
+        public PlayKit_SpeechResult(string errorMessage)
+        {
+            Success = false;
+            Error = errorMessage;
+        }
+
+        /// <summary>
+        /// Decode the PCM audio into a playable AudioClip. Assumes 16-bit signed
+        /// little-endian samples at <see cref="SampleRate"/> with <see cref="Channels"/>
+        /// channels (the format the SDK requests). Returns null when there is no audio.
+        /// </summary>
+        public AudioClip ToAudioClip()
+        {
+            if (!Success || AudioData == null || AudioData.Length < 2)
+            {
+                return null;
+            }
+
+            int channels = Channels > 0 ? Channels : 1;
+            int sampleRate = SampleRate > 0 ? SampleRate : 24000;
+
+            int totalSamples = AudioData.Length / 2; // 16-bit samples, interleaved across channels
+            var floats = new float[totalSamples];
+            for (int i = 0; i < totalSamples; i++)
+            {
+                short sample = (short)(AudioData[i * 2] | (AudioData[i * 2 + 1] << 8));
+                floats[i] = sample / 32768f;
+            }
+
+            int lengthSamples = totalSamples / channels; // frames per channel
+            if (lengthSamples <= 0)
+            {
+                return null;
+            }
+
+            var clip = AudioClip.Create("PlayKitTTS", lengthSamples, channels, sampleRate, false);
+            clip.SetData(floats, 0);
+            return clip;
+        }
+    }
 }
