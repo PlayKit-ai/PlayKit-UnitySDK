@@ -76,17 +76,18 @@ namespace PlayKit_SDK.Services
         public async UniTask<PlayKit_AIResult<string>> RequestAsync(string model, PlayKit_ChatConfig config, CancellationToken cancellationToken = default)
         {
             var internalMessages = config.Messages.Select(ConvertToInternalMessage).ToList();
-            var request = new ChatCompletionRequest { Model = model, Messages = internalMessages, Temperature = config.Temperature, Stream = false };
+            var request = new ChatCompletionRequest { Model = model, Messages = internalMessages, Temperature = config.Temperature, Stream = false, Thinking = config.BuildThinking() };
             var response = await _chatProvider.ChatCompletionAsync(request, cancellationToken);
             if (response == null || response.Choices == null || response.Choices.Count == 0) return new PlayKit_AIResult<string>("Failed to get a valid response from AI.");
-            return new PlayKit_AIResult<string>(data: response.Choices[0].Message.GetTextContent());
+            var message = response.Choices[0].Message;
+            return new PlayKit_AIResult<string>(data: message.GetTextContent(), reasoningContent: message.ReasoningContent);
         }
 
         // MODIFIED: Method signature changed to accept Action<string> for onConcluded.
-        public async UniTask RequestStreamAsync(string model, PlayKit_ChatStreamConfig config, Action<string> onNewChunk, Action<string> onConcluded, CancellationToken cancellationToken = default)
+        public async UniTask RequestStreamAsync(string model, PlayKit_ChatStreamConfig config, Action<string> onNewChunk, Action<string> onConcluded, CancellationToken cancellationToken = default, Action<string> onReasoningChunk = null)
         {
             var internalMessages = config.Messages.Select(ConvertToInternalMessage).ToList();
-            var request = new ChatCompletionRequest { Model = model, Messages = internalMessages, Temperature = config.Temperature, Stream = true };
+            var request = new ChatCompletionRequest { Model = model, Messages = internalMessages, Temperature = config.Temperature, Stream = true, Thinking = config.BuildThinking() };
 
             // MODIFIED: StringBuilder to accumulate the full response.
             var fullResponseBuilder = new StringBuilder();
@@ -134,7 +135,15 @@ namespace PlayKit_SDK.Services
                     }
                 },
                 safeOnConcluded,
-                cancellationToken
+                cancellationToken,
+                // Reasoning delta callback — routed separately from text content.
+                reasoningDelta =>
+                {
+                    if (!string.IsNullOrEmpty(reasoningDelta))
+                    {
+                        onReasoningChunk?.Invoke(reasoningDelta);
+                    }
+                }
             );
         }
 
@@ -157,7 +166,8 @@ namespace PlayKit_SDK.Services
                 Temperature = config.Temperature,
                 Stream = false,
                 Tools = tools,
-                ToolChoice = toolChoice
+                ToolChoice = toolChoice,
+                Thinking = config.BuildThinking()
             };
 
             return await _chatProvider.ChatCompletionAsync(request, cancellationToken);
@@ -185,7 +195,8 @@ namespace PlayKit_SDK.Services
                 Temperature = config.Temperature,
                 Stream = true,
                 Tools = tools,
-                ToolChoice = toolChoice
+                ToolChoice = toolChoice,
+                Thinking = config.BuildThinking()
             };
 
             var fullResponseBuilder = new StringBuilder();

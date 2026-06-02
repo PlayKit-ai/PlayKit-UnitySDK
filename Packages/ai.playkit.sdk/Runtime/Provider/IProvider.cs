@@ -21,11 +21,12 @@ namespace PlayKit_SDK.Provider
         /// Supports both UI Message Stream format (onTextDelta) and legacy format (onLegacyResponse)
         /// </summary>
         UniTask ChatCompletionStreamAsync(
-            ChatCompletionRequest request, 
+            ChatCompletionRequest request,
             Action<string> onTextDelta,
-            Action<StreamCompletionResponse> onLegacyResponse, 
-            Action onFinally, 
-            System.Threading.CancellationToken cancellationToken = default);
+            Action<StreamCompletionResponse> onLegacyResponse,
+            Action onFinally,
+            System.Threading.CancellationToken cancellationToken = default,
+            Action<string> onReasoningDelta = null);
     }
 
     /// <summary>

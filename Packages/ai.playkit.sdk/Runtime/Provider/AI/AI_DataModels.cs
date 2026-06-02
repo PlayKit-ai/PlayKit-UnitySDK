@@ -107,6 +107,13 @@ namespace PlayKit_SDK.Provider.AI
         public string ToolCallId { get; set; }
 
         /// <summary>
+        /// Model reasoning / thinking trace, present only on non-streaming responses
+        /// when the model thought (choices[0].message.reasoning_content).
+        /// </summary>
+        [JsonProperty("reasoning_content", NullValueHandling = NullValueHandling.Ignore)]
+        public string ReasoningContent { get; set; }
+
+        /// <summary>
         /// Get content as string (for text-only messages)
         /// </summary>
         public string GetTextContent()
@@ -242,6 +249,21 @@ namespace PlayKit_SDK.Provider.AI
 
     #endregion
 
+    /// <summary>
+    /// Reasoning-effort control for thinking-capable models.
+    /// Maps to the backend `thinking` object: { enabled, effort }.
+    /// Effort is a lowercase string: "minimal" | "low" | "medium" | "high" | "max".
+    /// </summary>
+    [System.Serializable]
+    public class Thinking
+    {
+        [JsonProperty("enabled")]
+        public bool? Enabled { get; set; }
+
+        [JsonProperty("effort")]
+        public string Effort { get; set; }
+    }
+
     [System.Serializable]
     public class ChatCompletionRequest
     {
@@ -284,6 +306,13 @@ namespace PlayKit_SDK.Provider.AI
         /// </summary>
         [JsonProperty("tool_choice", NullValueHandling = NullValueHandling.Ignore)]
         public object ToolChoice { get; set; }
+
+        /// <summary>
+        /// Optional reasoning-effort control for thinking-capable models.
+        /// Omitted from the payload when null.
+        /// </summary>
+        [JsonProperty("thinking", NullValueHandling = NullValueHandling.Ignore)]
+        public Thinking Thinking { get; set; }
     }
 
     [System.Serializable]

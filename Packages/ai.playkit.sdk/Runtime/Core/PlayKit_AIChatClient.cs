@@ -61,11 +61,14 @@ namespace PlayKit_SDK
         }
 
         /// <summary>
-        /// Generate text using streaming chat completion
+        /// Generate text using streaming chat completion.
+        /// When the model thinks (and an effort is set via <see cref="Public.PlayKit_ChatConfigBase.ThinkingEffort"/>),
+        /// reasoning text is delivered via the optional <paramref name="onReasoningChunk"/> callback,
+        /// kept separate from the answer text in <paramref name="onNewChunk"/>.
         /// </summary>
-        public async UniTask TextChatStreamAsync(Public.PlayKit_ChatStreamConfig config, Action<string> onNewChunk, Action<string> onConcluded, CancellationToken cancellationToken = default)
+        public async UniTask TextChatStreamAsync(Public.PlayKit_ChatStreamConfig config, Action<string> onNewChunk, Action<string> onConcluded, CancellationToken cancellationToken = default, Action<string> onReasoningChunk = null)
         {
-            await _chatService.RequestStreamAsync(_model, config, onNewChunk, onConcluded, cancellationToken);
+            await _chatService.RequestStreamAsync(_model, config, onNewChunk, onConcluded, cancellationToken, onReasoningChunk);
         }
 
         /// <summary>

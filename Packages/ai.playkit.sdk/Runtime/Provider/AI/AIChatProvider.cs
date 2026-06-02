@@ -120,7 +120,8 @@ namespace PlayKit_SDK.Provider.AI
             Action<string> onTextDelta,
             Action<StreamCompletionResponse> onLegacyResponse,
             Action onFinally,
-            System.Threading.CancellationToken cancellationToken = default)
+            System.Threading.CancellationToken cancellationToken = default,
+            Action<string> onReasoningDelta = null)
         {
             // Debug.Log("[AIChatProvider] ChatCompletionStreamAsync");
 
@@ -132,7 +133,7 @@ namespace PlayKit_SDK.Provider.AI
             {
                 for (int attempt = 0; attempt <= maxRetries; attempt++)
                 {
-                    var downloadHandler = new StreamingDownloadHandler(onTextDelta, onLegacyResponse);
+                    var downloadHandler = new StreamingDownloadHandler(onTextDelta, onLegacyResponse, onReasoningDelta);
                     using (var webRequest = new UnityWebRequest(GetChatUrl(), "POST"))
                     {
                         webRequest.uploadHandler = new UploadHandlerRaw(postData);
@@ -222,12 +223,14 @@ namespace PlayKit_SDK.Provider.AI
         {
             private readonly Action<string> _onTextDelta;
             private readonly Action<StreamCompletionResponse> _onLegacyResponse;
+            private readonly Action<string> _onReasoningDelta;
             public bool HasReceivedData { get; private set; }
 
-            public StreamingDownloadHandler(Action<string> onTextDelta, Action<StreamCompletionResponse> onLegacyResponse)
+            public StreamingDownloadHandler(Action<string> onTextDelta, Action<StreamCompletionResponse> onLegacyResponse, Action<string> onReasoningDelta = null)
             {
                 _onTextDelta = onTextDelta;
                 _onLegacyResponse = onLegacyResponse;
+                _onReasoningDelta = onReasoningDelta;
             }
 
             protected override bool ReceiveData(byte[] data, int dataLength)
@@ -254,6 +257,12 @@ namespace PlayKit_SDK.Provider.AI
                                 if (uiMessage.Type == "text-delta" && !string.IsNullOrEmpty(uiMessage.Delta))
                                 {
                                     _onTextDelta?.Invoke(uiMessage.Delta);
+                                }
+                                else if (uiMessage.Type == "reasoning-delta" && !string.IsNullOrEmpty(uiMessage.Delta))
+                                {
+                                    // Model reasoning trace — routed separately from text content.
+                                    // reasoning-start / reasoning-end carry no text and are ignored.
+                                    _onReasoningDelta?.Invoke(uiMessage.Delta);
                                 }
                                 else if (uiMessage.Type == "finish")
                                 {

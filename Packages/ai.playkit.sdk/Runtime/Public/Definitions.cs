@@ -5,7 +5,10 @@ using UnityEngine;
 
 namespace PlayKit_SDK.Public
 {
-    public class PlayKit_AIResult<T> { public bool Success { get; } public T Response { get; } public string ErrorMessage { get; } public PlayKit_AIResult(T data) { Success = true; Response = data; } public PlayKit_AIResult(string errorMessage) { Success = false; Response = default; ErrorMessage = errorMessage; } }
+    public class PlayKit_AIResult<T> { public bool Success { get; } public T Response { get; } public string ErrorMessage { get; }
+        /// <summary>Model reasoning / thinking trace, populated only when the model thought and the result type carries text. Null otherwise.</summary>
+        public string ReasoningContent { get; }
+        public PlayKit_AIResult(T data, string reasoningContent = null) { Success = true; Response = data; ReasoningContent = reasoningContent; } public PlayKit_AIResult(string errorMessage) { Success = false; Response = default; ErrorMessage = errorMessage; } }
 
     #region Multimodal Image Content
 
@@ -297,7 +300,41 @@ namespace PlayKit_SDK.Public
         }
     }
 
-    public abstract class PlayKit_ChatConfigBase { public List<PlayKit_ChatMessage> Messages { get; set; } = new List<PlayKit_ChatMessage>(); public float Temperature { get; set; } = 0.7f; protected PlayKit_ChatConfigBase(List<PlayKit_ChatMessage> messages) { Messages = messages; } protected PlayKit_ChatConfigBase(string userMessage) { Messages.Add(new PlayKit_ChatMessage { Role = "user", Content = userMessage }); } }
+    /// <summary>
+    /// Reasoning effort for thinking-capable chat models. When set, the model is
+    /// asked to "think" before answering; higher effort spends more reasoning budget.
+    /// Leave null to use the model's default behavior.
+    /// </summary>
+    public enum PlayKit_ThinkingEffort { Minimal, Low, Medium, High, Max }
+
+    public abstract class PlayKit_ChatConfigBase
+    {
+        public List<PlayKit_ChatMessage> Messages { get; set; } = new List<PlayKit_ChatMessage>();
+        public float Temperature { get; set; } = 0.7f;
+
+        /// <summary>
+        /// Optional reasoning effort. When set, enables thinking on supported models.
+        /// Leave null to omit (model default).
+        /// </summary>
+        public PlayKit_ThinkingEffort? ThinkingEffort { get; set; }
+
+        protected PlayKit_ChatConfigBase(List<PlayKit_ChatMessage> messages) { Messages = messages; }
+        protected PlayKit_ChatConfigBase(string userMessage) { Messages.Add(new PlayKit_ChatMessage { Role = "user", Content = userMessage }); }
+
+        /// <summary>
+        /// Build the request-level Thinking object from <see cref="ThinkingEffort"/>,
+        /// or null when no effort is set (so the field is omitted from the payload).
+        /// </summary>
+        internal PlayKit_SDK.Provider.AI.Thinking BuildThinking()
+        {
+            if (ThinkingEffort == null) return null;
+            return new PlayKit_SDK.Provider.AI.Thinking
+            {
+                Enabled = true,
+                Effort = ThinkingEffort.Value.ToString().ToLowerInvariant()
+            };
+        }
+    }
     public class PlayKit_ChatConfig : PlayKit_ChatConfigBase { public PlayKit_ChatConfig(string userMessage) : base(userMessage) { } public PlayKit_ChatConfig(List<PlayKit_ChatMessage> messages) : base(messages) { } }
     public class PlayKit_ChatStreamConfig : PlayKit_ChatConfigBase { public PlayKit_ChatStreamConfig(string userMessage) : base(userMessage) { } public PlayKit_ChatStreamConfig(List<PlayKit_ChatMessage> messages) : base(messages) { } }
 
@@ -338,6 +375,23 @@ namespace PlayKit_SDK.Public
 
     // Text-to-Speech
     [System.Serializable]
+    /// <summary>One timed unit (word or sentence) in a <see cref="PlayKit_SpeechAlignment"/>.</summary>
+    public class PlayKit_SpeechAlignmentItem
+    {
+        public string Text { get; set; }
+        public float StartMs { get; set; }
+        public float EndMs { get; set; }
+        public int? TextStart { get; set; }
+        public int? TextEnd { get; set; }
+    }
+
+    /// <summary>Word/sentence timestamp alignment for synthesized speech.</summary>
+    public class PlayKit_SpeechAlignment
+    {
+        public string Granularity { get; set; }
+        public System.Collections.Generic.List<PlayKit_SpeechAlignmentItem> Items { get; set; }
+    }
+
     public class PlayKit_SpeechResult
     {
         public bool Success { get; }
@@ -353,9 +407,11 @@ namespace PlayKit_SDK.Public
         public int SampleRate { get; }
         /// <summary>PCM channel count.</summary>
         public int Channels { get; }
+        /// <summary>Timestamp alignment, present only from SynthesizeWithTimestampsAsync; null otherwise.</summary>
+        public PlayKit_SpeechAlignment Alignment { get; }
         public string Error { get; }
 
-        public PlayKit_SpeechResult(byte[] audioData, string format, int usageCharacters, float? audioLengthMs, int sampleRate, int channels)
+        public PlayKit_SpeechResult(byte[] audioData, string format, int usageCharacters, float? audioLengthMs, int sampleRate, int channels, PlayKit_SpeechAlignment alignment = null)
         {
             Success = true;
             AudioData = audioData;
@@ -364,6 +420,7 @@ namespace PlayKit_SDK.Public
             AudioLengthMs = audioLengthMs;
             SampleRate = sampleRate;
             Channels = channels;
+            Alignment = alignment;
         }
 
         public PlayKit_SpeechResult(string errorMessage)
