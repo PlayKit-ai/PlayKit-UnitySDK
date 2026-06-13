@@ -22,5 +22,23 @@ namespace PlayKit_SDK.Provider
             int sampleRate,
             int channels,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Synthesize speech AND return timestamp alignment. Hits the
+        /// speech-with-timestamps variant (JSON envelope: base64 audio + alignment).
+        /// </summary>
+        UniTask<SpeechAudioResponse> SynthesizeWithTimestampsAsync(
+            SpeechRequest request,
+            int sampleRate,
+            int channels,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// List the voices available for synthesis (GET /v2/audio/voices).
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Voices response, or null on failure</returns>
+        UniTask<SpeechVoicesResponse> ListVoicesAsync(
+            CancellationToken cancellationToken = default);
     }
 }

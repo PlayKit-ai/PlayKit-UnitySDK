@@ -303,9 +303,10 @@ namespace PlayKit_SDK.Public
     /// <summary>
     /// Reasoning effort for thinking-capable chat models. When set, the model is
     /// asked to "think" before answering; higher effort spends more reasoning budget.
-    /// Leave null to use the model's default behavior.
+    /// Use <see cref="Off"/> to explicitly disable reasoning. Leave the config field
+    /// null (and no SDK default) to omit thinking entirely (the server then defaults off).
     /// </summary>
-    public enum PlayKit_ThinkingEffort { Minimal, Low, Medium, High, Max }
+    public enum PlayKit_ThinkingEffort { Off, Minimal, Low, Medium, High, Max }
 
     public abstract class PlayKit_ChatConfigBase
     {
@@ -322,16 +323,19 @@ namespace PlayKit_SDK.Public
         protected PlayKit_ChatConfigBase(string userMessage) { Messages.Add(new PlayKit_ChatMessage { Role = "user", Content = userMessage }); }
 
         /// <summary>
-        /// Build the request-level Thinking object from <see cref="ThinkingEffort"/>,
-        /// or null when no effort is set (so the field is omitted from the payload).
+        /// Build the request-level Thinking object by resolving the effort the same way
+        /// model selection resolves: per-request <see cref="ThinkingEffort"/> first, then the
+        /// SDK-wide <see cref="PlayKitSettings.DefaultThinkingEffort"/>. Returns null when
+        /// neither is set, so the field is omitted from the payload (the server then defaults off).
+        /// The wire value is the lowercase effort string, e.g. "off" | "minimal" | ... | "max".
         /// </summary>
         internal PlayKit_SDK.Provider.AI.Thinking BuildThinking()
         {
-            if (ThinkingEffort == null) return null;
+            PlayKit_ThinkingEffort? effort = ThinkingEffort ?? PlayKitSettings.Instance?.DefaultThinkingEffort;
+            if (effort == null) return null;
             return new PlayKit_SDK.Provider.AI.Thinking
             {
-                Enabled = true,
-                Effort = ThinkingEffort.Value.ToString().ToLowerInvariant()
+                Effort = effort.Value.ToString().ToLowerInvariant()
             };
         }
     }
@@ -374,6 +378,57 @@ namespace PlayKit_SDK.Public
     }
 
     // Text-to-Speech
+    /// <summary>One voice in a <see cref="PlayKit_SpeechOptions.VoiceMix"/> blend.</summary>
+    [System.Serializable]
+    public class PlayKit_VoiceMixEntry
+    {
+        /// <summary>Voice id to blend (e.g., "male-qn-qingse").</summary>
+        public string Voice;
+        /// <summary>Relative weight, integer 1-100.</summary>
+        public int Weight;
+    }
+
+    /// <summary>
+    /// Optional synthesis settings for text-to-speech.
+    /// Set either <see cref="Voice"/> or <see cref="VoiceMix"/> (1-4 entries), not both.
+    /// </summary>
+    [System.Serializable]
+    public class PlayKit_SpeechOptions
+    {
+        /// <summary>Voice id (e.g., "male-qn-qingse"). Null uses the system default voice. Mutually exclusive with <see cref="VoiceMix"/>.</summary>
+        public string Voice;
+        /// <summary>Blend of 1-4 voices. Mutually exclusive with <see cref="Voice"/>.</summary>
+        public List<PlayKit_VoiceMixEntry> VoiceMix;
+        /// <summary>Playback speed multiplier.</summary>
+        public float? Speed;
+        /// <summary>Volume multiplier.</summary>
+        public float? Volume;
+        /// <summary>Pitch shift.</summary>
+        public int? Pitch;
+        /// <summary>Emotion hint (e.g., "happy").</summary>
+        public string Emotion;
+        /// <summary>Language hint (e.g., "Chinese").</summary>
+        public string Language;
+        /// <summary>PCM sample rate to request. Defaults to 24000.</summary>
+        public int SampleRate = 24000;
+    }
+
+    /// <summary>A voice available for text-to-speech synthesis.</summary>
+    [System.Serializable]
+    public class PlayKit_VoiceInfo
+    {
+        /// <summary>Voice id to pass as the synthesis voice.</summary>
+        public string VoiceId;
+        /// <summary>Human-readable voice name, when reported.</summary>
+        public string Name;
+        /// <summary>Voice description, when reported.</summary>
+        public string Description;
+        /// <summary>Primary language of the voice, when reported.</summary>
+        public string Language;
+        /// <summary>Voice kind (e.g., system vs. cloned).</summary>
+        public string Kind;
+    }
+
     [System.Serializable]
     /// <summary>One timed unit (word or sentence) in a <see cref="PlayKit_SpeechAlignment"/>.</summary>
     public class PlayKit_SpeechAlignmentItem

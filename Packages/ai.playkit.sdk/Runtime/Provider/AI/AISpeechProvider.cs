@@ -39,14 +39,24 @@ namespace PlayKit_SDK.Provider.AI
             return code >= 500 || code == 429 || code == 0;
         }
 
-        private string GetSpeechUrl()
+        private string GetSpeechUrl(string suffix = "")
         {
             var settings = PlayKitSettings.Instance;
             if (settings == null || string.IsNullOrEmpty(settings.GameId))
             {
                 throw new InvalidOperationException("GameId is not configured in PlayKitSettings.");
             }
-            return $"{settings.AIBaseUrl}/v2/audio/speech";
+            return $"{settings.AIBaseUrl}/v2/audio/speech{suffix}";
+        }
+
+        private string GetVoicesUrl()
+        {
+            var settings = PlayKitSettings.Instance;
+            if (settings == null || string.IsNullOrEmpty(settings.GameId))
+            {
+                throw new InvalidOperationException("GameId is not configured in PlayKitSettings.");
+            }
+            return $"{settings.AIBaseUrl}/v2/audio/voices";
         }
 
         private string GetAuthToken()
@@ -139,6 +149,165 @@ namespace PlayKit_SDK.Provider.AI
                         SampleRate = sampleRate,
                         Channels = channels
                     };
+                }
+            }
+
+            return null;
+        }
+
+        public async UniTask<SpeechAudioResponse> SynthesizeWithTimestampsAsync(
+            SpeechRequest request,
+            int sampleRate,
+            int channels,
+            CancellationToken cancellationToken = default)
+        {
+            var json = JsonConvert.SerializeObject(request, new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore
+            });
+            var postData = new UTF8Encoding().GetBytes(json);
+
+            int maxRetries = GetMaxRetryCount();
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
+            {
+                using (var webRequest = new UnityWebRequest(GetSpeechUrl("-with-timestamps"), "POST"))
+                {
+                    webRequest.uploadHandler = new UploadHandlerRaw(postData);
+                    webRequest.downloadHandler = new DownloadHandlerBuffer();
+                    webRequest.SetRequestHeader("Content-Type", "application/json");
+                    webRequest.SetRequestHeader("Authorization", $"Bearer {GetAuthToken()}");
+                    PlayKitSDK.SetSDKHeaders(webRequest);
+
+                    try
+                    {
+                        await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken);
+                    }
+                    catch (Exception ex) when (!(ex is OperationCanceledException))
+                    {
+                        if (attempt < maxRetries && IsRetryableError(webRequest))
+                        {
+                            Debug.LogWarning($"[AISpeechProvider] Timestamps attempt {attempt + 1} failed: {ex.Message}, retrying...");
+                            await UniTask.Delay(TimeSpan.FromSeconds(RETRY_DELAY_SECONDS), cancellationToken: cancellationToken);
+                            continue;
+                        }
+                        Debug.LogError($"[AISpeechProvider] API request failed: {ex.Message}");
+                        return null;
+                    }
+
+                    if (webRequest.result != UnityWebRequest.Result.Success)
+                    {
+                        if (attempt < maxRetries && IsRetryableError(webRequest))
+                        {
+                            Debug.LogWarning($"[AISpeechProvider] Timestamps attempt {attempt + 1} failed: {webRequest.responseCode}, retrying...");
+                            await UniTask.Delay(TimeSpan.FromSeconds(RETRY_DELAY_SECONDS), cancellationToken: cancellationToken);
+                            continue;
+                        }
+                        Debug.LogError($"[AISpeechProvider] API Error: {webRequest.responseCode} - {webRequest.error}\n{webRequest.downloadHandler.text}");
+                        return null;
+                    }
+
+                    // SUCCESS: body is a JSON envelope (base64 audio + alignment).
+                    SpeechTimestampsEnvelope envelope;
+                    try
+                    {
+                        envelope = JsonConvert.DeserializeObject<SpeechTimestampsEnvelope>(webRequest.downloadHandler.text);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[AISpeechProvider] Failed to parse timestamps envelope: {ex.Message}");
+                        return null;
+                    }
+
+                    if (envelope == null || string.IsNullOrEmpty(envelope.AudioBase64))
+                    {
+                        Debug.LogError("[AISpeechProvider] Timestamps response missing audio.");
+                        return null;
+                    }
+
+                    byte[] audioBytes;
+                    try
+                    {
+                        audioBytes = Convert.FromBase64String(envelope.AudioBase64);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[AISpeechProvider] Failed to decode base64 audio: {ex.Message}");
+                        return null;
+                    }
+
+                    return new SpeechAudioResponse
+                    {
+                        Audio = audioBytes,
+                        Format = string.IsNullOrEmpty(envelope.Format) ? "pcm" : envelope.Format,
+                        UsageCharacters = envelope.UsageCharacters,
+                        AudioLengthMs = envelope.AudioLengthMs,
+                        SampleRate = sampleRate,
+                        Channels = channels,
+                        Alignment = envelope.Alignment
+                    };
+                }
+            }
+
+            return null;
+        }
+
+        public async UniTask<SpeechVoicesResponse> ListVoicesAsync(
+            CancellationToken cancellationToken = default)
+        {
+            int maxRetries = GetMaxRetryCount();
+            for (int attempt = 0; attempt <= maxRetries; attempt++)
+            {
+                using (var webRequest = UnityWebRequest.Get(GetVoicesUrl()))
+                {
+                    webRequest.SetRequestHeader("Authorization", $"Bearer {GetAuthToken()}");
+                    PlayKitSDK.SetSDKHeaders(webRequest);
+
+                    try
+                    {
+                        await webRequest.SendWebRequest().ToUniTask(cancellationToken: cancellationToken);
+                    }
+                    catch (Exception ex) when (!(ex is OperationCanceledException))
+                    {
+                        if (attempt < maxRetries && IsRetryableError(webRequest))
+                        {
+                            Debug.LogWarning($"[AISpeechProvider] Voices attempt {attempt + 1} failed: {ex.Message}, retrying...");
+                            await UniTask.Delay(TimeSpan.FromSeconds(RETRY_DELAY_SECONDS), cancellationToken: cancellationToken);
+                            continue;
+                        }
+                        Debug.LogError($"[AISpeechProvider] API request failed: {ex.Message}");
+                        return null;
+                    }
+
+                    if (webRequest.result != UnityWebRequest.Result.Success)
+                    {
+                        if (attempt < maxRetries && IsRetryableError(webRequest))
+                        {
+                            Debug.LogWarning($"[AISpeechProvider] Voices attempt {attempt + 1} failed: {webRequest.responseCode}, retrying...");
+                            await UniTask.Delay(TimeSpan.FromSeconds(RETRY_DELAY_SECONDS), cancellationToken: cancellationToken);
+                            continue;
+                        }
+                        Debug.LogError($"[AISpeechProvider] API Error: {webRequest.responseCode} - {webRequest.error}\n{webRequest.downloadHandler.text}");
+                        return null;
+                    }
+
+                    SpeechVoicesResponse response;
+                    try
+                    {
+                        response = JsonConvert.DeserializeObject<SpeechVoicesResponse>(webRequest.downloadHandler.text);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[AISpeechProvider] Failed to parse voices response: {ex.Message}");
+                        return null;
+                    }
+
+                    if (response == null || response.Voices == null)
+                    {
+                        Debug.LogError("[AISpeechProvider] Voices response missing voice list.");
+                        return null;
+                    }
+
+                    return response;
                 }
             }
 

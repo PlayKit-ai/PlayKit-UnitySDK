@@ -46,8 +46,6 @@ namespace PlayKit_SDK
 
         // Games list state
         private List<GameInfo> _gamesList = new List<GameInfo>();
-        private string[] _gamesDisplayNames = new string[0];
-        private int _selectedGameIndex = -1;
         private bool _isLoadingGames = false;
         private string _gamesLoadError = "";
 
@@ -511,8 +509,6 @@ namespace PlayKit_SDK
                     {
                         PlayKitSettings.ClearLocalDeveloperToken();
                         _gamesList.Clear();
-                        _gamesDisplayNames = new string[0];
-                        _selectedGameIndex = -1;
                         // Clear models list
                         _textModelsList.Clear();
                         _imageModelsList.Clear();
@@ -640,45 +636,14 @@ namespace PlayKit_SDK
             }
             else
             {
-                // Find current selection
-                if (_selectedGameIndex < 0 && !string.IsNullOrEmpty(settings.GameId))
+                // The game is fixed when the developer key is authorized — show it
+                // read-only (no switching inside the editor).
+                var game = _gamesList.Find(g => g.id == settings.GameId) ?? _gamesList[0];
+
+                EditorGUILayout.LabelField(L10n.Get("config.game.bound"), FormatGameDisplayName(game));
+
+                // Show bound game info
                 {
-                    _selectedGameIndex = _gamesList.FindIndex(g => g.id == settings.GameId);
-                }
-
-                EditorGUI.BeginChangeCheck();
-                _selectedGameIndex = EditorGUILayout.Popup(
-                    L10n.Get("config.game.select"),
-                    _selectedGameIndex,
-                    _gamesDisplayNames
-                );
-
-                if (EditorGUI.EndChangeCheck() && _selectedGameIndex >= 0 && _selectedGameIndex < _gamesList.Count)
-                {
-                    var selectedGame = _gamesList[_selectedGameIndex];
-                    settings.GameId = selectedGame.id;
-
-                    // Auto-sync channel type from selected game
-                    SerializedProperty channelTypeProp = serializedSettings.FindProperty("channelType");
-                    if (channelTypeProp != null && !string.IsNullOrEmpty(selectedGame.channel))
-                    {
-                        channelTypeProp.stringValue = selectedGame.channel;
-                        serializedSettings.ApplyModifiedProperties();
-
-                        // Notify addons about game selection change
-                        NotifyAddonsGameSelectionChanged(selectedGame.id, selectedGame.channel);
-                    }
-
-                    EditorUtility.SetDirty(settings);
-                    AssetDatabase.SaveAssets();
-                    // Load models for the newly selected game
-                    LoadModelsList();
-                }
-
-                // Show selected game info
-                if (_selectedGameIndex >= 0 && _selectedGameIndex < _gamesList.Count)
-                {
-                    var game = _gamesList[_selectedGameIndex];
                     EditorGUILayout.Space(5);
                     EditorGUILayout.LabelField(L10n.Get("config.game.id_label"), game.id, EditorStyles.miniLabel);
 
@@ -712,6 +677,17 @@ namespace PlayKit_SDK
                 if (GUILayout.Button(L10n.Get("config.game.refresh"), GUILayout.Height(25), GUILayout.Width(100)))
                 {
                     LoadGamesList();
+                }
+                if (PlayKitProjectPin.Exists && GUILayout.Button(new GUIContent(L10n.Get("config.game.unpin"), L10n.Get("config.game.unpin_tooltip")), GUILayout.Height(25), GUILayout.Width(140)))
+                {
+                    if (EditorUtility.DisplayDialog(
+                        L10n.Get("config.game.unpin"),
+                        L10n.Get("config.game.unpin_confirm"),
+                        L10n.Get("common.yes"),
+                        L10n.Get("common.cancel")))
+                    {
+                        PlayKitProjectPin.Clear();
+                    }
                 }
                 GUILayout.FlexibleSpace();
                 EditorGUILayout.EndHorizontal();
@@ -1495,8 +1471,9 @@ namespace PlayKit_SDK
 
                 AttachDeviceAuthHandlers();
 
-                // No gameId needed for global token
-                await _deviceAuthFlow.StartFlowAsync("developer:full");
+                // A repository-pinned game (playkit.json) binds the authorization
+                // to that game; otherwise the OAuth page offers a picker.
+                await _deviceAuthFlow.StartFlowAsync("developer:full", PlayKitProjectPin.ReadGameId());
             }
             catch (Exception ex)
             {
@@ -1519,6 +1496,42 @@ namespace PlayKit_SDK
         #endregion
 
         #region Games List
+
+        /// <summary>
+        /// Persist the game the developer key is bound to (id + channel), notify
+        /// addons, and refresh the model lists. Idempotent — only writes when the
+        /// bound game differs from the current settings.
+        /// </summary>
+        private void ApplyBoundGame(GameInfo game)
+        {
+            if (game == null) return;
+
+            bool changed = settings.GameId != game.id;
+            if (changed)
+            {
+                settings.GameId = game.id;
+            }
+
+            SerializedProperty channelTypeProp = serializedSettings.FindProperty("channelType");
+            if (channelTypeProp != null && !string.IsNullOrEmpty(game.channel) && channelTypeProp.stringValue != game.channel)
+            {
+                channelTypeProp.stringValue = game.channel;
+                serializedSettings.ApplyModifiedProperties();
+                changed = true;
+            }
+
+            if (changed)
+            {
+                NotifyAddonsGameSelectionChanged(game.id, game.channel);
+                EditorUtility.SetDirty(settings);
+                AssetDatabase.SaveAssets();
+                LoadModelsList();
+            }
+
+            // Keep the repository pin (playkit.json) in sync so teammates
+            // cloning the repo authorize against the same game.
+            PlayKitProjectPin.Write(game.id, game.channel);
+        }
 
         private async void LoadGamesList()
         {
@@ -1558,12 +1571,14 @@ namespace PlayKit_SDK
                         if (response != null && response.success && response.games != null)
                         {
                             _gamesList = response.games;
-                            _gamesDisplayNames = _gamesList.Select(g => FormatGameDisplayName(g)).ToArray();
 
-                            // Find current selection
-                            if (!string.IsNullOrEmpty(settings.GameId))
+                            // The developer key is bound to one game at OAuth time —
+                            // apply it directly. Legacy multi-game keys: keep the
+                            // current selection if it is still listed.
+                            if (_gamesList.Count > 0)
                             {
-                                _selectedGameIndex = _gamesList.FindIndex(g => g.id == settings.GameId);
+                                var current = _gamesList.FindIndex(g => g.id == settings.GameId);
+                                ApplyBoundGame(_gamesList[current >= 0 ? current : 0]);
                             }
                         }
                         else
@@ -1579,8 +1594,6 @@ namespace PlayKit_SDK
                             Debug.LogWarning("[PlayKit SDK] Stored token is invalid or expired. Logging out automatically.");
                             PlayKitSettings.ClearLocalDeveloperToken();
                             _gamesList.Clear();
-                            _gamesDisplayNames = new string[0];
-                            _selectedGameIndex = -1;
                             _gamesLoadError = "";
                             Repaint();
                             return;

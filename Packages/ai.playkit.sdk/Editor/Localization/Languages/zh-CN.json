@@ -20,6 +20,10 @@
 
   "config.game.title": "游戏选择",
   "config.game.select": "选择游戏",
+  "config.game.bound": "已授权的游戏",
+  "config.game.unpin": "解除仓库绑定",
+  "config.game.unpin_tooltip": "删除 playkit.json，使该仓库不再固定到某个游戏。",
+  "config.game.unpin_confirm": "要解除仓库的游戏绑定（playkit.json）吗？下次登录时可以重新选择游戏。",
   "config.game.id_label": "游戏 ID：",
   "config.game.description": "描述：",
   "config.game.loading": "正在加载游戏列表...",

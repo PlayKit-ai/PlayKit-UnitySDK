@@ -42,7 +42,9 @@ namespace PlayKit_SDK.Editor
         /// Uses global scope to get a token that can access all games the developer owns.
         /// </summary>
         /// <param name="scope">Authorization scope (default: developer:full)</param>
-        public async Task<DeviceAuthResult> StartFlowAsync(string scope = "developer:full")
+        /// <param name="gameId">Optional game id to bind the session to (repository
+        /// pin). When set, the OAuth page asks to authorize this exact game.</param>
+        public async Task<DeviceAuthResult> StartFlowAsync(string scope = "developer:full", string gameId = null)
         {
             _cancelled = false;
             _isPolling = false;
@@ -54,9 +56,10 @@ namespace PlayKit_SDK.Editor
                 _codeChallenge = GenerateCodeChallenge(_codeVerifier);
                 OnStatusUpdate?.Invoke("Preparing...");
 
-                // Step 2: Initiate device auth session (no gameId needed for global token)
+                // Step 2: Initiate device auth session. A pinned gameId binds the
+                // session to that game; otherwise the OAuth page offers a picker.
                 var baseUrl = PlayKitSettings.Instance?.BaseUrl ?? "https://api.playkit.ai";
-                var initResult = await InitiateDeviceAuthAsync(baseUrl, scope);
+                var initResult = await InitiateDeviceAuthAsync(baseUrl, scope, gameId);
 
                 if (!initResult.Success)
                 {
@@ -136,14 +139,15 @@ namespace PlayKit_SDK.Editor
 
         #region API Calls
 
-        private async Task<InitiateResult> InitiateDeviceAuthAsync(string baseUrl, string scope)
+        private async Task<InitiateResult> InitiateDeviceAuthAsync(string baseUrl, string scope, string gameId = null)
         {
             var endpoint = $"{baseUrl}/api/device-auth/initiate";
             var requestData = new InitiateRequest
             {
                 code_challenge = _codeChallenge,
                 code_challenge_method = "S256",
-                scope = scope
+                scope = scope,
+                game_id = string.IsNullOrEmpty(gameId) ? null : gameId
             };
 
             string jsonPayload = JsonConvert.SerializeObject(requestData);
@@ -288,6 +292,8 @@ namespace PlayKit_SDK.Editor
             public string code_challenge;
             public string code_challenge_method;
             public string scope;
+            [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+            public string game_id;
         }
 
         [Serializable]

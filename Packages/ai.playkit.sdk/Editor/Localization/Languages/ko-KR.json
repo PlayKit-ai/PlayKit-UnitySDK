@@ -138,6 +138,10 @@
   "config.auth.logout_confirm": "로그아웃하시겠습니까? 게임에 액세스하려면 다시 로그인해야 합니다.",
 
   "config.game.select": "게임 선택",
+  "config.game.bound": "승인된 게임",
+  "config.game.unpin": "저장소 고정 해제",
+  "config.game.unpin_tooltip": "playkit.json을 삭제하여 이 저장소의 게임 고정을 해제합니다.",
+  "config.game.unpin_confirm": "저장소의 게임 고정(playkit.json)을 해제할까요? 다음 로그인 시 게임을 다시 선택할 수 있습니다.",
   "config.game.id_label": "게임 ID：",
   "config.game.description": "설명：",
   "config.game.loading": "게임 목록을 불러오는 중...",

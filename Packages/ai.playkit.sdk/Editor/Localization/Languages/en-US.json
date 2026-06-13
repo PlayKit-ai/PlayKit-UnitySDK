@@ -20,6 +20,10 @@
 
   "config.game.title": "Game Selection",
   "config.game.select": "Select Game",
+  "config.game.bound": "Authorized Game",
+  "config.game.unpin": "Unpin from repo",
+  "config.game.unpin_tooltip": "Remove playkit.json so this repository is no longer pinned to a game.",
+  "config.game.unpin_confirm": "Remove the repository game pin (playkit.json)? The next sign-in will let you pick a game again.",
   "config.game.id_label": "Game ID:",
   "config.game.description": "Description:",
   "config.game.loading": "Loading games list...",

@@ -32,6 +32,12 @@ namespace PlayKit_SDK
         [Tooltip("Default 3D model generation model. Leave empty to use server default.")]
         [SerializeField] private string default3DModel = "default-3d-model";
 
+        [Tooltip("Apply a default thinking effort to chat requests that don't set their own. When disabled, thinking is omitted and the server defaults to off.")]
+        [SerializeField] private bool useDefaultThinkingEffort = false;
+
+        [Tooltip("Default reasoning effort for chat requests that don't specify one. Use Off to explicitly disable reasoning. Per-request ThinkingEffort overrides this.")]
+        [SerializeField] private PlayKit_SDK.Public.PlayKit_ThinkingEffort defaultThinkingEffort = PlayKit_SDK.Public.PlayKit_ThinkingEffort.Off;
+
         [Header("Initialization")]
         [Tooltip("Automatically initialize PlayKit SDK at runtime startup. Disable to manually call PlayKitSDK.InitializeAsync().")]
         [SerializeField] private bool autoInitialize = true;
@@ -158,6 +164,15 @@ namespace PlayKit_SDK
         public string DefaultTranscriptionModel => defaultTranscriptionModel;
         public string DefaultTTSModel => defaultTTSModel;
         public string Default3DModel => default3DModel;
+
+        /// <summary>
+        /// SDK-wide default reasoning effort applied to chat requests that don't set their own
+        /// <c>ThinkingEffort</c>. Returns null when no default is configured, so thinking is omitted
+        /// from the payload and the server defaults to off. Mirrors <see cref="DefaultChatModel"/>:
+        /// a client-level default that a per-request override takes precedence over.
+        /// </summary>
+        public PlayKit_SDK.Public.PlayKit_ThinkingEffort? DefaultThinkingEffort =>
+            useDefaultThinkingEffort ? defaultThinkingEffort : (PlayKit_SDK.Public.PlayKit_ThinkingEffort?)null;
         public bool AutoInitialize => autoInitialize;
         public bool IgnoreDeveloperToken => ignoreDeveloperToken;
 

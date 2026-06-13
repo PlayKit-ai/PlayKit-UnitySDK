@@ -252,15 +252,17 @@ namespace PlayKit_SDK.Provider.AI
     /// <summary>
     /// Reasoning-effort control for thinking-capable models.
     /// Maps to the backend `thinking` object: { enabled, effort }.
-    /// Effort is a lowercase string: "minimal" | "low" | "medium" | "high" | "max".
+    /// Effort is a lowercase string: "off" | "minimal" | "low" | "medium" | "high" | "max"
+    /// ("off" explicitly disables reasoning). The SDK emits effort only; `enabled` is a
+    /// deprecated server-side alias and is omitted unless explicitly set.
     /// </summary>
     [System.Serializable]
     public class Thinking
     {
-        [JsonProperty("enabled")]
+        [JsonProperty("enabled", NullValueHandling = NullValueHandling.Ignore)]
         public bool? Enabled { get; set; }
 
-        [JsonProperty("effort")]
+        [JsonProperty("effort", NullValueHandling = NullValueHandling.Ignore)]
         public string Effort { get; set; }
     }
 
