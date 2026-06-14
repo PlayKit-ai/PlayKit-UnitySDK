@@ -19,7 +19,6 @@ namespace PlayKit_SDK
         private float retryDelaySeconds = 3.0f;
         private bool enableDebugLogs = true;
 
-        private string currentJWT;
         private string playerToken;
         private PlayerInfo cachedPlayerInfo;
         
@@ -54,7 +53,6 @@ namespace PlayKit_SDK
         public event Action<PlayKit_ApiErrorDetails> OnTokenSpendingLimitReached;
 
         // ADDED: Public property to access the result of the last JWT exchange.
-        public JWTExchangeResponse LastExchangeResponse { get; private set; }
 
         // Balance checking
         private CancellationTokenSource _autoBalanceCheckCts;
@@ -178,22 +176,6 @@ namespace PlayKit_SDK
             [JsonProperty("message")] public string Message { get; set; }
         }
 
-        [Serializable]
-        public class JWTExchangeRequest
-        {
-            [JsonProperty("token")] public string Token { get; set; }
-        }
-
-        [Serializable]
-        public class JWTExchangeResponse
-        {
-            [JsonProperty("success")] public bool Success { get; set; }
-            [JsonProperty("userId")] public string UserId { get; set; }
-            [JsonProperty("playerToken")] public string PlayerToken { get; set; }
-            [JsonProperty("tokenName")] public string TokenName { get; set; }
-            [JsonProperty("createdAt")] public string CreatedAt { get; set; }
-            [JsonProperty("expiresAt")] public string ExpiresAt { get; set; } // null means never expires
-        }
         
         [Serializable]
         public class ErrorResponse
@@ -215,75 +197,6 @@ namespace PlayKit_SDK
 
         #region Public API
 
-        /// <summary>
-        /// Initializes the client with a short-lived JWT and automatically exchanges it for a Player Token.
-        /// </summary>
-        /// <param name="jwt">The short-lived JWT from your game's authentication system.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>True if the JWT was successfully exchanged for a Player Token.</returns>
-        public async UniTask<(bool,string)> InitializeAsync(string jwt, CancellationToken cancellationToken = default)
-        {
-            Debug.Log("exchanging with" + jwt);
-            if (string.IsNullOrEmpty(jwt))
-            {
-                string error = "JWT token cannot be null or empty";
-                Debug.LogError(error);
-                OnError?.Invoke(error);
-                return (false,error);
-            }
-            
-            currentJWT = jwt;
-            Debug.Log("SDK initialized with JWT. Exchanging for Player Token...");
-            
-            var result = await ExchangeJWTForPlayerTokenAsync(cancellationToken);
-            return (result.Item1.Success,result.Item2);
-        }
-        
-        /// <summary>
-        /// Exchanges the stored JWT for a long-lived Player Token by sending it in the Authorization header.
-        /// </summary>
-        public async UniTask<(ApiResult<JWTExchangeResponse>, string)> ExchangeJWTForPlayerTokenAsync(CancellationToken cancellationToken = default)
-        {
-            if (string.IsNullOrEmpty(currentJWT))
-            {
-                string error = "No JWT token available for exchange";
-                Debug.LogError(error);
-                OnError?.Invoke(error);
-                return (new ApiResult<JWTExchangeResponse> { Success = false, Error = error }, error);
-            }
-    
-            string url = $"{BaseUrl}/api/external/exchange-jwt";
-    
-            // The JWT is now passed as an auth token for the header.
-            // We send an empty object as the body, as our endpoint no longer reads it.
-            var result = await PostRequestAsync<object, JWTExchangeResponse>(url, new object(), cancellationToken, currentJWT);
-    
-            // The rest of the logic remains the same...
-            if (result.Success && result.Data.Success)
-            {
-                playerToken = result.Data.PlayerToken;
-                LastExchangeResponse = result.Data;
-
-                Debug.Log($"Player token received: {playerToken}");
-                Debug.Log($"Token name: {result.Data.TokenName}");
-                Debug.Log($"Expires at: {result.Data.ExpiresAt ?? "Never"}");
-        
-                OnPlayerTokenReceived?.Invoke(playerToken);
-        
-                GetPlayerInfoAsync(cancellationToken).Forget(); // Fire and forget
-            }
-            else
-            {
-                // Consolidate error handling
-                string error = result.Error ?? "JWT exchange failed on the server.";
-                if (enableDebugLogs) Debug.LogError(error);
-                OnError?.Invoke(error);
-                result.Success = false; // Ensure success is false
-                result.Error = error;
-                return (result, error);
-            }
-            return (result, result.Error);
-        }
         public async UniTask<ApiResult<PlayerInfo>> GetPlayerInfoAsync(CancellationToken cancellationToken = default)
         {
             string authToken = GetAuthToken();
@@ -730,6 +643,6 @@ namespace PlayKit_SDK
         }
         #endregion
 
-        private string GetAuthToken() { return !string.IsNullOrEmpty(playerToken) ? playerToken : currentJWT; }
+        private string GetAuthToken() { return playerToken; }
     }
 }
