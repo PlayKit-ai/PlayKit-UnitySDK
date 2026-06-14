@@ -25,11 +25,17 @@ namespace PlayKit_SDK.Services
             var internalMsg = new ChatMessage
             {
                 Role = m.Role,
-                ToolCallId = m.ToolCallId,
-                ToolCalls = m.ToolCalls
             };
 
-            if (m.IsMultimodal)
+            if (m.ToolCalls != null && m.ToolCalls.Count > 0)
+            {
+                internalMsg.SetAssistantToolCalls(m.Content, m.ToolCalls);
+            }
+            else if (m.Role == "tool" && !string.IsNullOrEmpty(m.ToolCallId) && !string.IsNullOrEmpty(m.ToolName))
+            {
+                internalMsg.SetToolResult(m.ToolCallId, m.ToolName, m.Content);
+            }
+            else if (m.IsMultimodal)
             {
                 List<string> imageBase64List = null;
                 string imageDetail = "auto";
@@ -67,6 +73,8 @@ namespace PlayKit_SDK.Services
             }
             else
             {
+                internalMsg.ToolCallId = m.ToolCallId;
+                internalMsg.ToolCalls = m.ToolCalls;
                 internalMsg.SetTextContent(m.Content);
             }
 

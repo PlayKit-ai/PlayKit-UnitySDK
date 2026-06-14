@@ -244,6 +244,12 @@ namespace PlayKit_SDK.Public
         /// </summary>
         public string ToolCallId;
         /// <summary>
+        /// Tool name for canonical tool-result content parts.
+        /// Optional for legacy histories; the server can infer it when the matching
+        /// assistant tool call is present.
+        /// </summary>
+        public string ToolName;
+        /// <summary>
         /// Tool calls made by the assistant - populated when the model requests tool execution
         /// </summary>
         public List<ChatToolCall> ToolCalls;

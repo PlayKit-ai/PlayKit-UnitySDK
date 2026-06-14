@@ -1470,6 +1470,7 @@ namespace PlayKit_SDK
                 {
                     Role = "tool",
                     ToolCallId = kvp.Key,
+                    ToolName = FindToolNameForCall(kvp.Key),
                     Content = kvp.Value
                 });
             }
@@ -1488,8 +1489,33 @@ namespace PlayKit_SDK
             {
                 Role = "tool",
                 ToolCallId = callId,
+                ToolName = FindToolNameForCall(callId),
                 Content = result ?? ""
             });
+        }
+
+        private string FindToolNameForCall(string callId)
+        {
+            if (string.IsNullOrEmpty(callId) || _conversationHistory == null)
+            {
+                return null;
+            }
+
+            for (int i = _conversationHistory.Count - 1; i >= 0; i--)
+            {
+                var toolCalls = _conversationHistory[i].ToolCalls;
+                if (toolCalls == null) continue;
+
+                foreach (var toolCall in toolCalls)
+                {
+                    if (toolCall?.Id == callId)
+                    {
+                        return toolCall.Function?.Name;
+                    }
+                }
+            }
+
+            return null;
         }
 
         #endregion

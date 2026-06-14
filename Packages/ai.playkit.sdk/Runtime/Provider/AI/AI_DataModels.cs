@@ -35,6 +35,18 @@ namespace PlayKit_SDK.Provider.AI
         [JsonProperty("input_audio", NullValueHandling = NullValueHandling.Ignore)]
         public InputAudioData InputAudio { get; set; }
 
+        [JsonProperty("toolCallId", NullValueHandling = NullValueHandling.Ignore)]
+        public string ToolCallId { get; set; }
+
+        [JsonProperty("toolName", NullValueHandling = NullValueHandling.Ignore)]
+        public string ToolName { get; set; }
+
+        [JsonProperty("input", NullValueHandling = NullValueHandling.Ignore)]
+        public JToken Input { get; set; }
+
+        [JsonProperty("output", NullValueHandling = NullValueHandling.Ignore)]
+        public ChatToolResultOutput Output { get; set; }
+
         public static ChatContentPart CreateText(string text)
         {
             return new ChatContentPart { Type = "text", Text = text };
@@ -61,6 +73,42 @@ namespace PlayKit_SDK.Provider.AI
                 InputAudio = new InputAudioData { Data = base64Data, Format = format }
             };
         }
+
+        public static ChatContentPart CreateToolCall(ChatToolCall toolCall)
+        {
+            JToken input = new JObject();
+            var args = toolCall?.Function?.Arguments;
+            if (!string.IsNullOrWhiteSpace(args))
+            {
+                try
+                {
+                    input = JToken.Parse(args);
+                }
+                catch
+                {
+                    input = new JValue(args);
+                }
+            }
+
+            return new ChatContentPart
+            {
+                Type = "tool-call",
+                ToolCallId = toolCall?.Id,
+                ToolName = toolCall?.Function?.Name,
+                Input = input
+            };
+        }
+
+        public static ChatContentPart CreateToolResult(string toolCallId, string toolName, string result)
+        {
+            return new ChatContentPart
+            {
+                Type = "tool-result",
+                ToolCallId = toolCallId,
+                ToolName = toolName,
+                Output = ChatToolResultOutput.CreateText(result ?? "")
+            };
+        }
     }
 
     [System.Serializable]
@@ -81,6 +129,24 @@ namespace PlayKit_SDK.Provider.AI
 
         [JsonProperty("format")]
         public string Format { get; set; }
+    }
+
+    [System.Serializable]
+    public class ChatToolResultOutput
+    {
+        [JsonProperty("type")]
+        public string Type { get; set; }
+
+        [JsonProperty("value", NullValueHandling = NullValueHandling.Ignore)]
+        public object Value { get; set; }
+
+        [JsonProperty("reason", NullValueHandling = NullValueHandling.Ignore)]
+        public string Reason { get; set; }
+
+        public static ChatToolResultOutput CreateText(string value)
+        {
+            return new ChatToolResultOutput { Type = "text", Value = value };
+        }
     }
 
     #endregion
@@ -164,6 +230,39 @@ namespace PlayKit_SDK.Provider.AI
             }
 
             Content = parts;
+        }
+
+        /// <summary>
+        /// Set assistant content using canonical PlayKit tool-call parts.
+        /// </summary>
+        public void SetAssistantToolCalls(string text, List<ChatToolCall> toolCalls)
+        {
+            var parts = new List<ChatContentPart>();
+            if (!string.IsNullOrEmpty(text))
+            {
+                parts.Add(ChatContentPart.CreateText(text));
+            }
+
+            if (toolCalls != null)
+            {
+                foreach (var toolCall in toolCalls)
+                {
+                    parts.Add(ChatContentPart.CreateToolCall(toolCall));
+                }
+            }
+
+            Content = parts;
+        }
+
+        /// <summary>
+        /// Set tool response content using canonical PlayKit tool-result parts.
+        /// </summary>
+        public void SetToolResult(string toolCallId, string toolName, string result)
+        {
+            Content = new List<ChatContentPart>
+            {
+                ChatContentPart.CreateToolResult(toolCallId, toolName, result)
+            };
         }
     }
 
